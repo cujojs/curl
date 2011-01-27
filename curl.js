@@ -1,5 +1,8 @@
 /*
  * curl (cujo resource loader)
+ *
+ * (c) copyright 2011, unscriptable.com
+ * 
  */
 
 // TODO: plugins
@@ -20,7 +23,10 @@ var resources = {},
 		baseUrl: null, // auto-detect
 		paths: {}
 	},
-	op = Object.prototype;
+	op = Object.prototype,
+	// net to catch anonymous define calls
+	// TODO: does this really need to be "global"?
+	defNet = null;
 
 /* some utility functions */
 
@@ -88,13 +94,51 @@ Loader.prototye = {
 		return el;
 	},
 
-	loadScript: function (url, cb, eb) {
+	processScript: function (el, cb, eb) {
+		// grab all define()s from defNet
+	},
+
+	loadScript: function (id, url, cb, eb) {
+		var self = this;
+		// initial script processing
+		function process (ev) {
+			// script processing rules learned from require.js
+			var el = ev.currentTarget || ev.srcElement;
+			if (ev.type === 'load' || /^(complete|loaded)$/.test(el.readyState)) {
+				// release event listeners
+				el.onload = el.onreadystatechange = el.onerror = null;
+//				if (script.removeEventListener) {
+//					script.removeEventListener('load', process, false);
+//					script.removeEventListener('error', eb, false);
+//				}
+//				else {
+//					script.detachEvent('onreadystatechange', process);
+//					script.detachEvent('onerror', eb);
+//				}
+				// return anonymously-define()d resource from defNet
+				// or the named resource from resources{}
+				var r = defNet || resources[id];
+				defNet = null;
+				cb(r);
+			}
+		}
 		// insert script
 		var script = this.cfg.doc.createElement('script');
-		// TODO: IE and browser quirks
-		script.onload = cb;
+		// detect when it's done loading
+		// trying dom0 event handlers instead of wordy w3c/ms
+		script.onload = script.onreadystatechange = process;
 		script.onerror = eb;
+//		if (script.addEventListener) {
+//			script.addEventListener('load', process, false);
+//			script.addEventListener('error', eb, false);
+//		}
+//		else {
+//			script.attachEvent('onreadystatechange', process);
+//			script.attachEvent('onerror', eb);
+//		}
 		script.type = 'text/javascript';
+		script.charset = 'utf-8';
+		script.async = true; // for Firefox
 		script.src = url;
 		this.head().appendChild(script);
 	},
@@ -111,25 +155,25 @@ Loader.prototye = {
 					delete def.cb;
 					error(new Error('Timed out waiting for ' + id));
 				});
-			function success (r) {
+			function success (ev) {
 				def.r = r;
 				clear();
 				cb(r);
 			}
 			function error (ex) {
-				def.ex = ex;
+				def.ex = new Error('Unable to find or load ' + id);
 				clear();
 				eb(ex);
 			}
-			this.loadScript(url, success, error);
+			this.loadScript(id, url, success, error);
 		}
 		// this id is for a resource currently being fetched
-		else if (def.cb) {
+		else if (!('r' in def)) {
 			// chain callback
 			// TODO: if debugging, log calls to these callbacks and count them
 			var prevCb = def.cb;
 			def.cb = function (r) {
-				prevCb(r);
+				prevCb && prevCb(r);
 				cb(r);
 			};
 		}
@@ -162,12 +206,12 @@ function fixArgs (one, two, three) {
 	// resolve args
 	var args = {id: one, deps: two, f: three};
 	if (typeof one === 'function') {
-		args.f = one;
+		args.df = one;
 		args.deps = [];
 		args.id = null;
 	}
 	else if (typeof two === 'function') {
-		args.f = two;
+		args.df = two;
 		if (typeof one === 'array') {
 			args.deps = one;
 			args.id = null;
@@ -237,53 +281,18 @@ cjsProto.evalResource = function (deps, resource) {
 	return res;
 };
 
-cjsProto.stashResource = function (id, resource) {
-	resources[id] = {r: resource};
-};
-
-
-
-//function toUrl (baseUrl, relUrl) {
-//	// TODO: compare against paths
-//	return baseUrl + relUrl;
-//}
-//
-//function createDepList (ids) {
-//	// this should be called on resources that are already known to be loaded
-//	var deps = [],
-//		i = 0,
-//		id, r;
-//	while ((id = ids[i++])) {
-//		if (id === 'require') {
-//			r = beget(global.require);
-//			r.toUrl = function () {}; // TODO!
-//		}
-//		else if (id === ' exports') {
-//			deps.push(deps.exports = {});
-//		}
-//		else {
-//			r = resources[id];
-//		}
-//		deps.push(r);
+//cjsProto.stashResource = function (id, resource) {
+//	if (id != null) {
+//		resources[id] = {r: resource};
 //	}
-//	return deps;
-//}
-//
-//function evalResource (deps, resource) {
-//	var res = resource;
-//	if (typeof res === 'function') {
-//		var params = createDepList(deps);
-//		res = res.apply(null, params);
-//		if (params.exports) {
-//			res = params.exports;
-//		}
+//	else if (defNet != null) {
+//		throw new Error('Multiple anonymous defines found while loading ' + id);
 //	}
-//	return res;
-//}
-//
-//function stashResource (id, resource) {
-//	resources[id] = {r: resource};
-//}
+//	else {
+//		defNet = resource;
+//	}
+//};
+
 
 function createCfg (overrides) {
 	// use global config
@@ -295,27 +304,38 @@ function createCfg (overrides) {
 	return cfg;
 }
 
-global.define = function (id, deps, factory) {
+global.define = function (/* various */) {
 
-	var args = fixArgs(id, deps, factory),
+	var args = fixArgs(arguments[0], arguments[1], arguments[2]),
 		ldr = new CommonJsLoader(createCfg({}));
 
 	function loaded () {
 		// evaluate and save the resource
-		ldr.stashResource(args.id, ldr.evalResource(args.deps, args.f));
+		resources[args.id] = {r: ldr.evalResource(args.deps, args.df)};
+//		ldr.stashResource(args.id, ldr.evalResource(args.deps, args.df));
 	}
 
 	function failed (ex) {
 		throw ex;
 	}
 
-	if (args.deps.length) {
-		// create a Loader
+	if (args.deps.length > 0) {
+		if (!resources[args.id]) {
+			// this define was not in direct response to a required dependency,
+			// so we need to indicate that it's being loaded. just create a stub. 
+			resources[args.id] = {};
+		}
+		// loads deps
 		ldr.loadMany(args.deps, loaded, failed);
 	}
-	else {
-		// save resource
+	else if (id != null) {
 		loaded();
+	}
+	else if (defNet != null) {
+		failed(new Error('Multiple anonymous defines found while loading ' + args.id));
+	}
+	else {
+		defNet = resource;
 	}
 
 };
@@ -328,7 +348,8 @@ global.require = function (/* various */) {
 	var a0 = arguments[0],
 		a1 = arguments[1],
 		a2 = arguments[2],
-		res, id, args, cfg = {};
+		res, id, args,
+		cfg = {};
 
 	if (arguments.length === 1) {
 
@@ -349,10 +370,10 @@ global.require = function (/* various */) {
 		}
 		
 		args = fixArgs(a0, a1, a2);
-		var ldr = new CommonJsLoader(createCfg(cfg))
+		var ldr = new CommonJsLoader(createCfg(cfg));
 
 		function loaded () {
-			ldr.evalResource(args.deps, args.f);
+			ldr.evalResource(args.deps, args.df);
 		}
 
 		function failed (ex) {
