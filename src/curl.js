@@ -26,9 +26,17 @@ var resources = {},
 	op = Object.prototype,
 	// net to catch anonymous define calls
 	// TODO: does this really need to be "global"?
-	defNet = null;
+	defNet;
 
 /* some utility functions */
+
+function isArray (obj) {
+	return op.toString.call(obj) === '[object Array]';
+}
+
+function isFunction (obj) {
+	return typeof obj === 'function';
+}
 
 function forIn (obj, lambda) {
 	if (obj) {
@@ -84,7 +92,7 @@ function Loader (cfg) {
 	this.cfg = cfg;
 }
 
-Loader.prototye = {
+Loader.prototype = {
 
 	head: function  () {
 		// find and return the head element
@@ -92,10 +100,6 @@ Loader.prototye = {
 		while (el && el.nodeType !== 1) el = el.nextSibling;
 		this.head = function () { return el; };
 		return el;
-	},
-
-	processScript: function (el, cb, eb) {
-		// grab all define()s from defNet
 	},
 
 	loadScript: function (id, url, cb, eb) {
@@ -115,11 +119,7 @@ Loader.prototye = {
 //					script.detachEvent('onreadystatechange', process);
 //					script.detachEvent('onerror', eb);
 //				}
-				// return anonymously-define()d resource from defNet
-				// or the named resource from resources{}
-				var r = defNet || resources[id];
-				defNet = null;
-				cb(r);
+				cb();
 			}
 		}
 		// insert script
@@ -143,8 +143,14 @@ Loader.prototye = {
 		this.head().appendChild(script);
 	},
 
-	load: function (id, url, cb, eb) {
+	idToUrl: function (id) {
+		// TODO: handle relative ids
+		return id + '.js';
+	},
+
+	load: function (id, cb, eb) {
 		// TODO: handle plugins here?
+		var url = this.idToUrl(id);
 		var def = resources[id];
 		// this id wasn't encountered yet
 		if (!def) {
@@ -155,10 +161,15 @@ Loader.prototye = {
 					delete def.cb;
 					error(new Error('Timed out waiting for ' + id));
 				});
-			function success (ev) {
-				def.r = r;
+			function success () {
+				// return anonymously-define()d resource from defNet
+				// or the named resource from resources{}
+				// Note: defNet.r will be undefined if the resource has dependencies
+				
+				if (!('r' in def)) def.r = defNet.r;
+				defNet = void 0;
 				clear();
-				cb(r);
+				cb();
 			}
 			function error (ex) {
 				def.ex = new Error('Unable to find or load ' + id);
@@ -178,7 +189,7 @@ Loader.prototye = {
 			};
 		}
 		// this id is for a loaded resource
-		else if (def.r) {
+		else { //} if (def.r) {
 			cb(def.r);
 		}
 //		else {
@@ -189,7 +200,7 @@ Loader.prototye = {
 	loadMany: function (ids, cb, eb) {
 		var count = ids.length,
 			loaded = 0;
-		function checkLoaded (r) {
+		function checkLoaded () {
 			if (++loaded === count) {
 				cb();
 			}
@@ -205,14 +216,14 @@ function fixArgs (one, two, three) {
 	// TODO: simplify this?
 	// resolve args
 	var args = {id: one, deps: two, f: three};
-	if (typeof one === 'function') {
+	if (isFunction(one)) {
 		args.df = one;
 		args.deps = [];
 		args.id = null;
 	}
-	else if (typeof two === 'function') {
+	else if (isFunction(two)) {
 		args.df = two;
-		if (typeof one === 'array') {
+		if (isArray(one)) {
 			args.deps = one;
 			args.id = null;
 		}
@@ -261,7 +272,7 @@ cjsProto.createDepList = function (ids) {
 			deps.push(deps.exports = {});
 		}
 		else {
-			r = resources[id];
+			r = resources[id].r;
 		}
 		deps.push(r);
 	}
@@ -270,7 +281,7 @@ cjsProto.createDepList = function (ids) {
 
 cjsProto.evalResource = function (deps, resource) {
 	var res = resource;
-	if (typeof res === 'function') {
+	if (isFunction(res)) {
 		var params = this.createDepList(deps);
 		res = res.apply(null, params);
 		// pull out and return the exports, if using that variant of AMD
@@ -311,7 +322,7 @@ global.define = function (/* various */) {
 
 	function loaded () {
 		// evaluate and save the resource
-		resources[args.id] = {r: ldr.evalResource(args.deps, args.df)};
+//		resources[args.id] = {r: ldr.evalResource(args.deps, args.df)};
 //		ldr.stashResource(args.id, ldr.evalResource(args.deps, args.df));
 	}
 
@@ -319,23 +330,29 @@ global.define = function (/* various */) {
 		throw ex;
 	}
 
-	if (args.deps.length > 0) {
-		if (!resources[args.id]) {
-			// this define was not in direct response to a required dependency,
-			// so we need to indicate that it's being loaded. just create a stub. 
-			resources[args.id] = {};
-		}
-		// loads deps
-		ldr.loadMany(args.deps, loaded, failed);
-	}
-	else if (id != null) {
-		loaded();
-	}
-	else if (defNet != null) {
+	if (args.id == null && typeof defNet !== 'undefined') {
 		failed(new Error('Multiple anonymous defines found while loading ' + args.id));
 	}
+	else if (args.deps.length > 0) {
+		if (!resources[args.id]) {
+			// this define was not in direct response to a required dependency,
+			// so we need to indicate that it's being loaded. just create a stub.
+			resources[args.id] = {};
+		}
+		// save definition
+		defNet = {};
+		// start loading deps
+		ldr.loadMany(args.deps, function () {
+			var cb = defNet.cb;
+			defNet = {r: ldr.evalResource(args.deps, args.df)};
+			if (cb) cb();
+		}, failed);
+	}
+	else if (args.id != null) {
+		resources[args.id] = {r: ldr.evalResource(args.deps, args.df)};
+	}
 	else {
-		defNet = resource;
+		defNet = {r: ldr.evalResource(args.deps, args.df)};
 	}
 
 };
@@ -363,7 +380,7 @@ global.require = function (/* various */) {
 	}
 	else {
 
-		if (typeof a0 === 'object') {
+		if (!isArray(a0)) {
 			// local configuration
 			cfg = a0;
 			a0 = id = '_root_' + rootId++;

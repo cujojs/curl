@@ -1,0 +1,26 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>main test file</title>
+
+<script src="../src/curl.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+
+	require(
+		[
+			//'stuff/one',
+			'stuff/two'
+		],
+		function (two) {
+			console.log('one is loaded:', two);
+		}
+	);
+
+</script>
+
+</head>
+<body>
+
+</body>
+</html>
