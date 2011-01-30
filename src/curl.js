@@ -5,21 +5,21 @@
  * 
  */
 
+// TODO: support define(obj);
 // TODO: plugins
 // TODO: finish paths and toUrl
 // TODO: debugging info / error handling
-// TODO: get resource sync if it's not already loaded (configurable)
 
 (function (global) {
 
 /*
  * Overall operation:
  * When a dependency is encountered and it already exists, it's returned.
- * If it doesn't already exist, it is created and thrown in the resource net.
- * Then, the dependency's script is loaded. If there is a define call in the
- * loaded script with an id, it is resolved as soon asap (as soon as the
- * depedency's dependencies are resolved). If there was a (single) define
- * call with no id (anonymous), the resource in the resNet is resolved.
+ * If it doesn't already exist, it is created and the dependency's script
+ * is loaded. If there is a define call in the loaded script with an id,
+ * it is resolved asap (i.e. as soon as the depedency's dependencies are
+ * resolved). If there was a (single) define call with no id (anonymous),
+ * the resource in the resNet is resolved after the script's onload fires.
  */
 
 
