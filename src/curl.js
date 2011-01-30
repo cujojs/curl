@@ -30,7 +30,8 @@ var
 	config = {
 		doc: global.document,
 		baseUrl: null, // auto-detect
-		paths: {}
+		paths: {},
+		debug: false // TODO: do more with this
 	},
 	// net to catch anonymous define calls' arguments
 	argsNet,
@@ -102,6 +103,7 @@ ResourceDef.prototype = {
 		while (cbo = this._callbacks.pop()) {
 			cbo.cb && cbo.cb(res);
 		}
+		this._cleanup();
 	},
 
 	reject: function reject (ex) {
@@ -109,6 +111,16 @@ ResourceDef.prototype = {
 		var cbo;
 		while (cbo = this._callbacks.pop()) {
 			cbo.eb && cbo.eb(ex);
+		}
+		this._cleanup();
+	},
+
+	_cleanup: function () {
+		if (!this.cfg.debug) {
+			// remove unnecessary properties
+			delete this.cfg;
+			delete this.url;
+			delete this._callbacks;
 		}
 	}
 
@@ -209,6 +221,11 @@ function fetchResDef (name, cfg) {
 		}
 	);
 	return def;
+}
+
+function normalizeName (name, cfg) {
+	// TODO: if name starts with . then use parent's name as a base
+	return name;
 }
 
 function getDeps (names, cfg, success, failure) {
