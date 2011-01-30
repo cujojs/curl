@@ -12,10 +12,20 @@
 
 (function (global) {
 
-/* local vars */
+/*
+ * Overall operation:
+ * When a dependency is encountered and it already exists, it's returned.
+ * If it doesn't already exist, it is created and thrown in the resource net.
+ * Then, the dependency's script is loaded. If there is a define call in the
+ * loaded script with an id, it is resolved as soon asap (as soon as the
+ * depedency's dependencies are resolved). If there was a (single) define
+ * call with no id (anonymous), the resource in the resNet is resolved.
+ */
 
-var resources = {},
-	rootId = 0,
+
+var
+	// local cache of resource definitions (lightweight promises)
+	cache = {},
 	config = {
 		doc: global.document,
 		finderRx: /curl\.js$/,
@@ -24,384 +34,285 @@ var resources = {},
 		paths: {}
 	},
 	op = Object.prototype,
-	// net to catch anonymous define calls
-	// TODO: does this really need to be "global"?
-	defNet;
+	// net to catch anonymous define calls' arguments
+	argsNet;
 
-/* some utility functions */
+// grab any global configuration info
+if (global.require) {
+	// store global config
+	for (var p in global.require) {
+		config[p] = global.require[p];
+	}
+}
 
-function isArray (obj) {
-	return op.toString.call(obj) === '[object Array]';
+// if we don't have a baseUrl (null, undefined, or '')
+if (!config.baseUrl) {
+	// use the document's path as the baseUrl
+	var url = config.doc.location.href;
+	config.baseUrl = url.substr(0, url.lastIndexOf('/') + 1);
 }
 
 function isFunction (obj) {
 	return typeof obj === 'function';
 }
 
-function forIn (obj, lambda) {
-	if (obj) {
-		for (var p in obj) {
-			if (!(p in op)) {
-				lambda(obj[p], p, obj);
-			}
-		}
-	}
+function isArray (obj) {
+	return op.toString.call(obj) === '[object Array]';
 }
 
-// crockford-style object inheritance
+function findHead (doc) {
+	// find and return the head element
+	var el = doc.firstChild;
+	while (el && el.nodeType !== 1) el = el.nextSibling;
+	return el;
+}
+
 function F () {}
-function beget (obj) {
-	F.prototype = obj;
-	var child = new F();
+function begetCfg (ancestor, overrides) {
+	F.prototype = ancestor;
+	var cfg = new F();
 	delete F.prototype;
-	return child;
-}
-
-// cancellable timeout, returns the canceller function
-function timeout (ms, cb) {
-	var h = setTimeout(cb, ms);
-	return function () { clearTimeout(h); };
-}
-
-function findScript (doc, rxOrName) {
-	var scripts = doc.getElementsByTagName('script'),
-		rx = typeof rxOrName === 'string' ? new RegExp(rxOrName + '$') : rxOrName,
-		i = scripts.length, me;
-	while ((me = scripts[--i]) && !rx.test(me.src)) {}
-	return me;
-}
-
-/* initialization */
-
-if (global.require) {
-	// store global config
-	forIn(global.require, function (val, p) {
-		config[p] = val;
-	});
-}
-
-// if we don't have a baseUrl
-if (!config.baseUrl) {
-	// find the curl.js script
-	var src = findScript(config.doc, config.finderRx).src;
-	// save baseUrl of the scriptEl
-	config.baseUrl = src.substr(0, src.lastIndexOf('/') + 1);
-}
-
-function Loader (cfg) {
-	this.cfg = cfg;
-}
-
-Loader.prototype = {
-
-	head: function  () {
-		// find and return the head element
-		var el = this.cfg.doc.firstChild;
-		while (el && el.nodeType !== 1) el = el.nextSibling;
-		this.head = function () { return el; };
-		return el;
-	},
-
-	loadScript: function (id, url, cb, eb) {
-		var self = this;
-		// initial script processing
-		function process (ev) {
-			// script processing rules learned from require.js
-			var el = ev.currentTarget || ev.srcElement;
-			if (ev.type === 'load' || /^(complete|loaded)$/.test(el.readyState)) {
-				// release event listeners
-				el.onload = el.onreadystatechange = el.onerror = null;
-//				if (script.removeEventListener) {
-//					script.removeEventListener('load', process, false);
-//					script.removeEventListener('error', eb, false);
-//				}
-//				else {
-//					script.detachEvent('onreadystatechange', process);
-//					script.detachEvent('onerror', eb);
-//				}
-				cb();
-			}
-		}
-		// insert script
-		var script = this.cfg.doc.createElement('script');
-		// detect when it's done loading
-		// trying dom0 event handlers instead of wordy w3c/ms
-		script.onload = script.onreadystatechange = process;
-		script.onerror = eb;
-//		if (script.addEventListener) {
-//			script.addEventListener('load', process, false);
-//			script.addEventListener('error', eb, false);
-//		}
-//		else {
-//			script.attachEvent('onreadystatechange', process);
-//			script.attachEvent('onerror', eb);
-//		}
-		script.type = 'text/javascript';
-		script.charset = 'utf-8';
-		script.async = true; // for Firefox
-		script.src = url;
-		this.head().appendChild(script);
-	},
-
-	idToUrl: function (id) {
-		// TODO: handle relative ids
-		return id + '.js';
-	},
-
-	load: function (id, cb, eb) {
-		// TODO: handle plugins here?
-		var url = this.idToUrl(id);
-		var def = resources[id];
-		// this id wasn't encountered yet
-		if (!def) {
-			// save callback
-			def = resources[id] = {cb: cb};
-			// prepare callbacks and errbacks
-			var clear = timeout(this.cfg.waitSeconds * 1000, function () {
-					delete def.cb;
-					error(new Error('Timed out waiting for ' + id));
-				});
-			function success () {
-				// return anonymously-define()d resource from defNet
-				// or the named resource from resources{}
-				// Note: defNet.r will be undefined if the resource has dependencies
-				
-				if (!('r' in def)) def.r = defNet.r;
-				defNet = void 0;
-				clear();
-				cb();
-			}
-			function error (ex) {
-				def.ex = new Error('Unable to find or load ' + id);
-				clear();
-				eb(ex);
-			}
-			this.loadScript(id, url, success, error);
-		}
-		// this id is for a resource currently being fetched
-		else if (!('r' in def)) {
-			// chain callback
-			// TODO: if debugging, log calls to these callbacks and count them
-			var prevCb = def.cb;
-			def.cb = function (r) {
-				prevCb && prevCb(r);
-				cb(r);
-			};
-		}
-		// this id is for a loaded resource
-		else { //} if (def.r) {
-			cb(def.r);
-		}
-//		else {
-//			throw new Error('Internal loader error: resource ' + id + ' not found.');
-//		}
-	},
-
-	loadMany: function (ids, cb, eb) {
-		var count = ids.length,
-			loaded = 0;
-		function checkLoaded () {
-			if (++loaded === count) {
-				cb();
-			}
-		}
-		for (var i = 0; i < count; i++) {
-			this.load(ids[i], checkLoaded, eb);
-		}
+	for (var p in overrides) {
+		cfg[p] = overrides[p];
 	}
-
-};
-
-function fixArgs (one, two, three) {
-	// TODO: simplify this?
-	// resolve args
-	var args = {id: one, deps: two, f: three};
-	if (isFunction(one)) {
-		args.df = one;
-		args.deps = [];
-		args.id = null;
+	if (cfg.doc && !cfg.head) {
+		cfg.head = findHead(cfg.doc);
 	}
-	else if (isFunction(two)) {
-		args.df = two;
-		if (isArray(one)) {
-			args.deps = one;
-			args.id = null;
-		}
-		else {
-			args.deps = [];
-		}
-	}
-	return args;
-}
-
-function hasProtocol (url) {
-	return /:\/\//.test(url);
-}
-
-function CommonJsLoader (cfg) {
-	// TODO: handle or throw when paths don't end in "/"
-	this.cfg = cfg;
-	cfg.fullPaths = {};
-	forIn(cfg.paths, function (path, p) {
-		cfg.fullPaths[p] = hasProtocol(path) ? path : cfg.baseUrl + path;
-	});
-}
-
-var cjsProto = CommonJsLoader.prototype = new Loader();
-
-cjsProto.toUrl = function (relUrl) {
-	// TODO: compare against paths
-	return this.cfg.baseUrl + relUrl;
-};
-
-cjsProto.createDepList = function (ids) {
-	// this should be called on resources that are already known to be loaded
-	var deps = [],
-		i = 0,
-		id, r;
-	while ((id = ids[i++])) {
-		if (id === 'require') {
-			// supply a scoped require function, if requested
-			var self = this;
-			r = beget(global.require);
-			r.toUrl = function (relUrl) { return self.toUrl(relUrl); };
-		}
-		else if (id === ' exports') {
-			// supply a new exports object, if requested
-			if (deps.exports) throw new Error('"exports" may only be specified once. ' + id);
-			deps.push(deps.exports = {});
-		}
-		else {
-			r = resources[id].r;
-		}
-		deps.push(r);
-	}
-	return deps;
-};
-
-cjsProto.evalResource = function (deps, resource) {
-	var res = resource;
-	if (isFunction(res)) {
-		var params = this.createDepList(deps);
-		res = res.apply(null, params);
-		// pull out and return the exports, if using that variant of AMD
-		if (params.exports) {
-			res = params.exports;
-		}
-	}
-	return res;
-};
-
-//cjsProto.stashResource = function (id, resource) {
-//	if (id != null) {
-//		resources[id] = {r: resource};
-//	}
-//	else if (defNet != null) {
-//		throw new Error('Multiple anonymous defines found while loading ' + id);
-//	}
-//	else {
-//		defNet = resource;
-//	}
-//};
-
-
-function createCfg (overrides) {
-	// use global config
-	var cfg = beget(config);
-	// mix-in overrides
-	forIn(overrides, function (val, p) {
-		cfg[p] = val;
-	});
 	return cfg;
 }
 
-global.define = function (/* various */) {
+function ResourceDef (name, cfg) {
+	// TODO: replace the resStates concept with something simpler/smaller
+	this.name = name;
+	this.cfg = cfg;
+	this._listeners = [];
+}
 
-	var args = fixArgs(arguments[0], arguments[1], arguments[2]),
-		ldr = new CommonJsLoader(createCfg({}));
+ResourceDef.prototype = {
 
-	function loaded () {
-		// evaluate and save the resource
-//		resources[args.id] = {r: ldr.evalResource(args.deps, args.df)};
-//		ldr.stashResource(args.id, ldr.evalResource(args.deps, args.df));
-	}
+	then: function then (resolved, rejected) {
+		this._listeners.push({cb: resolved, eb: rejected});
+		return this;
+	},
 
-	function failed (ex) {
-		throw ex;
-	}
-
-	if (args.id == null && typeof defNet !== 'undefined') {
-		failed(new Error('Multiple anonymous defines found while loading ' + args.id));
-	}
-	else if (args.deps.length > 0) {
-		if (!resources[args.id]) {
-			// this define was not in direct response to a required dependency,
-			// so we need to indicate that it's being loaded. just create a stub.
-			resources[args.id] = {};
+	resolve: function resolve (res) {
+		this.then = function (resolved, rejected) { resolved(res); return this; };
+		var listener;
+		while (listener = this._listeners.pop()) {
+			listener.cb && listener.cb(res);
 		}
-		// save definition
-		defNet = {};
-		// start loading deps
-		ldr.loadMany(args.deps, function () {
-			var cb = defNet.cb;
-			defNet = {r: ldr.evalResource(args.deps, args.df)};
-			if (cb) cb();
-		}, failed);
-	}
-	else if (args.id != null) {
-		resources[args.id] = {r: ldr.evalResource(args.deps, args.df)};
-	}
-	else {
-		defNet = {r: ldr.evalResource(args.deps, args.df)};
+		return this;
+	},
+
+	reject: function reject (ex) {
+		this.then = function (resolved, rejected) { rejected(res); return this; };
+		var listener;
+		while (listener = this._listeners.pop()) {
+			listener.cb && listener.cb(res);
+		}
+		return this;
 	}
 
 };
 
+function loadScript (resDef, success, failure) {
+	// initial script processing
+	function process (ev) {
+		// script processing rules learned from require.js
+		var el = ev.currentTarget || ev.srcElement;
+		if (ev.type === 'load' || /^(complete|loaded)$/.test(el.readyState)) {
+			// release event listeners
+			el.onload = el.onreadystatechange = el.onerror = null;
+			success();
+		}
+	}
+	// insert script
+	var el = resDef.cfg.doc.createElement('script');
+	// detect when it's done loading
+	// trying dom0 event handlers instead of wordy w3c/ms
+	el.onload = el.onreadystatechange = process;
+	el.onerror = failure;
+	el.type = 'text/javascript';
+	el.charset = 'utf-8';
+	el.async = true; // for Firefox
+	el.src = resDef.url;
+	resDef.cfg.head.appendChild(el);
+}
+
+function fixArgs (args) {
+	// TODO: minify this further?
+	// resolve args
+	var a0 = args[0], a1 = args[1], a2 = args[2];
+	var fixed = {id: a0, deps: a1, f: a2};
+	if (isFunction(a0)) {
+		fixed.df = a0;
+		fixed.deps = [];
+		fixed.id = null;
+	}
+	else if (isFunction(a1)) {
+		fixed.df = a1;
+		if (isArray(a0)) {
+			fixed.deps = a0;
+			fixed.id = null;
+		}
+		else {
+			fixed.deps = [];
+		}
+	}
+	return fixed;
+}
+
+function fetchResDef (name, cfg) {
+//	cfg = begetCfg(cfg, {}); // TODO
+	var def = cache[name] = new ResourceDef(name, cfg);
+	// TODO: normalize url
+	def.url = name;
+	loadScript(def,
+		function scriptSuccess () {
+			delete def.doc;
+			delete def.head;
+			if (def.anon !== false) {
+				// our resource was not explicitly defined with a name (anonymous)
+				// Note: if it did have a name, it will be resolved in the define()
+				var args = argsNet;
+				argsNet = void 0; // reset it before we get deps
+				if (!args) {
+					// uh oh, nothing was added to the resource net
+					def.reject(new Error('define() not found in ' + url));
+				}
+				else if (args.ex) {
+					// the resNet resource was already rejected, but it didn't know
+					// its name, so reject this def with better information
+					def.reject(new Error(args.ex.replace('${url}', url)));
+				}
+				else {
+					// resolve dependencies and execute definition function here
+					// because we couldn't get the cfg in the anonymous define()
+					getDeps(args.deps, cfg,
+						function depsSuccess (deps) {
+							def.resolve(args.df.apply(null, deps));
+						},
+						function depsFailure (ex) {
+							def.reject(ex);
+						}
+					);
+				}
+			}
+		},
+		function scriptFailure (ex) {
+			delete def.doc;
+			delete def.head;
+			def.reject(ex);
+		}
+	);
+	return def;
+}
+
+function getDeps (names, cfg, success, failure) {
+	// TODO: throw if multiple exports found (and requires?)
+	// TODO: supply exports and require
+	var deps = [],
+		count = names.length,
+		failed = false;
+
+	if (count === 0) {
+		success([]);
+	}
+	else {
+		// obtain each dependency
+		for (var i = 0; i < count && !failed; i++) (function (i) {
+			// TODO: normalize name (./ or ../)
+			var def = cache[names[i]] || fetchResDef(names[i], cfg);
+			def.then(
+				function defSuccess (dep) {
+					deps[i] = dep;
+					if (--count == 0) {
+						success(deps);
+					}
+				},
+				function defFailure (ex) {
+					failed = true;
+					failure(ex);
+				}
+			);
+		}(i));
+	}
+}
+
 global.require = function (/* various */) {
-	// supports 3-argument variant in which the first param is a local configuration
-	// supports 2-argument variant which loads deps and then calls a callback
-	// also supports 1-argument variant which loads a resource sync (CommonJS syntax)
-	
-	var a0 = arguments[0],
-		a1 = arguments[1],
-		a2 = arguments[2],
-		res, id, args,
-		cfg = {};
+
+	var cfg = config;
 
 	if (arguments.length === 1) {
 
 		// return resource
 		// TODO: get resource sync, if it's not already loaded (configurable)
-		id = a0;
-		var def = resources[id];
-		if (!def || !('r' in def)) throw new Error('Required resource (' + id + ') is not already loaded.');
-		res = def.r;
+		var name = arguments[0],
+			def = cache[name],
+			res;
+		if (def) {
+			// this is a silly, convoluted way to get a value out of a resolved promise
+			def.then(function (r) { res = r; });
+		}
+		if (typeof res === 'undefined') {
+			throw new Error('Required resource (' + name + ') is not already resolved.');
+		}
+		return res;
 
 	}
 	else {
 
-		if (!isArray(a0)) {
+		var args = fixArgs(arguments);
+
+		// grab config, if specified (i.e. args.id is actually a config object)
+		if (!isArray(args.id)) {
 			// local configuration
-			cfg = a0;
-			a0 = id = '_root_' + rootId++;
-		}
-		
-		args = fixArgs(a0, a1, a2);
-		var ldr = new CommonJsLoader(createCfg(cfg));
-
-		function loaded () {
-			ldr.evalResource(args.deps, args.df);
+			cfg = begetCfg(cfg, args.id);
 		}
 
-		function failed (ex) {
-			throw ex;
-		}
-
-		ldr.loadMany(args.deps, loaded, failed);
+		// resolve dependencies
+		getDeps(args.deps, cfg,
+			function (deps) {
+				args.df.apply(null, deps);
+			},
+			function (ex) {
+				// TODO: abort everything
+				throw ex;
+			}
+		);
 
 	}
 
-	return res;
+};
+
+global.define = function (/* various */) {
+
+	var args = fixArgs(arguments);
+
+	if (args.id == null) {
+		if (typeof argsNet !== 'undefined') {
+			argsNet = {ex: 'Multiple anonymous defines found in ${url}.'};
+		}
+		else {
+			// anonymous define(), defer processing until after script loads
+			argsNet = args;
+		}
+	}
+	else {
+		// named define()
+		var def = cache[args.id];
+		def.anon = false;
+		var cfg = def.cfg;
+		// resolve dependencies
+		getDeps(args.deps, cfg,
+			function (deps) {
+				def.resolve(args.df.apply(null, deps));
+			},
+			function (ex) {
+				def.reject(ex);
+			}
+		);
+	}
 
 };
 
@@ -409,3 +320,96 @@ global.require = function (/* various */) {
 global.define.amd = {};
 
 }(window));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//function forIn (obj, lambda) {
+//	if (obj) {
+//		for (var p in obj) {
+//			if (!(p in op)) {
+//				lambda(obj[p], p, obj);
+//			}
+//		}
+//	}
+//}
+//
+//// crockford-style object inheritance
+//function F () {}
+//function beget (obj) {
+//	F.prototype = obj;
+//	var child = new F();
+//	delete F.prototype;
+//	return child;
+//}
+//
+//function findScript (doc, rxOrName) {
+//	var scripts = doc.getElementsByTagName('script'),
+//		rx = typeof rxOrName === 'string' ? new RegExp(rxOrName + '$') : rxOrName,
+//		i = scripts.length, me;
+//	while ((me = scripts[--i]) && !rx.test(me.src)) {}
+//	return me;
+//}
+//
+///* initialization */
+//
+
+
+//function hasProtocol (url) {
+//	return /:\/\//.test(url);
+//}
+
+//cjsProto.createDepList = function (ids) {
+//	// this should be called on resources that are already known to be loaded
+//	var deps = [],
+//		i = 0,
+//		id, r;
+//	while ((id = ids[i++])) {
+//		if (id === 'require') {
+//			// supply a scoped require function, if requested
+//			var self = this;
+//			r = beget(global.require);
+//			r.toUrl = function (relUrl) { return self.toUrl(relUrl); };
+//		}
+//		else if (id === ' exports') {
+//			// supply a new exports object, if requested
+//			if (deps.exports) throw new Error('"exports" may only be specified once. ' + id);
+//			deps.push(deps.exports = {});
+//		}
+//		else {
+//			r = resources[id].r;
+//		}
+//		deps.push(r);
+//	}
+//	return deps;
+//};
+//
+
+//cjsProto.evalResource = function (deps, resource) {
+//	var res = resource;
+//	if (isFunction(res)) {
+//		var params = this.createDepList(deps);
+//		res = res.apply(null, params);
+//		// pull out and return the exports, if using that variant of AMD
+//		if (params.exports) {
+//			res = params.exports;
+//		}
+//	}
+//	return res;
+//};
+//
+
+
+

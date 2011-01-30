@@ -1,7 +1,7 @@
 <!DOCTYPE HTML>
 <html>
 <head>
-<title>main test file</title>
+<title>main curl test file</title>
 
 <script src="../src/curl.js" type="text/javascript"></script>
 
@@ -9,11 +9,10 @@
 
 	require(
 		[
-			//'stuff/one',
-			'stuff/two'
+			'stuff/three'
 		],
-		function (two) {
-			console.log('one is loaded:', two);
+		function (three) {
+			console.log('loaded:', three);
 		}
 	);
 
