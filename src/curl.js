@@ -26,16 +26,18 @@
 var
 	// local cache of resource definitions (lightweight promises)
 	cache = {},
+	// default configuration
 	config = {
 		doc: global.document,
-		finderRx: /curl\.js$/,
-		waitSeconds: 7,
 		baseUrl: null, // auto-detect
 		paths: {}
 	},
-	op = Object.prototype,
 	// net to catch anonymous define calls' arguments
-	argsNet;
+	argsNet,
+	// this is always handy :)
+	op = Object.prototype,
+	// and this
+	undef;
 
 // grab any global configuration info
 if (global.require) {
@@ -85,37 +87,34 @@ function ResourceDef (name, cfg) {
 	// TODO: replace the resStates concept with something simpler/smaller
 	this.name = name;
 	this.cfg = cfg;
-	this._listeners = [];
+	this._callbacks = [];
 }
 
 ResourceDef.prototype = {
 
 	then: function then (resolved, rejected) {
-		this._listeners.push({cb: resolved, eb: rejected});
-		return this;
+		this._callbacks.push({cb: resolved, eb: rejected});
 	},
 
 	resolve: function resolve (res) {
-		this.then = function (resolved, rejected) { resolved(res); return this; };
-		var listener;
-		while (listener = this._listeners.pop()) {
-			listener.cb && listener.cb(res);
+		this.then = function then (resolved, rejected) { resolved(res); };
+		var cbo;
+		while (cbo = this._callbacks.pop()) {
+			cbo.cb && cbo.cb(res);
 		}
-		return this;
 	},
 
 	reject: function reject (ex) {
-		this.then = function (resolved, rejected) { rejected(res); return this; };
-		var listener;
-		while (listener = this._listeners.pop()) {
-			listener.cb && listener.cb(res);
+		this.then = function then (resolved, rejected) { rejected(ex); };
+		var cbo;
+		while (cbo = this._callbacks.pop()) {
+			cbo.eb && cbo.eb(ex);
 		}
-		return this;
 	}
 
 };
 
-function loadScript (resDef, success, failure) {
+function loadScript (def, success, failure) {
 	// initial script processing
 	function process (ev) {
 		// script processing rules learned from require.js
@@ -126,21 +125,25 @@ function loadScript (resDef, success, failure) {
 			success();
 		}
 	}
+	function fail (e) {
+		// some browsers send an event, others send a string
+		var msg = e.type || e;
+		failure(new Error('Script not loaded: ' + def.url + ' (browser says: ' + msg + ')'));
+	}
 	// insert script
-	var el = resDef.cfg.doc.createElement('script');
+	var el = def.cfg.doc.createElement('script');
 	// detect when it's done loading
-	// trying dom0 event handlers instead of wordy w3c/ms
+	// using dom0 event handlers instead of wordy w3c/ms
 	el.onload = el.onreadystatechange = process;
-	el.onerror = failure;
+	el.onerror = fail;
 	el.type = 'text/javascript';
 	el.charset = 'utf-8';
 	el.async = true; // for Firefox
-	el.src = resDef.url;
-	resDef.cfg.head.appendChild(el);
+	el.src = def.url;
+	def.cfg.head.appendChild(el);
 }
 
 function fixArgs (args) {
-	// TODO: minify this further?
 	// resolve args
 	var a0 = args[0], a1 = args[1], a2 = args[2];
 	var fixed = {id: a0, deps: a1, f: a2};
@@ -239,14 +242,21 @@ function getDeps (names, cfg, success, failure) {
 	}
 }
 
-global.require = function (/* various */) {
+function getRes (df, deps) {
+	// TODO: support exports
+	if (isFunction(df)) {
+		return df.apply(deps);
+	}
+	else {
+		return df;
+	}
+}
 
-	var cfg = config;
+global.require = function (/* various */) {
 
 	if (arguments.length === 1) {
 
 		// return resource
-		// TODO: get resource sync, if it's not already loaded (configurable)
 		var name = arguments[0],
 			def = cache[name],
 			res;
@@ -254,7 +264,7 @@ global.require = function (/* various */) {
 			// this is a silly, convoluted way to get a value out of a resolved promise
 			def.then(function (r) { res = r; });
 		}
-		if (typeof res === 'undefined') {
+		if (res === undef) {
 			throw new Error('Required resource (' + name + ') is not already resolved.');
 		}
 		return res;
@@ -262,7 +272,8 @@ global.require = function (/* various */) {
 	}
 	else {
 
-		var args = fixArgs(arguments);
+		var args = fixArgs(arguments),
+			cfg = config;
 
 		// grab config, if specified (i.e. args.id is actually a config object)
 		if (!isArray(args.id)) {
@@ -272,10 +283,10 @@ global.require = function (/* various */) {
 
 		// resolve dependencies
 		getDeps(args.deps, cfg,
-			function (deps) {
-				args.df.apply(null, deps);
+			function reqResolved (deps) {
+				getRes(args.df, deps);
 			},
-			function (ex) {
+			function reqRejected (ex) {
 				// TODO: abort everything
 				throw ex;
 			}
@@ -290,7 +301,7 @@ global.define = function (/* various */) {
 	var args = fixArgs(arguments);
 
 	if (args.id == null) {
-		if (typeof argsNet !== 'undefined') {
+		if (argsNet !== undef) {
 			argsNet = {ex: 'Multiple anonymous defines found in ${url}.'};
 		}
 		else {
@@ -305,10 +316,10 @@ global.define = function (/* various */) {
 		var cfg = def.cfg;
 		// resolve dependencies
 		getDeps(args.deps, cfg,
-			function (deps) {
-				def.resolve(args.df.apply(null, deps));
+			function defResolved (deps) {
+				def.resolve(getRes(args.df, deps));
 			},
-			function (ex) {
+			function defRejected (ex) {
 				def.reject(ex);
 			}
 		);
