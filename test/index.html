@@ -9,10 +9,12 @@
 
 	require(
 		[
-			'stuff/three'
+			'stuff/three.js',
+			'foo/bar.js'
 		],
 		function (three) {
 			console.log('loaded:', three);
+			document.body.appendChild(document.createTextNode('loaded: ' + three));
 		}
 	);
 
