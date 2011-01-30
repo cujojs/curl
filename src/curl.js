@@ -9,6 +9,7 @@
 // TODO: plugins
 // TODO: finish paths and toUrl
 // TODO: debugging info / error handling
+// TODO: account for potential <base/> element
 
 (function (global) {
 
@@ -31,20 +32,28 @@ var
 		doc: global.document,
 		baseUrl: null, // auto-detect
 		paths: {},
-		debug: false // TODO: do more with this
+		debug: false // can also be "full"
 	},
-	// net to catch anonymous define calls' arguments
+	// net to catch anonymous define calls' arguments (non-IE browsers)
 	argsNet,
+	// current definition about to be loaded (this helps catch when
+	// IE loads a script sync from cache)
+	currentName,
+	// this is the list of scripts that IE is loading. one of these will
+	// be the "interactive" script. too bad IE doesn't send a readystatechange
+	// event to tell us exactly which one.
+	interactiveScripts = {},
 	// this is always handy :)
 	op = Object.prototype,
 	// and this
 	undef;
 
 // grab any global configuration info
-if (global.require) {
+var userCfg = global.require || global.curl;
+if (userCfg) {
 	// store global config
-	for (var p in global.require) {
-		config[p] = global.require[p];
+	for (var p in userCfg) {
+		config[p] = userCfg[p];
 	}
 }
 
@@ -65,7 +74,7 @@ function isArray (obj) {
 
 function findHead (doc) {
 	// find and return the head element
-	var el = doc.firstChild;
+	var el = doc.documentElement.firstChild;
 	while (el && el.nodeType !== 1) el = el.nextSibling;
 	return el;
 }
@@ -85,7 +94,6 @@ function begetCfg (ancestor, overrides) {
 }
 
 function ResourceDef (name, cfg) {
-	// TODO: replace the resStates concept with something simpler/smaller
 	this.name = name;
 	this.cfg = cfg;
 	this._callbacks = [];
@@ -98,6 +106,7 @@ ResourceDef.prototype = {
 	},
 
 	resolve: function resolve (res) {
+		if (config.debug) console.log('DEBUG: resolve ' + this.name + ':', res);
 		this.then = function then (resolved, rejected) { resolved(res); };
 		var cbo;
 		while (cbo = this._callbacks.pop()) {
@@ -107,6 +116,7 @@ ResourceDef.prototype = {
 	},
 
 	reject: function reject (ex) {
+		if (config.debug) console.log('DEBUG: reject ' + this.name + ':', ex);
 		this.then = function then (resolved, rejected) { rejected(ex); };
 		var cbo;
 		while (cbo = this._callbacks.pop()) {
@@ -116,6 +126,8 @@ ResourceDef.prototype = {
 	},
 
 	_cleanup: function () {
+		// ignore any further resolve or reject calls
+		this.resolve = this.reject = function () {};
 		if (!this.cfg.debug) {
 			// remove unnecessary properties
 			delete this.cfg;
@@ -127,21 +139,30 @@ ResourceDef.prototype = {
 };
 
 function loadScript (def, success, failure) {
+
 	// initial script processing
 	function process (ev) {
+		ev = ev || global.event;
 		// script processing rules learned from require.js
-		var el = ev.currentTarget || ev.srcElement;
+		var el = this; // ev.currentTarget || ev.srcElement;
+		if (config.debug) console.log('EVENT event:' + ev.type, 'def:' + def.url, 'readyState:' + el.readyState);
 		if (ev.type === 'load' || /^(complete|loaded)$/.test(el.readyState)) {
+			if (config.debug) console.log('DEBUG: loaded', def, def.url);
+			// TODO: find a way to keep the interactive scripts crap away from non-IE browsers
+			delete interactiveScripts[def.name];
 			// release event listeners
 			el.onload = el.onreadystatechange = el.onerror = null;
 			success();
 		}
 	}
+
 	function fail (e) {
 		// some browsers send an event, others send a string
 		var msg = e.type || e;
 		failure(new Error('Script not loaded: ' + def.url + ' (browser says: ' + msg + ')'));
 	}
+
+	if (config.debug) console.log('DEBUG: loading', def, def.url);
 	// insert script
 	var el = def.cfg.doc.createElement('script');
 	// detect when it's done loading
@@ -152,7 +173,14 @@ function loadScript (def, success, failure) {
 	el.charset = 'utf-8';
 	el.async = true; // for Firefox
 	el.src = def.url;
+
+	// loading will start when the script is inserted into the dom.
+	// IE will load the script sync if it's in the cache, so
+	// indicate the current resource definition if this happens.
+	// TODO: devise a way to keep the interactive scripts crap away from non-IE browsers
+	interactiveScripts[def.name] = el;
 	def.cfg.head.appendChild(el);
+
 }
 
 function fixArgs (args) {
@@ -186,19 +214,19 @@ function fetchResDef (name, cfg) {
 		function scriptSuccess () {
 			delete def.doc;
 			delete def.head;
-			if (def.anon !== false) {
-				// our resource was not explicitly defined with a name (anonymous)
-				// Note: if it did have a name, it will be resolved in the define()
-				var args = argsNet;
-				argsNet = void 0; // reset it before we get deps
+			var args = argsNet;
+			argsNet = undef; // reset it before we get deps
+			// if our resource was not explicitly defined with a name (anonymous)
+			// Note: if it did have a name, it will be resolved in the define()
+			if (def.useNet !== false) {
 				if (!args) {
 					// uh oh, nothing was added to the resource net
-					def.reject(new Error('define() not found in ' + url));
+					def.reject(new Error('define() not found in ' + def.url + '. Possible syntax error.'));
 				}
 				else if (args.ex) {
 					// the resNet resource was already rejected, but it didn't know
 					// its name, so reject this def with better information
-					def.reject(new Error(args.ex.replace('${url}', url)));
+					def.reject(new Error(args.ex.replace('${url}', def.url)));
 				}
 				else {
 					// resolve dependencies and execute definition function here
@@ -262,7 +290,7 @@ function getDeps (names, cfg, success, failure) {
 function getRes (df, deps) {
 	// TODO: support exports
 	if (isFunction(df)) {
-		return df.apply(deps);
+		return df.apply(null, deps);
 	}
 	else {
 		return df;
@@ -313,24 +341,38 @@ global.require = function (/* various */) {
 
 };
 
+function getCurrentDef () {
+	var def = currentName || null;
+	if (!def) {
+		for (var d in interactiveScripts) {
+			if (interactiveScripts[d].readyState === 'interactive') {
+				def = d;
+				break;
+			}
+		}
+	}
+console.log('getCurrentDef', def)
+	return def;
+}
+
 global.define = function (/* various */) {
 
 	var args = fixArgs(arguments);
-
+console.log('define:', args.id, args.deps,  args.df);
 	if (args.id == null) {
 		if (argsNet !== undef) {
 			argsNet = {ex: 'Multiple anonymous defines found in ${url}.'};
 		}
-		else {
+		else if (!(args.id = getCurrentDef())) {
 			// anonymous define(), defer processing until after script loads
 			argsNet = args;
 		}
 	}
-	else {
+	if (args.id != null) {
 		// named define()
-		var def = cache[args.id];
-		def.anon = false;
-		var cfg = def.cfg;
+		var def = cache[args.id],
+			cfg = def.cfg;
+		def.useNet = false;
 		// resolve dependencies
 		getDeps(args.deps, cfg,
 			function defResolved (deps) {
@@ -344,8 +386,60 @@ global.define = function (/* various */) {
 
 };
 
+var curl = global.define.curl = global.require.curl = {
+	version: '0.1'
+};
 // this is to comply with the AMD CommonJS proposal:
-global.define.amd = {};
+global.define.amd = { curl: curl };
+
+
+/***** debug *****/
+
+if (!global.console) {
+	global.console = {
+		log: function () {
+			function string (o) { return o === null ? 'null' : o === undef ? 'undefined' : o.toString(); }
+			var doc = config.doc,
+				a = arguments,
+				s = string(a[0]);
+			for (var i = 1; i < a.length; i++) {
+				s += ', ' + string(a[i]);
+			}
+			// remove setTimeout and use ready()
+			//setTimeout(function () {
+				doc.body.appendChild(doc.createElement('div')).innerHTML = s + '<br/>';
+			//}, 1000);
+		}
+	};
+}
+
+if (config.debug) {
+	// expose cache of definitions
+	curl.cache = cache;
+}
+
+// add debugging code if we're debugging
+if (config.debug === 'full') {
+	// log all arguments and results of the following methods
+	var methods = {
+			'define': global,
+			'require': global,
+			'then': ResourceDef.prototype,
+			'resolve': ResourceDef.prototype,
+			'reject': ResourceDef.prototype,
+			'_cleanup': ResourceDef.prototype
+		};
+	for (var m in methods) {
+		methods[m][m] = (function (f, n) {
+			return function () {
+				console.log('DEBUG: ' + n + ' args:', arguments);
+				var r = f.apply(this, arguments);
+				console.log('DEBUG: ' + n + ' result:', r);
+				return r;
+			};
+		}(methods[m][m], m));
+	}
+}
 
 }(window));
 
