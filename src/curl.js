@@ -7,9 +7,8 @@
 
 // TODO: support define(obj);
 // TODO: plugins
-// TODO: finish paths and toUrl
-// TODO: debugging info / error handling
-// TODO: account for potential <base/> element
+// TODO: finish paths and packages
+// TODO: debugging module that is an implicit dependency for all other modules 
 
 (function (global) {
 
@@ -31,18 +30,17 @@ var
 	config = {
 		doc: global.document,
 		baseUrl: null, // auto-detect
-		paths: {},
-		debug: false // can also be "full"
+		paths: {}
 	},
 	// net to catch anonymous define calls' arguments (non-IE browsers)
 	argsNet,
 	// current definition about to be loaded (this helps catch when
 	// IE loads a script sync from cache)
-	currentName,
+	activeName,
 	// this is the list of scripts that IE is loading. one of these will
 	// be the "interactive" script. too bad IE doesn't send a readystatechange
 	// event to tell us exactly which one.
-	interactiveScripts = {},
+	activeScripts = {},
 	// this is always handy :)
 	op = Object.prototype,
 	// and this
@@ -57,11 +55,16 @@ if (userCfg) {
 	}
 }
 
-// if we don't have a baseUrl (null, undefined, or '')
-if (!config.baseUrl) {
+var baseUrl = config.baseUrl;
+if (!baseUrl) {
+	// if we don't have a baseUrl (null, undefined, or '')
 	// use the document's path as the baseUrl
 	var url = config.doc.location.href;
 	config.baseUrl = url.substr(0, url.lastIndexOf('/') + 1);
+}
+else if (baseUrl.charAt(baseUrl.length) !== '/') {
+	// ensure there's a trailing /
+	config.baseUrl += '/';
 }
 
 function isFunction (obj) {
@@ -80,12 +83,18 @@ function findHead (doc) {
 }
 
 function F () {}
-function begetCfg (ancestor, overrides) {
+function beget (ancestor) {
 	F.prototype = ancestor;
 	var cfg = new F();
 	delete F.prototype;
-	for (var p in overrides) {
-		cfg[p] = overrides[p];
+	return cfg;
+}
+
+function begetCfg (oldCfg, name) {
+	var cfg = beget(oldCfg);
+	if (name) {
+		var pos = name.lastIndexOf('/');
+		cfg.baseName = name.substr(0, pos + 1);
 	}
 	if (cfg.doc && !cfg.head) {
 		cfg.head = findHead(cfg.doc);
@@ -106,7 +115,7 @@ ResourceDef.prototype = {
 	},
 
 	resolve: function resolve (res) {
-		if (config.debug) console.log('DEBUG: resolve ' + this.name + ':', res);
+		//console.log('DEBUG: resolve ' + this.name + ':', res);
 		this.then = function then (resolved, rejected) { resolved(res); };
 		var cbo;
 		while (cbo = this._callbacks.pop()) {
@@ -116,7 +125,7 @@ ResourceDef.prototype = {
 	},
 
 	reject: function reject (ex) {
-		if (config.debug) console.log('DEBUG: reject ' + this.name + ':', ex);
+		//console.log('DEBUG: reject ' + this.name + ':', ex);
 		this.then = function then (resolved, rejected) { rejected(ex); };
 		var cbo;
 		while (cbo = this._callbacks.pop()) {
@@ -128,15 +137,24 @@ ResourceDef.prototype = {
 	_cleanup: function () {
 		// ignore any further resolve or reject calls
 		this.resolve = this.reject = function () {};
-		if (!this.cfg.debug) {
+//		if (!this.cfg.debug) {
 			// remove unnecessary properties
 			delete this.cfg;
 			delete this.url;
 			delete this._callbacks;
-		}
+//		}
 	}
 
 };
+
+function toUrl (name, cfg) {
+	// TODO: packages and paths
+	return cfg.baseUrl + name;
+}
+
+function nameToUrl (name, ext, cfg) {
+	return toUrl(name + '.' + ext, cfg);
+}
 
 function loadScript (def, success, failure) {
 
@@ -145,11 +163,11 @@ function loadScript (def, success, failure) {
 		ev = ev || global.event;
 		// script processing rules learned from require.js
 		var el = this; // ev.currentTarget || ev.srcElement;
-		if (config.debug) console.log('EVENT event:' + ev.type, 'def:' + def.url, 'readyState:' + el.readyState);
+		//console.log('EVENT event:' + ev.type, 'def:' + def.url, 'readyState:' + el.readyState);
 		if (ev.type === 'load' || /^(complete|loaded)$/.test(el.readyState)) {
-			if (config.debug) console.log('DEBUG: loaded', def, def.url);
+			//console.log('DEBUG: loaded', def, def.url);
 			// TODO: find a way to keep the interactive scripts crap away from non-IE browsers
-			delete interactiveScripts[def.name];
+			delete activeScripts[def.name];
 			// release event listeners
 			el.onload = el.onreadystatechange = el.onerror = null;
 			success();
@@ -162,7 +180,7 @@ function loadScript (def, success, failure) {
 		failure(new Error('Script not loaded: ' + def.url + ' (browser says: ' + msg + ')'));
 	}
 
-	if (config.debug) console.log('DEBUG: loading', def, def.url);
+	//console.log('DEBUG: loading', def, def.url);
 	// insert script
 	var el = def.cfg.doc.createElement('script');
 	// detect when it's done loading
@@ -178,7 +196,7 @@ function loadScript (def, success, failure) {
 	// IE will load the script sync if it's in the cache, so
 	// indicate the current resource definition if this happens.
 	// TODO: devise a way to keep the interactive scripts crap away from non-IE browsers
-	interactiveScripts[def.name] = el;
+	activeScripts[def.name] = el;
 	def.cfg.head.appendChild(el);
 
 }
@@ -206,10 +224,9 @@ function fixArgs (args) {
 }
 
 function fetchResDef (name, cfg) {
-//	cfg = begetCfg(cfg, {}); // TODO
 	var def = cache[name] = new ResourceDef(name, cfg);
-	// TODO: normalize url
-	def.url = name;
+	// TODO: plugins
+	def.url = nameToUrl(name, 'js', cfg);
 	loadScript(def,
 		function scriptSuccess () {
 			delete def.doc;
@@ -231,7 +248,7 @@ function fetchResDef (name, cfg) {
 				else {
 					// resolve dependencies and execute definition function here
 					// because we couldn't get the cfg in the anonymous define()
-					getDeps(args.deps, cfg,
+					getDeps(args.deps, begetCfg(cfg, def.name),
 						function depsSuccess (deps) {
 							def.resolve(args.df.apply(null, deps));
 						},
@@ -252,8 +269,8 @@ function fetchResDef (name, cfg) {
 }
 
 function normalizeName (name, cfg) {
-	// TODO: if name starts with . then use parent's name as a base
-	return name;
+	// if name starts with . then use parent's name as a base
+	return name.replace(/^\.\//, cfg.baseName);
 }
 
 function getDeps (names, cfg, success, failure) {
@@ -269,8 +286,8 @@ function getDeps (names, cfg, success, failure) {
 	else {
 		// obtain each dependency
 		for (var i = 0; i < count && !failed; i++) (function (i) {
-			// TODO: normalize name (./ or ../)
-			var def = cache[names[i]] || fetchResDef(names[i], cfg);
+			var name = normalizeName(names[i], cfg),
+				def = cache[name] || fetchResDef(name, cfg);
 			def.then(
 				function defSuccess (dep) {
 					deps[i] = dep;
@@ -297,6 +314,20 @@ function getRes (df, deps) {
 	}
 }
 
+function getCurrentDef () {
+	var def = activeName || null;
+	if (!def) {
+		for (var d in activeScripts) {
+			if (activeScripts[d].readyState === 'interactive') {
+				def = d;
+				break;
+			}
+		}
+	}
+//console.log('getCurrentDef', def)
+	return def;
+}
+
 global.require = function (/* various */) {
 
 	if (arguments.length === 1) {
@@ -318,12 +349,14 @@ global.require = function (/* various */) {
 	else {
 
 		var args = fixArgs(arguments),
-			cfg = config;
+			cfg = begetCfg(config);
 
 		// grab config, if specified (i.e. args.id is actually a config object)
 		if (!isArray(args.id)) {
 			// local configuration
-			cfg = begetCfg(cfg, args.id);
+			for (var p in args.id) {
+				cfg[p] = args.id[p];
+			}
 		}
 
 		// resolve dependencies
@@ -341,24 +374,10 @@ global.require = function (/* various */) {
 
 };
 
-function getCurrentDef () {
-	var def = currentName || null;
-	if (!def) {
-		for (var d in interactiveScripts) {
-			if (interactiveScripts[d].readyState === 'interactive') {
-				def = d;
-				break;
-			}
-		}
-	}
-console.log('getCurrentDef', def)
-	return def;
-}
-
 global.define = function (/* various */) {
 
 	var args = fixArgs(arguments);
-console.log('define:', args.id, args.deps,  args.df);
+//console.log('define:', args.id, args.deps,  args.df);
 	if (args.id == null) {
 		if (argsNet !== undef) {
 			argsNet = {ex: 'Multiple anonymous defines found in ${url}.'};
@@ -371,7 +390,7 @@ console.log('define:', args.id, args.deps,  args.df);
 	if (args.id != null) {
 		// named define()
 		var def = cache[args.id],
-			cfg = def.cfg;
+			cfg = begetCfg(def.cfg, args.id);
 		def.useNet = false;
 		// resolve dependencies
 		getDeps(args.deps, cfg,
@@ -395,51 +414,46 @@ global.define.amd = { curl: curl };
 
 /***** debug *****/
 
-if (!global.console) {
-	global.console = {
-		log: function () {
-			function string (o) { return o === null ? 'null' : o === undef ? 'undefined' : o.toString(); }
-			var doc = config.doc,
-				a = arguments,
-				s = string(a[0]);
-			for (var i = 1; i < a.length; i++) {
-				s += ', ' + string(a[i]);
-			}
-			// remove setTimeout and use ready()
-			//setTimeout(function () {
-				doc.body.appendChild(doc.createElement('div')).innerHTML = s + '<br/>';
-			//}, 1000);
-		}
-	};
-}
+//if (!global.console) {
+//	global.console = {
+//		log: function () {
+//			function string (o) { return o === null ? 'null' : o === undef ? 'undefined' : o.toString(); }
+//			var doc = config.doc,
+//				a = arguments,
+//				s = string(a[0]);
+//			for (var i = 1; i < a.length; i++) {
+//				s += ', ' + string(a[i]);
+//			}
+//			// remove setTimeout and use ready()
+//			//setTimeout(function () {
+//				doc.body.appendChild(doc.createElement('div')).innerHTML = s + '<br/>';
+//			//}, 1000);
+//		}
+//	};
+//}
 
-if (config.debug) {
-	// expose cache of definitions
-	curl.cache = cache;
-}
-
-// add debugging code if we're debugging
-if (config.debug === 'full') {
-	// log all arguments and results of the following methods
-	var methods = {
-			'define': global,
-			'require': global,
-			'then': ResourceDef.prototype,
-			'resolve': ResourceDef.prototype,
-			'reject': ResourceDef.prototype,
-			'_cleanup': ResourceDef.prototype
-		};
-	for (var m in methods) {
-		methods[m][m] = (function (f, n) {
-			return function () {
-				console.log('DEBUG: ' + n + ' args:', arguments);
-				var r = f.apply(this, arguments);
-				console.log('DEBUG: ' + n + ' result:', r);
-				return r;
-			};
-		}(methods[m][m], m));
-	}
-}
+//// add debugging code if we're debugging
+//if (config.debug === 'full') {
+//	// log all arguments and results of the following methods
+//	var methods = {
+//			'define': global,
+//			'require': global,
+//			'then': ResourceDef.prototype,
+//			'resolve': ResourceDef.prototype,
+//			'reject': ResourceDef.prototype,
+//			'_cleanup': ResourceDef.prototype
+//		};
+//	for (var m in methods) {
+//		methods[m][m] = (function (f, n) {
+//			return function () {
+//				console.log('DEBUG: ' + n + ' args:', arguments);
+//				var r = f.apply(this, arguments);
+//				console.log('DEBUG: ' + n + ' result:', r);
+//				return r;
+//			};
+//		}(methods[m][m], m));
+//	}
+//}
 
 }(window));
 
@@ -458,24 +472,6 @@ if (config.debug === 'full') {
 
 
 
-//function forIn (obj, lambda) {
-//	if (obj) {
-//		for (var p in obj) {
-//			if (!(p in op)) {
-//				lambda(obj[p], p, obj);
-//			}
-//		}
-//	}
-//}
-//
-//// crockford-style object inheritance
-//function F () {}
-//function beget (obj) {
-//	F.prototype = obj;
-//	var child = new F();
-//	delete F.prototype;
-//	return child;
-//}
 //
 //function findScript (doc, rxOrName) {
 //	var scripts = doc.getElementsByTagName('script'),
@@ -488,10 +484,6 @@ if (config.debug === 'full') {
 ///* initialization */
 //
 
-
-//function hasProtocol (url) {
-//	return /:\/\//.test(url);
-//}
 
 //cjsProto.createDepList = function (ids) {
 //	// this should be called on resources that are already known to be loaded
