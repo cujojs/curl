@@ -1,1 +1,1 @@
-define('stuff/zero.js', function () { return 0; });
+define('stuff/zero', function () { return 0; });

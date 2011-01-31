@@ -3,20 +3,22 @@
 <head>
 <title>main curl test file</title>
 
+<script>curl = { debug: true };</script>
 <script src="../src/curl.js" type="text/javascript"></script>
+
 
 <script type="text/javascript">
 
 	require(
 		[
-			'stuff/three.js',
-			'foo/bar.js'
+			'stuff/three'/*,
+		 'foo/bar.js'*/
 		],
 		function (three) {
-			console.log('loaded:', three);
-			document.body.appendChild(document.createTextNode('loaded: ' + three));
+			console.log('********* loaded:', three);
+			if (document.body) document.body.appendChild(document.createTextNode('loaded: ' + three));
 		}
-	);
+		);
 
 </script>
 
