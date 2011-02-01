@@ -1,4 +1,4 @@
-/*
+/**
  * curl (cujo resource loader)
  *
  * (c) copyright 2011, unscriptable.com
@@ -6,8 +6,9 @@
  */
 
 // TODO: plugins
-// TODO: finish paths and packages
-// TODO: debugging module that is an implicit dependency for all other modules 
+// TODO: packages
+// TODO: commonjs exports and require dependencies
+// TODO: debugging module that is an implicit initial dependency 
 
 (function (global) {
 
@@ -184,7 +185,7 @@ function fixPath (name, cfg) {
 }
 
 function toUrl (name, cfg) {
-	// TODO: packages and paths
+	// TODO: packages
 	return fixPath(name, cfg);
 }
 
@@ -202,7 +203,6 @@ function loadScript (def, success, failure) {
 		//console.log('EVENT event:' + ev.type, 'def:' + def.url, 'readyState:' + el.readyState);
 		if (ev.type === 'load' || /^(complete|loaded)$/.test(el.readyState)) {
 			//console.log('DEBUG: loaded', def, def.url);
-			// TODO: find a way to keep the interactive scripts crap away from non-IE browsers
 			delete activeScripts[def.name];
 			// release event listeners
 			el.onload = el.onreadystatechange = el.onerror = null;
@@ -231,7 +231,6 @@ function loadScript (def, success, failure) {
 	// loading will start when the script is inserted into the dom.
 	// IE will load the script sync if it's in the cache, so
 	// indicate the current resource definition if this happens.
-	// TODO: devise a way to keep the interactive scripts crap away from non-IE browsers
 	activeScripts[def.name] = el;
 	def.cfg.head.appendChild(el);
 
@@ -462,50 +461,6 @@ var curl = global.define.curl = global.require.curl = {
 };
 // this is to comply with the AMD CommonJS proposal:
 global.define.amd = { curl: curl };
-
-
-/***** debug *****/
-
-//if (!global.console) {
-//	global.console = {
-//		log: function () {
-//			function string (o) { return o === null ? 'null' : o === undef ? 'undefined' : o.toString(); }
-//			var doc = config.doc,
-//				a = arguments,
-//				s = string(a[0]);
-//			for (var i = 1; i < a.length; i++) {
-//				s += ', ' + string(a[i]);
-//			}
-//			// remove setTimeout and use ready()
-//			//setTimeout(function () {
-//				doc.body.appendChild(doc.createElement('div')).innerHTML = s + '<br/>';
-//			//}, 1000);
-//		}
-//	};
-//}
-
-//// add debugging code if we're debugging
-//if (config.debug === 'full') {
-//	// log all arguments and results of the following methods
-//	var methods = {
-//			'define': global,
-//			'require': global,
-//			'then': ResourceDef.prototype,
-//			'resolve': ResourceDef.prototype,
-//			'reject': ResourceDef.prototype,
-//			'_cleanup': ResourceDef.prototype
-//		};
-//	for (var m in methods) {
-//		methods[m][m] = (function (f, n) {
-//			return function () {
-//				console.log('DEBUG: ' + n + ' args:', arguments);
-//				var r = f.apply(this, arguments);
-//				console.log('DEBUG: ' + n + ' result:', r);
-//				return r;
-//			};
-//		}(methods[m][m], m));
-//	}
-//}
 
 }(window));
 
