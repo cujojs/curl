@@ -5,7 +5,6 @@
  * 
  */
 
-// TODO: support define(obj);
 // TODO: plugins
 // TODO: finish paths and packages
 // TODO: debugging module that is an implicit dependency for all other modules 
@@ -16,9 +15,9 @@
  * Overall operation:
  * When a dependency is encountered and it already exists, it's returned.
  * If it doesn't already exist, it is created and the dependency's script
- * is loaded. If there is a define call in the loaded script with an id,
+ * is loaded. If there is a define call in the loaded script with an name,
  * it is resolved asap (i.e. as soon as the depedency's dependencies are
- * resolved). If there was a (single) define call with no id (anonymous),
+ * resolved). If there was a (single) define call with no name (anonymous),
  * the resource in the resNet is resolved after the script's onload fires.
  */
 
@@ -55,16 +54,30 @@ if (userCfg) {
 	}
 }
 
+// TODO: path and baseUrl fixing should happen any time these are specified (e.g. in begetCfg)
 var baseUrl = config.baseUrl;
 if (!baseUrl) {
 	// if we don't have a baseUrl (null, undefined, or '')
 	// use the document's path as the baseUrl
-	var url = config.doc.location.href;
-	config.baseUrl = url.substr(0, url.lastIndexOf('/') + 1);
+	config.baseUrl = '';
+//	var url = config.doc.location.href;
+//	config.baseUrl = url.substr(0, url.lastIndexOf('/') + 1);
 }
-else if (baseUrl.charAt(baseUrl.length) !== '/') {
+else if (baseUrl.charAt(baseUrl.length - 1) !== '/') {
 	// ensure there's a trailing /
 	config.baseUrl += '/';
+}
+
+// ensure all paths end in a '/'
+var paths = config.paths;
+for (var p in paths) {
+	if (paths[p].charAt(paths[p].length - 1) !== '/') {
+		paths[p] += '/';
+	}
+	if (p.charAt(p.length - 1) !== '/') {
+		paths[p + '/'] = paths[p];
+		delete paths[p];
+	}
 }
 
 function _isType (obj, type) {
@@ -84,19 +97,6 @@ function isArray (obj) {
 
 function isObject (obj) {
 	return _isType(obj, '[object Object]');
-}
-
-function type (obj) {
-	if (obj === null) {
-		return 'null';
-	}
-	else if (obj === undef) {
-		return 'undefined';
-	}
-	else {
-		var ts = op.toString.call(obj);
-		return ts.substr(8, 1).toLowerCase() + ts.substring(9, ts.length - 1);
-	}
 }
 
 function findHead (doc) {
@@ -171,9 +171,21 @@ ResourceDef.prototype = {
 
 };
 
+function fixPath (name, cfg) {
+	var re = /[^\/]*(?:\/|$)/g,
+		paths = cfg.paths,
+		part = '',
+		prefix = '';
+	re.lastIndex = 0; // re is reused by browsers, so always reset it
+	while ((part += re.exec(name)) && paths[part]) {
+		prefix = part;
+	}
+	return cfg.baseUrl + (paths[prefix] || '') + name.substr(prefix.length);
+}
+
 function toUrl (name, cfg) {
 	// TODO: packages and paths
-	return cfg.baseUrl + name;
+	return fixPath(name, cfg);
 }
 
 function nameToUrl (name, ext, cfg) {
@@ -204,7 +216,7 @@ function loadScript (def, success, failure) {
 		failure(new Error('Script not loaded: ' + def.url + ' (browser says: ' + msg + ')'));
 	}
 
-	//console.log('DEBUG: loading', def, def.url);
+	console.log('DEBUG: loading', def, def.url);
 	// insert script
 	var el = def.cfg.doc.createElement('script');
 	// detect when it's done loading
@@ -247,7 +259,7 @@ function fixArgs (args, isDefine) {
 			fixed.cfg = args[pos++];
 		}
 		if (isString(args[pos])) {
-			fixed.id = args[pos++];
+			fixed.name = args[pos++];
 		}
 		if (isArray(args[pos])) {
 			fixed.deps = args[pos++];
@@ -278,7 +290,7 @@ function fetchResDef (name, cfg) {
 			if (def.useNet !== false) {
 				if (!args) {
 					// uh oh, nothing was added to the resource net
-					def.reject(new Error('define() not found in ' + def.url + '. Possible syntax error.'));
+					def.reject(new Error('define() not found in ' + def.url + '. Possible syntax error or name mismatch.'));
 				}
 				else if (args.ex) {
 					// the resNet resource was already rejected, but it didn't know
@@ -415,21 +427,22 @@ global.require = function (/* various */) {
 
 global.define = function (/* various */) {
 
-	var args = fixArgs(arguments, true);
-//console.log('define:', args.id, args.deps, args.func, args.module);
-	if (args.id == null) {
+	var args = fixArgs(arguments, true),
+		name = args.name;
+//console.log('define:', args.name, args.deps, args.func, args.module);
+	if (name == null) {
 		if (argsNet !== undef) {
 			argsNet = {ex: 'Multiple anonymous defines found in ${url}.'};
 		}
-		else if (!(args.id = getCurrentDefName())) {
+		else if (!(name = getCurrentDefName())) {
 			// anonymous define(), defer processing until after script loads
 			argsNet = args;
 		}
 	}
-	if (args.id != null) {
+	if (name != null) {
 		// named define()
-		var def = cache[args.id],
-			cfg = begetCfg(def.cfg, args.id);
+		var def = cache[name],
+			cfg = begetCfg(def.cfg, name);
 		def.useNet = false;
 		// resolve dependencies
 		getDeps(args.deps, cfg,
