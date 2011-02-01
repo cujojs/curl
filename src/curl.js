@@ -140,7 +140,6 @@ ResourceDef.prototype = {
 	},
 
 	resolve: function resolve (res) {
-		//console.log('DEBUG: resolve ' + this.name + ':', res);
 		this.then = function then (resolved, rejected) { resolved(res); };
 		var cbo;
 		while (cbo = this._callbacks.pop()) {
@@ -150,7 +149,6 @@ ResourceDef.prototype = {
 	},
 
 	reject: function reject (ex) {
-		//console.log('DEBUG: reject ' + this.name + ':', ex);
 		this.then = function then (resolved, rejected) { rejected(ex); };
 		var cbo;
 		while (cbo = this._callbacks.pop()) {
@@ -162,12 +160,9 @@ ResourceDef.prototype = {
 	_cleanup: function () {
 		// ignore any further resolve or reject calls
 		this.resolve = this.reject = function () {};
-//		if (!this.cfg.debug) {
-			// remove unnecessary properties
-			delete this.cfg;
-			delete this.url;
-			delete this._callbacks;
-//		}
+		delete this.cfg;
+		delete this.url;
+		delete this._callbacks;
 	}
 
 };
@@ -200,9 +195,7 @@ function loadScript (def, success, failure) {
 		ev = ev || global.event;
 		// script processing rules learned from require.js
 		var el = this; // ev.currentTarget || ev.srcElement;
-		//console.log('EVENT event:' + ev.type, 'def:' + def.url, 'readyState:' + el.readyState);
 		if (ev.type === 'load' || /^(complete|loaded)$/.test(el.readyState)) {
-			//console.log('DEBUG: loaded', def, def.url);
 			delete activeScripts[def.name];
 			// release event listeners
 			el.onload = el.onreadystatechange = el.onerror = null;
@@ -216,7 +209,6 @@ function loadScript (def, success, failure) {
 		failure(new Error('Script not loaded: ' + def.url + ' (browser says: ' + msg + ')'));
 	}
 
-	console.log('DEBUG: loading', def, def.url);
 	// insert script
 	var el = def.cfg.doc.createElement('script');
 	// detect when it's done loading
@@ -375,7 +367,6 @@ function getCurrentDefName () {
 			}
 		}
 	}
-//console.log('getCurrentDef', def)
 	return def;
 }
 
@@ -428,7 +419,7 @@ global.define = function (/* various */) {
 
 	var args = fixArgs(arguments, true),
 		name = args.name;
-//console.log('define:', args.name, args.deps, args.func, args.module);
+
 	if (name == null) {
 		if (argsNet !== undef) {
 			argsNet = {ex: 'Multiple anonymous defines found in ${url}.'};
@@ -463,18 +454,6 @@ var curl = global.define.curl = global.require.curl = {
 global.define.amd = { curl: curl };
 
 }(window));
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
