@@ -5,6 +5,7 @@
  * 
  */
 
+// TODO: readme
 // TODO: code documentation!!!
 // TODO: plugins
 // TODO: packages
@@ -19,8 +20,12 @@
  * If it doesn't already exist, it is created and the dependency's script
  * is loaded. If there is a define call in the loaded script with an name,
  * it is resolved asap (i.e. as soon as the depedency's dependencies are
- * resolved). If there was a (single) define call with no name (anonymous),
+ * resolved). If there is a (single) define call with no name (anonymous),
  * the resource in the resNet is resolved after the script's onload fires.
+ * IE requires a slightly different tactic. IE marks the readyState of the
+ * currently executing script to 'interactive'. If we can find this script
+ * while a define() is being called, we can match the define() to its name.
+ * Opera, why are you being so difficult!?!?!?!?
  */
 
 
