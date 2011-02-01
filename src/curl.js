@@ -5,10 +5,11 @@
  * 
  */
 
+// TODO: code documentation!!!
 // TODO: plugins
 // TODO: packages
 // TODO: commonjs exports and require dependencies
-// TODO: debugging module that is an implicit initial dependency 
+// TODO: debug module that is an implicit initial dependency 
 
 (function (global) {
 
