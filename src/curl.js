@@ -67,12 +67,36 @@ else if (baseUrl.charAt(baseUrl.length) !== '/') {
 	config.baseUrl += '/';
 }
 
+function _isType (obj, type) {
+	return op.toString.call(obj) === type;
+}
 function isFunction (obj) {
-	return typeof obj === 'function';
+	return _isType(obj, '[object Function]')
+}
+
+function isString (obj) {
+	return _isType(obj, '[object String]');
 }
 
 function isArray (obj) {
-	return op.toString.call(obj) === '[object Array]';
+	return _isType(obj, '[object Array]');
+}
+
+function isObject (obj) {
+	return _isType(obj, '[object Object]');
+}
+
+function type (obj) {
+	if (obj === null) {
+		return 'null';
+	}
+	else if (obj === undef) {
+		return 'undefined';
+	}
+	else {
+		var ts = op.toString.call(obj);
+		return ts.substr(8, 1).toLowerCase() + ts.substring(9, ts.length - 1);
+	}
 }
 
 function findHead (doc) {
@@ -201,25 +225,41 @@ function loadScript (def, success, failure) {
 
 }
 
-function fixArgs (args) {
+function fixArgs (args, isDefine) {
 	// resolve args
-	var a0 = args[0], a1 = args[1], a2 = args[2];
-	var fixed = {id: a0, deps: a1, f: a2};
-	if (isFunction(a0)) {
-		fixed.df = a0;
-		fixed.deps = [];
-		fixed.id = null;
+	// valid combinations for define:
+	// (string, array, object|function) sax|saf
+	// (array, object|function) ax|af
+	// (string, object|function) sx|sf
+	// (object|function) x|f
+	// valid combinations for require:
+	// (object, array, object|function) oax|oaf
+	// (array, object|function) ax|af
+	// (string) s
+	var len = args.length,
+		fixed = {},
+		pos = 0;
+	if (len === 1) {
+		fixed[isDefine ? (isFunction(args[0]) ? 'func' : 'module') : 'sync'] = args[0];
 	}
-	else if (isFunction(a1)) {
-		fixed.df = a1;
-		if (isArray(a0)) {
-			fixed.deps = a0;
-			fixed.id = null;
+	else {
+		if (!isDefine && isObject(args[pos])) {
+			fixed.cfg = args[pos++];
 		}
-		else {
-			fixed.deps = [];
+		if (isString(args[pos])) {
+			fixed.id = args[pos++];
+		}
+		if (isArray(args[pos])) {
+			fixed.deps = args[pos++];
+		}
+		if (isFunction(args[pos])) {
+			fixed.func = args[pos++];
+		}
+		if (pos < len) {
+			fixed.module = args[pos++];
 		}
 	}
+	// TODO: check invalid argument combos here?
 	return fixed;
 }
 
@@ -250,7 +290,7 @@ function fetchResDef (name, cfg) {
 					// because we couldn't get the cfg in the anonymous define()
 					getDeps(args.deps, begetCfg(cfg, def.name),
 						function depsSuccess (deps) {
-							def.resolve(args.df.apply(null, deps));
+							def.resolve(getRes(args, deps));
 						},
 						function depsFailure (ex) {
 							def.reject(ex);
@@ -277,7 +317,7 @@ function getDeps (names, cfg, success, failure) {
 	// TODO: throw if multiple exports found (and requires?)
 	// TODO: supply exports and require
 	var deps = [],
-		count = names.length,
+		count = names ? names.length : 0,
 		failed = false;
 
 	if (count === 0) {
@@ -304,17 +344,17 @@ function getDeps (names, cfg, success, failure) {
 	}
 }
 
-function getRes (df, deps) {
+function getRes (def, deps) {
 	// TODO: support exports
-	if (isFunction(df)) {
-		return df.apply(null, deps);
+	if (def.module) {
+		return def.module;
 	}
 	else {
-		return df;
+		return def.func.apply(null, deps);
 	}
 }
 
-function getCurrentDef () {
+function getCurrentDefName () {
 	var def = activeName || null;
 	if (!def) {
 		for (var d in activeScripts) {
@@ -330,42 +370,41 @@ function getCurrentDef () {
 
 global.require = function (/* various */) {
 
-	if (arguments.length === 1) {
+	var args = fixArgs(arguments, false);
+
+	if (args.sync) {
 
 		// return resource
-		var name = arguments[0],
-			def = cache[name],
+		var def = cache[args.sync],
 			res;
 		if (def) {
 			// this is a silly, convoluted way to get a value out of a resolved promise
 			def.then(function (r) { res = r; });
 		}
 		if (res === undef) {
-			throw new Error('Required resource (' + name + ') is not already resolved.');
+			throw new Error('Required resource (' + args.sync + ') is not already resolved.');
 		}
 		return res;
 
 	}
 	else {
 
-		var args = fixArgs(arguments),
-			cfg = begetCfg(config);
+		var cfg = begetCfg(config);
 
-		// grab config, if specified (i.e. args.id is actually a config object)
-		if (!isArray(args.id)) {
+		// grab config, if specified
+		if (args.cfg) {
 			// local configuration
-			for (var p in args.id) {
-				cfg[p] = args.id[p];
+			for (var p in args.cfg) {
+				cfg[p] = args.cfg[p];
 			}
 		}
 
 		// resolve dependencies
 		getDeps(args.deps, cfg,
 			function reqResolved (deps) {
-				getRes(args.df, deps);
+				getRes(args, deps);
 			},
 			function reqRejected (ex) {
-				// TODO: abort everything
 				throw ex;
 			}
 		);
@@ -376,13 +415,13 @@ global.require = function (/* various */) {
 
 global.define = function (/* various */) {
 
-	var args = fixArgs(arguments);
-//console.log('define:', args.id, args.deps,  args.df);
+	var args = fixArgs(arguments, true);
+//console.log('define:', args.id, args.deps, args.func, args.module);
 	if (args.id == null) {
 		if (argsNet !== undef) {
 			argsNet = {ex: 'Multiple anonymous defines found in ${url}.'};
 		}
-		else if (!(args.id = getCurrentDef())) {
+		else if (!(args.id = getCurrentDefName())) {
 			// anonymous define(), defer processing until after script loads
 			argsNet = args;
 		}
@@ -395,7 +434,7 @@ global.define = function (/* various */) {
 		// resolve dependencies
 		getDeps(args.deps, cfg,
 			function defResolved (deps) {
-				def.resolve(getRes(args.df, deps));
+				def.resolve(getRes(args, deps));
 			},
 			function defRejected (ex) {
 				def.reject(ex);
