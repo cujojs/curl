@@ -70,17 +70,15 @@ if (!baseUrl) {
 //	var url = config.doc.location.href;
 //	config.baseUrl = url.substr(0, url.lastIndexOf('/') + 1);
 }
-else if (baseUrl.charAt(baseUrl.length - 1) !== '/') {
+else {
 	// ensure there's a trailing /
-	config.baseUrl += '/';
+	config.baseUrl = fixEndSlash(baseUrl);
 }
 
 // ensure all paths end in a '/'
 var paths = config.paths;
 for (var p in paths) {
-	if (paths[p].charAt(paths[p].length - 1) !== '/') {
-		paths[p] += '/';
-	}
+	paths[p] = fixEndSlash(paths[p]);
 	if (p.charAt(p.length - 1) !== '/') {
 		paths[p + '/'] = paths[p];
 		delete paths[p];
@@ -173,16 +171,31 @@ ResourceDef.prototype = {
 
 };
 
+function fixEndSlash (path) {
+	return path.charAt(path.length - 1) === '/' ? path : path + '/';
+}
+
 function fixPath (name, cfg) {
+	// TODO: stop appending a '/' to all cfg.paths properties to see if it simplifies this routine
+	// takes a resource name (w/o ext!) and resolves it to a url
 	var re = /[^\/]*(?:\/|$)/g,
 		paths = cfg.paths,
 		part = '',
-		prefix = '';
-	re.lastIndex = 0; // re is reused by browsers, so always reset it
-	while ((part += re.exec(name)) && paths[part]) {
-		prefix = part;
+		prefix = '',
+		key = fixEndSlash(name),
+		path = paths[key];
+	// we didn't have an exact match so find the longest match in config.paths.
+	if (path === undef) {
+		re.lastIndex = 0; // literal regexes are cached globally, so always reset this
+		while ((part += re.exec(key)) && paths[part]) {
+			prefix = part;
+		}
+		path = paths[prefix] || ''
 	}
-	return cfg.baseUrl + (paths[prefix] || '') + name.substr(prefix.length);
+	// prepend baseUrl if we didn't find an absolute url
+	if (!/^\/\/|^[^:]*:\/\//.test(path)) path = cfg.baseUrl + path;
+	// append name 
+	return path + name.substr(prefix.length);
 }
 
 function toUrl (name, cfg) {
@@ -191,7 +204,8 @@ function toUrl (name, cfg) {
 }
 
 function nameToUrl (name, ext, cfg) {
-	return toUrl(name + '.' + ext, cfg);
+	// TODO: packages
+	return fixPath(name, cfg) + '.' + ext;
 }
 
 function loadScript (def, success, failure) {
