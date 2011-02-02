@@ -327,26 +327,41 @@ function fetchResDef (name, cfg) {
 	return def;
 }
 
-function fetchPluginDef (fullName, prefix, name, suffixes, cfg) {
+function fetchPluginDef (fullName, prefix, name, cfg) {
 	// the spec is unclear, but we're using the full name (prefix + name) to id resources
 	var def = cache[fullName] = new ResourceDef(name, cfg);
 	// curl's plugins prefer to receive the back-side of a promise,
 	// but to be compatible with commonjs's specification, we have to
 	// piggy-back on the its callback function parameter:
-	var loaded = def.resolve;
-	loaded.resolve = def.resolve;
-	loaded.reject = def.reject;
+	var loaded = function (res) { def.resolve(res) };
+	loaded.resolve = loaded;
+	loaded.reject = function (ex) { def.reject(ex); };
 	// go get plugin
-	global.require(prefix, function (plugin) {
-		var r = beget(global.require);
-		// nameToUrl is for require.js 0.22 compatibility
-		r.toUrl = r.nameToUrl = function (name) {
-			name = normalizeName(name);
+	global.require([prefix], function (plugin) {
+		var r = function () { return global.require.apply(null, arguments); };
+		// commonjs AMD spec says we need to add this:
+		r.toUrl = function (name) {
+			name = normalizeName(name, cfg);
 			var pos = name.lastIndexOf('.') + 1;
 			pos = pos || name.length;
 			return toUrl(name.substr(0, pos - 1), name.substr(pos), cfg);
 		};
-		plugin.load(fullName, req, loaded, cfg);
+		// nameToUrl is for require.js 0.22 compatibility
+		r.nameToUrl = function (name, ext) {
+			return toUrl(name, ext.substr(1), cfg);
+		};
+		// mixin is for require.js 0.22 compatibility
+		r.mixin = function (target, source, force) {
+			for (var prop in source) {
+				if (!(prop in op) && (!(prop in target) || force)) {
+					target[prop] = source[prop];
+				}
+			}
+		};
+		// ouch! require.js's i18n plugin uses the global require, not the one passed in
+		if (prefix.indexOf('i18n') >= 0) global.require.mixin = r.mixin;
+		// load the resource!
+		plugin.load(name, r, loaded, cfg);
 	});
 	return def;
 }
@@ -380,7 +395,7 @@ function getDeps (names, cfg, success, failure) {
 				resName = name = normalizeName(names[i], cfg);
 			}
 			// get resource definition
-			var def = cache[name] || (prefix ? fetchPluginDef(name, prefix, resName, parts.slice(2), cfg) : fetchResDef(resName, cfg));
+			var def = cache[name] || (prefix ? fetchPluginDef(name, prefix, resName, cfg) : fetchResDef(resName, cfg));
 			// hook into promise callbacks
 			def.then(
 				function defSuccess (dep) {

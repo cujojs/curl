@@ -7,7 +7,8 @@
 	curl = {
 		debug: true,
 		paths: {
-			'testStuff': 'stuff'
+			'testStuff': 'stuff',
+			'cssx': 'cssx/src/cssx/'
 		}
 	};
 </script>
@@ -18,12 +19,19 @@
 
 	require(
 		[
-			'testStuff/three'/*,
-		 'foo/bar.js'*/
+			'testStuff/three',
+			'cssx/css!testStuff/base',
+			'require/i18n!testStuff/nls/strings',
+			'require/text!testStuff/template.html'
 		],
-		function (three) {
+		function (three, link, strings, template) {
 			console.log('********* loaded:', three);
-			if (document.body) document.body.appendChild(document.createTextNode('loaded: ' + three));
+			if (document.body) {
+				document.body.appendChild(document.createTextNode('three === ' + three + ' '));
+				document.body.appendChild(document.createElement('br'));
+				document.body.appendChild(document.createTextNode(strings.hello));
+				document.body.appendChild(document.createElement('div')).innerHTML = template;
+			}
 		}
 		);
 
