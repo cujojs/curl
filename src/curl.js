@@ -7,7 +7,6 @@
 
 // TODO: readme
 // TODO: code documentation!!!
-// TODO: plugins
 // TODO: packages
 // TODO: commonjs exports and require dependencies
 // TODO: debug module that is an implicit initial dependency
@@ -146,8 +145,8 @@ ResourceDef.prototype = {
 
 	resolve: function resolve (res) {
 		this.then = function then (resolved, rejected) { resolved(res); };
-		var cbo;
-		while (cbo = this._callbacks.pop()) {
+		var cbo, i = 0;
+		while (cbo = this._callbacks[i++]) {
 			cbo.cb && cbo.cb(res);
 		}
 		this._cleanup();
@@ -155,8 +154,8 @@ ResourceDef.prototype = {
 
 	reject: function reject (ex) {
 		this.then = function then (resolved, rejected) { rejected(ex); };
-		var cbo;
-		while (cbo = this._callbacks.pop()) {
+		var cbo, i = 0;
+		while (cbo = this._callbacks[i++]) {
 			cbo.eb && cbo.eb(ex);
 		}
 		this._cleanup();
