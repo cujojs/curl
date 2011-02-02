@@ -10,7 +10,8 @@
 // TODO: plugins
 // TODO: packages
 // TODO: commonjs exports and require dependencies
-// TODO: debug module that is an implicit initial dependency 
+// TODO: debug module that is an implicit initial dependency
+// TODO: is conflating config and context wise or unwise?
 
 (function (global) {
 
@@ -198,14 +199,9 @@ function fixPath (name, cfg) {
 	return path + name.substr(prefix.length);
 }
 
-function toUrl (name, cfg) {
+function toUrl (name, ext, cfg) {
 	// TODO: packages
-	return fixPath(name, cfg);
-}
-
-function nameToUrl (name, ext, cfg) {
-	// TODO: packages
-	return fixPath(name, cfg) + '.' + ext;
+	return fixPath(name, cfg) + (ext ? '.' + ext : '');
 }
 
 function loadScript (def, success, failure) {
@@ -289,7 +285,7 @@ function fixArgs (args, isDefine) {
 function fetchResDef (name, cfg) {
 	var def = cache[name] = new ResourceDef(name, cfg);
 	// TODO: plugins
-	def.url = nameToUrl(name, 'js', cfg);
+	def.url = toUrl(name, 'js', cfg);
 	loadScript(def,
 		function scriptSuccess () {
 			delete def.doc;
@@ -331,6 +327,30 @@ function fetchResDef (name, cfg) {
 	return def;
 }
 
+function fetchPluginDef (fullName, prefix, name, suffixes, cfg) {
+	// the spec is unclear, but we're using the full name (prefix + name) to id resources
+	var def = cache[fullName] = new ResourceDef(name, cfg);
+	// curl's plugins prefer to receive the back-side of a promise,
+	// but to be compatible with commonjs's specification, we have to
+	// piggy-back on the its callback function parameter:
+	var loaded = def.resolve;
+	loaded.resolve = def.resolve;
+	loaded.reject = def.reject;
+	// go get plugin
+	global.require(prefix, function (plugin) {
+		var r = beget(global.require);
+		// nameToUrl is for require.js 0.22 compatibility
+		r.toUrl = r.nameToUrl = function (name) {
+			name = normalizeName(name);
+			var pos = name.lastIndexOf('.') + 1;
+			pos = pos || name.length;
+			return toUrl(name.substr(0, pos - 1), name.substr(pos), cfg);
+		};
+		plugin.load(fullName, req, loaded, cfg);
+	});
+	return def;
+}
+
 function normalizeName (name, cfg) {
 	// if name starts with . then use parent's name as a base
 	return name.replace(/^\.\//, cfg.baseName);
@@ -349,8 +369,19 @@ function getDeps (names, cfg, success, failure) {
 	else {
 		// obtain each dependency
 		for (var i = 0; i < count && !failed; i++) (function (i) {
-			var name = normalizeName(names[i], cfg),
-				def = cache[name] || fetchResDef(name, cfg);
+			var name, parts, prefix, resName;
+			// check for plugin prefix
+			if ((parts = names[i].split('!')).length > 1) {
+				prefix = normalizeName(parts[0], cfg);
+				resName = parts[1]; // ignore any suffixes
+				name = prefix + '!' + resName;
+			}
+			else {
+				resName = name = normalizeName(names[i], cfg);
+			}
+			// get resource definition
+			var def = cache[name] || (prefix ? fetchPluginDef(name, prefix, resName, parts.slice(2), cfg) : fetchResDef(resName, cfg));
+			// hook into promise callbacks
 			def.then(
 				function defSuccess (dep) {
 					deps[i] = dep;
@@ -369,11 +400,11 @@ function getDeps (names, cfg, success, failure) {
 
 function getRes (def, deps) {
 	// TODO: support exports
-	if (def.module) {
-		return def.module;
+	if (isFunction(def.func)) {
+		return def.func.apply(null, deps);
 	}
 	else {
-		return def.func.apply(null, deps);
+		return def.module;
 	}
 }
 
