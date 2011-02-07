@@ -1,0 +1,88 @@
+curl (CUjo Resource Loader)
+
+version 0.1
+
+----------------------------------------
+
+What is curl.js?
+
+curl.js is a small, but capable AMD-compliant asynchronous loader.
+
+----------------------------------------
+
+What is an asynchronous loader?
+
+Web apps, especially large ones, require many modules and resources. Most of
+these modules and resources need to be loaded at page load, but some may be
+loaded later, either in the background or just in time. They also need to be
+loaded as quickly as possible.
+
+The traditional way to load javascript modules is via a <SCRIPT> element in
+an HTML page. Similarly, CSS files are loaded via a <LINK> element, and
+text resources are either loaded in the page or via XHR calls.
+
+The problem with <SCRIPT> and <LINK> elements is that browsers must execute
+them sequentially since it has no idea if one may depend on another. It just
+assumes the developer has placed them in the correct order and that there are
+dependencies. (The term "synchronous loading" is used to describe this process
+since the elements are executed in a single timeline.)
+
+If there are no dependencies between two files, loading them sequentially is
+a waste of time. These files could be loaded and executed in parallel (i.e
+at the same time).
+
+An asynchronous loader does just that: it loads javascript files (and some
+support other types of files) in parallel.
+
+curl.js has lots of company. Other async loaders include LABjs, steal.js,
+yepnope.js, the backdraft loader, and RequireJS.
+
+----------------------------------------
+
+What is AMD?
+
+Asynchronous Module Definition is the CommonJS proposed standard for
+asynchronous loaders. It defines a simple API that developers can use to
+write their javascript modules so that they may be loaded by any compliant
+loader.
+
+AMD's API focuses on two globally-available functions: require() and define().
+require() specifies a list of dependent modules or resources that must be
+loaded before running a set of code. This code resides in a callback function
+that is executed asynchronously, i.e. it runs later, not in the current
+"thread". Specifically, it executes when all of the dependencies are loaded
+and ready.
+
+AMD's API also helps code reuse by providing compatibility with CommonJS
+server modules. AMD-compliant loaders support the same require() syntax and
+argument signatures as server-side javascript (ssjs) modules.
+
+Not all async loaders are AMD-compliant. Of the list above, only the following
+are AMD-compliant:
+
+curl.js
+RequireJS
+backdraft loader
+
+----------------------------------------
+
+What makes curl different from other AMD loaders?
+
+curl.js is much smaller than other loaders. About 1/3 the size of the others in
+the list above. It's able to achieve this via a Promises-based design.
+(Promises are another CommonJS proposed standard.) curl also requires the use
+of AMD-compliant javascript files, rather than provide backwards compatibility
+with non-AMD files. This also eliminated the need for dozens of lines of code.
+
+Note: unlike some other loaders, such as RequireJS, curl only loads javascript
+modules that use the AMD define() API to declare themselves. It will not load
+non-AMD modules without an additional plugin (forthcoming).
+
+curl.js also communicates with it's plugins via Promises, rather than a single
+callback function. This allows proactive error handling, rather than detecting
+problems via a timeout, which can be tricky to set correctly. curl does this in
+a backwards-compatible way so AMD-compliant plugins will still work in curl.
+
+----------------------------------------
+
+How do I use curl.js?
