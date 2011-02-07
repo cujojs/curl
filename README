@@ -34,7 +34,7 @@ at the same time).
 An asynchronous loader does just that: it loads javascript files (and some
 support other types of files) in parallel.
 
-curl.js has lots of company. Other async loaders include LABjs, steal.js,
+curl.js has lots of company. Other async loaders include LABjs, Steal.js,
 yepnope.js, the backdraft loader, and RequireJS.
 
 ----------------------------------------
@@ -72,7 +72,7 @@ curl.js is much smaller than other loaders. About 1/3 the size of the others in
 the list above. It's able to achieve this via a Promises-based design.
 (Promises are another CommonJS proposed standard.) curl also requires the use
 of AMD-compliant javascript files, rather than provide backwards compatibility
-with non-AMD files. This also eliminated the need for dozens of lines of code.
+with non-AMD files. This eliminated dozens of lines of code.
 
 Note: unlike some other loaders, such as RequireJS, curl only loads javascript
 modules that use the AMD define() API to declare themselves. It will not load
@@ -87,7 +87,7 @@ a backwards-compatible way so AMD-compliant plugins will still work in curl.
 
 How are modules loaded?
 
-TODO: overview
+TODO: overview, baseUrl, paths
 
 ----------------------------------------
 
@@ -152,7 +152,7 @@ TODO: step-by-step instructions
 ----------------------------------------
 
 I have dozens (or hundreds) of modules. Even with parallel loading, the
-performance sucks! What do I do about that?
+performance sucks! What can I do about that?
 
 True! No parallel loader can lessen the latency required to create an HTTP
 connection. If you have dozens or hundreds of files to download, it's going to
@@ -175,3 +175,5 @@ We're writing curl to be compatible with RequireJS's build tool, but there's
 also another cujo project in the pipeline: cram. Cram is the Cujo Resource
 AsseMbler. cram will be ready by mid 2011, so use another build tool or a
 custom shell script in the mean time.
+
+----------------------------------------
