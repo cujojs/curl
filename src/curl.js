@@ -9,7 +9,7 @@
 // TODO: code documentation!!!
 // TODO: packages
 // TODO: commonjs exports and require dependencies
-// TODO: debug module that is an implicit initial dependency
+// TODO: finish debug plugin
 // TODO: is conflating config and context wise or unwise?
 
 (function (global) {
