@@ -85,4 +85,93 @@ a backwards-compatible way so AMD-compliant plugins will still work in curl.
 
 ----------------------------------------
 
+How are modules loaded?
+
+TODO: overview
+
+----------------------------------------
+
+What are AMD plugins?
+
+AMD supports the notion of plugins. Plugins are AMD modules that can be used to
+load javascript modules -- or other types of resources. curl comes with several
+plugins already, including a text plugin (for templates or other text
+resources), a css plugin, a sync plugin (for loading modules synchronously),
+and a debug plugin (for collecting and logging details of the inner workings of
+curl).
+
+Plugins are designated by a prefix on the name of the module or resource to be
+loaded. They are delineated by a ! symbol. The following example shows the use
+of some plugins:
+
+define(
+	[
+		'text!myTemplate.html',
+		'css!myCssFile'
+	],
+	function (templateString, cssLinkNode) {
+		// do something with the template and css here
+	}
+);
+
+Since plugins are just AMD modules, they would typically be referenced using
+their fully-pathed names. curl provides a pluginPath configuration option that
+allows you to specify the folder where [most of] your plugins reside so you
+don't have to specify their full paths.  This also helps with compatibility
+with other AMD loaders that assume that certain plugins are bundled and
+internally mapped.
+
+If one or more of your plugins does not reside in the folder specified by the
+pluginPath config option, you can use its full path or you can specify a path
+for it in curl's paths config object.
+
+// example of a fully-pathed plugin under the cssx folder
+define(['cssx/cssx!myCssFile'], function (cssxDef) {
+	// do some awesome css stuff here
+});
+
+(cssx is the Cujo Style Sheet eXtender AMD plugin that repairs browser css
+deficiencies on-the-fly.)
+
+Plugins can also have configuration options. Global options can be specified
+on curl's configuration object. Options can also be supplied to plugins via
+suffixes. Suffixes are also delineated by the ! symbol. Here's an example of
+a plugin using options:
+
+// don't try to repair IE6-8 opacity issues in my css file 
+define(['cssx/cssx!myCssFile!ignore:opacity'], function (cssxDef) {
+	// do some awesome css stuff here
+});
+
+----------------------------------------
+
 How do I use curl.js?
+
+TODO: step-by-step instructions
+
+----------------------------------------
+
+I have dozens (or hundreds) of modules. Even with parallel loading, the
+performance sucks! What do I do about that?
+
+True! No parallel loader can lessen the latency required to create an HTTP
+connection. If you have dozens or hundreds of files to download, it's going to
+take time to initiate each of the connections.
+
+However, there are tools to that are designed to fix this problem! There are
+builders and compilers. dojo users are probably already familiar with dojo's
+build tool and optimizer. RequireJS comes with a build tool and Google's
+Closure compiler.
+
+The build tool is used to concatenate several modules (and/or resources)
+into just a few files. It does this by following the dependency chain
+specified in the define() and require() calls. You can specify which top-level
+modules or resources are in each file and the build tool finds the rest.
+
+After the build tool creates the concatenated files, the files can be passed
+into a compiler (also called a shrinker or compressor).
+
+We're writing curl to be compatible with RequireJS's build tool, but there's
+also another cujo project in the pipeline: cram. Cram is the Cujo Resource
+AsseMbler. cram will be ready by mid 2011, so use another build tool or a
+custom shell script in the mean time.
