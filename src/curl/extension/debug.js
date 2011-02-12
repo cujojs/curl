@@ -1,8 +1,8 @@
 /**
  *
- * debug plugin
+ * debug extension
  *
- * Specify debug:true in the curl configuration to load this module and
+ * Specify debug:true in the curl configuration to load this extension and
  * start debugging your module loading.
  *
  * (c) copyright 2011, unscriptable.com
