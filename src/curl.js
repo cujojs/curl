@@ -134,42 +134,41 @@ function begetCfg (oldCfg, name) {
 function ResourceDef (name, cfg) {
 	this.name = name;
 	this.cfg = cfg;
-	this._callbacks = [];
+	this._resolves = [];
+	this._rejects = [];
 }
 
 ResourceDef.prototype = {
 
 	then: function then (resolved, rejected) {
-		this._callbacks.push({cb: resolved, eb: rejected});
+		// capture calls to callbacks
+		resolved && this._resolves.push(resolved);
+		rejected && this._rejects.push(rejected);
 	},
 
-	resolve: function resolve (res) {
-		this.then = function then (resolved, rejected) { resolved(res); };
-		var cbo, i = 0;
-		while (cbo = this._callbacks[i++]) {
-			cbo.cb && cbo.cb(res);
-		}
-		this._cleanup();
-	},
+	resolve: function (val) { this._complete(this._resolves, val); },
 
-	reject: function reject (ex) {
-		this.then = function then (resolved, rejected) { rejected(ex); };
-		var cbo, i = 0;
-		while (cbo = this._callbacks[i++]) {
-			cbo.eb && cbo.eb(ex);
-		}
-		this._cleanup();
-	},
+	reject: function (ex) { this._complete(this._rejects, ex); },
 
-	_cleanup: function () {
-		// ignore any further resolve or reject calls
-		this.resolve = this.reject = function () {};
+	_complete: function (which, arg) {
+		// switch over to sync then()
+		this.then = which === this._resolves ?
+			function (resolve, reject) { resolve(arg); } :
+			function (resolve, reject) { reject(arg); };
+		// disallow multiple calls to resolve or reject
+		this.resolve = this.reject = 
+			function () { throw new Error('Promise already completed.'); };
+		// complete all callbacks
+		var cb, i = 0;
+		while (cb = which[i++]) { cb(arg); }
+		delete this._resolves;
+		delete this._rejects;
 		delete this.cfg;
 		delete this.url;
-		delete this._callbacks;
 	}
 
 };
+
 
 function fixEndSlash (path) {
 	return path.charAt(path.length - 1) === '/' ? path : path + '/';
