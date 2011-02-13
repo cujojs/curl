@@ -2,7 +2,7 @@ curl (CUjo Resource Loader)
 
 version 0.1
 TODO: finish compatibility with non-AMD CommonJS modules (node.js)
-TODO: implement packages and finish core plugins (js, debug, sync first)
+TODO: implement packages and finish core extensions (js, debug, sync first)
 
 ----------------------------------------
 
