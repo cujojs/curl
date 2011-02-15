@@ -5,12 +5,10 @@
  * 
  */
 
-// TODO: readme
 // TODO: code documentation!!!
 // TODO: packages
-// TODO: commonjs exports and require dependencies
+// TODO: commonjs exports and module dependencies
 // TODO: finish debug plugin
-// TODO: is conflating config and context wise or unwise?
 
 (function (global) {
 
@@ -119,21 +117,27 @@ function beget (ancestor) {
 	return cfg;
 }
 
-function begetCfg (oldCfg, name) {
-	var cfg = beget(oldCfg);
+function begetCtx (oldCtx, name) {
+	var ctx = beget(oldCtx);
 	if (name) {
 		var pos = name.lastIndexOf('/');
-		cfg.baseName = name.substr(0, pos + 1);
+		ctx.baseName = name.substr(0, pos + 1);
 	}
-	if (cfg.doc && !cfg.head) {
-		cfg.head = findHead(cfg.doc);
+	ctx.require = function (deps, callback) {
+		return require(deps, callback, ctx);
+	};
+	ctx.require.toUrl = function (name) {
+		return fixPath(normalizeName(name, ctx), ctx.baseUrl);
+	};
+	if (ctx.doc && !ctx.head) {
+		ctx.head = findHead(ctx.doc);
 	}
-	return cfg;
+	return ctx;
 }
 
-function ResourceDef (name, cfg) {
+function ResourceDef (name, ctx) {
 	this.name = name;
-	this.cfg = cfg;
+	this.ctx = ctx;
 	this._resolves = [];
 	this._rejects = [];
 }
@@ -163,7 +167,7 @@ ResourceDef.prototype = {
 		while (cb = which[i++]) { cb(arg); }
 		delete this._resolves;
 		delete this._rejects;
-		delete this.cfg;
+		delete this.ctx;
 		delete this.url;
 	}
 
@@ -174,11 +178,11 @@ function fixEndSlash (path) {
 	return path.charAt(path.length - 1) === '/' ? path : path + '/';
 }
 
-function fixPath (name, cfg) {
+function fixPath (name, baseUrl) {
 	// TODO: stop appending a '/' to all cfg.paths properties to see if it simplifies this routine
 	// takes a resource name (w/o ext!) and resolves it to a url
 	var re = /[^\/]*(?:\/|$)/g,
-		paths = cfg.paths,
+		paths = config.paths,
 		part = '',
 		prefix = '',
 		key = fixEndSlash(name),
@@ -192,14 +196,14 @@ function fixPath (name, cfg) {
 		path = paths[prefix] || ''
 	}
 	// prepend baseUrl if we didn't find an absolute url
-	if (!/^\/\/|^[^:]*:\/\//.test(path)) path = cfg.baseUrl + path;
+	if (!/^\/\/|^[^:]*:\/\//.test(path)) path = baseUrl + path;
 	// append name 
 	return path + name.substr(prefix.length);
 }
 
-function toUrl (name, ext, cfg) {
+function toUrl (name, ext, ctx) {
 	// TODO: packages
-	return fixPath(name, cfg) + (ext ? '.' + ext : '');
+	return fixPath(name, ctx.baseUrl) + (ext ? '.' + ext : '');
 }
 
 function loadScript (def, success, failure) {
@@ -207,7 +211,7 @@ function loadScript (def, success, failure) {
 	// initial script processing
 	function process (ev) {
 		ev = ev || global.event;
-		// script processing rules learned from require.js
+		// script processing rules learned from RequireJS
 		var el = this; // ev.currentTarget || ev.srcElement;
 		if (ev.type === 'load' || /^(complete|loaded)$/.test(el.readyState)) {
 			delete activeScripts[def.name];
@@ -224,7 +228,7 @@ function loadScript (def, success, failure) {
 	}
 
 	// insert script
-	var el = def.cfg.doc.createElement('script');
+	var el = def.ctx.doc.createElement('script');
 	// detect when it's done loading
 	// using dom0 event handlers instead of wordy w3c/ms
 	el.onload = el.onreadystatechange = process;
@@ -238,11 +242,11 @@ function loadScript (def, success, failure) {
 	// IE will load the script sync if it's in the cache, so
 	// indicate the current resource definition if this happens.
 	activeScripts[def.name] = el;
-	def.cfg.head.appendChild(el);
+	def.ctx.head.appendChild(el);
 
 }
 
-function fixArgs (args, isDefine) {
+function fixArgs (args) {
 	// resolve args
 	// valid combinations for define:
 	// (string, array, object|function) sax|saf
@@ -253,6 +257,29 @@ function fixArgs (args, isDefine) {
 	// (object, array, object|function) oax|oaf
 	// (array, object|function) ax|af
 	// (string) s
+	// TODO: check invalid argument combos here?
+	// TODO: CommonJS require('string') syntax in an extension
+	function toFunc (res) {
+		return isFunction(res) ? res : function () { return res; };
+	}
+	var len = args.length;
+	if (len === 3) {
+		return { name: args[0], deps: args[1], res: toFunc(args[2]) };
+	}
+	else if (len == 2 && isString(args[0])) {
+		return { name: args[0], res: toFunc(args[1]) };
+	}
+	else if (len == 2) {
+		return { deps: args[0], res: toFunc(args[1]) };
+	}
+	else if (isString(args[0])) {
+		return { deps: args[0] };
+	}
+	else {
+		return { res: toFunc(args[0]) };
+	}
+
+/*
 	var len = args.length,
 		fixed = {},
 		pos = 0;
@@ -276,20 +303,25 @@ function fixArgs (args, isDefine) {
 			fixed.module = args[pos++];
 		}
 	}
-	// TODO: check invalid argument combos here?
 	return fixed;
+*/
 }
 
-function fetchResDef (name, cfg) {
-	var def = cache[name] = new ResourceDef(name, cfg);
-	// TODO: plugins
-	def.url = toUrl(name, 'js', cfg);
+function fetchResDef (name, ctx) {
+
+	var def = cache[name] = new ResourceDef(name, ctx);
+	def.url = toUrl(name, 'js', ctx);
+
 	loadScript(def,
 		function scriptSuccess () {
+
+			// these are no longer needed
 			delete def.doc;
 			delete def.head;
+
 			var args = argsNet;
 			argsNet = undef; // reset it before we get deps
+
 			// if our resource was not explicitly defined with a name (anonymous)
 			// Note: if it did have a name, it will be resolved in the define()
 			if (def.useNet !== false) {
@@ -305,9 +337,9 @@ function fetchResDef (name, cfg) {
 				else {
 					// resolve dependencies and execute definition function here
 					// because we couldn't get the cfg in the anonymous define()
-					getDeps(args.deps, begetCfg(cfg, def.name),
+					getDeps(args.deps, begetCtx(ctx, def.name),
 						function depsSuccess (deps) {
-							def.resolve(getRes(args, deps));
+							def.resolve(args.res.apply(null, deps));
 						},
 						function depsFailure (ex) {
 							def.reject(ex);
@@ -315,40 +347,44 @@ function fetchResDef (name, cfg) {
 					);
 				}
 			}
+
 		},
+
 		function scriptFailure (ex) {
 			delete def.doc;
 			delete def.head;
 			def.reject(ex);
 		}
+
 	);
+
 	return def;
+
 }
 
-function fetchPluginDef (fullName, prefix, name, cfg) {
+function fetchPluginDef (fullName, prefix, name, ctx) {
+
 	// the spec is unclear, but we're using the full name (prefix + name) to id resources
-	var def = cache[fullName] = new ResourceDef(name, cfg);
+	var def = cache[fullName] = new ResourceDef(name, ctx);
+
 	// curl's plugins prefer to receive the back-side of a promise,
 	// but to be compatible with commonjs's specification, we have to
 	// piggy-back on the its callback function parameter:
 	var loaded = function (res) { def.resolve(res) };
 	loaded.resolve = loaded;
 	loaded.reject = function (ex) { def.reject(ex); };
+
 	// go get plugin
-	global.require([prefix], function (plugin) {
-		var r = function () { return global.require.apply(null, arguments); };
-		// commonjs AMD spec says we need to add this:
+	ctx.require([prefix], function (plugin) {
+
+		// create a custom require for RequireJS 0.22 compatibility
+		var r = function () { return ctx.require.apply(null, arguments); };
 		r.toUrl = function (name) {
-			name = normalizeName(name, cfg);
-			var pos = name.lastIndexOf('.') + 1;
-			pos = pos || name.length;
-			return toUrl(name.substr(0, pos - 1), name.substr(pos), cfg);
+			return fixPath(normalizeName(name, ctx), ctx.baseUrl);
 		};
-		// nameToUrl is for require.js 0.22 compatibility
 		r.nameToUrl = function (name, ext) {
-			return toUrl(name, ext.substr(1), cfg);
+			return toUrl(name, ext.substr(1), ctx);
 		};
-		// mixin is for require.js 0.22 compatibility
 		r.mixin = function (target, source, force) {
 			for (var prop in source) {
 				if (!(prop in op) && (!(prop in target) || force)) {
@@ -356,69 +392,81 @@ function fetchPluginDef (fullName, prefix, name, cfg) {
 				}
 			}
 		};
-		// ouch! require.js's i18n plugin uses the global require, not the one passed in
+
+		// ouch! RequireJS's i18n plugin (0.22) uses the global require, not the one passed in
 		if (prefix.indexOf('i18n') >= 0) global.require.mixin = r.mixin;
+
 		// load the resource!
-		plugin.load(name, r, loaded, cfg);
+		plugin.load(name, r, loaded, ctx);
+
 	});
+
 	return def;
+
 }
 
-function normalizeName (name, cfg) {
+function normalizeName (name, ctx) {
 	// if name starts with . then use parent's name as a base
-	return name.replace(/^\.\//, cfg.baseName);
+	return name.replace(/^\.\//, ctx.baseName);
 }
 
-function getDeps (names, cfg, success, failure) {
+function getDeps (names, ctx, success, failure) {
 	// TODO: throw if multiple exports found (and requires?)
-	// TODO: supply exports and require
+	// TODO: supply exports and module
+
 	var deps = [],
 		count = names ? names.length : 0,
-		failed = false;
+		len = count,
+		completed = false;
 
-	if (count === 0) {
-		success([]);
-	}
-	else {
-		// obtain each dependency
-		for (var i = 0; i < count && !failed; i++) (function (i) {
+	// obtain each dependency
+	for (var i = 0; i < len && !completed; i++) (function (i) {
+		var dep = names[i];
+		if (dep === 'require') {
+			deps[i] = ctx.require;
+			count--;
+		}
+		else if (dep === 'exports') {
+			throw new Error('CommonJS exports parameter not supported, yet.');
+		}
+		else if (dep === 'module') {
+			throw new Error('CommonJS module parameter not supported, yet.');
+		}
+		else {
 			var name, parts, prefix, resName;
 			// check for plugin prefix
-			if ((parts = names[i].split('!')).length > 1) {
-				prefix = normalizeName(parts[0], cfg);
+			if ((parts = dep.split('!')).length > 1) {
+				prefix = normalizeName(parts[0], ctx);
 				resName = parts[1]; // ignore any suffixes
 				name = prefix + '!' + resName;
 			}
 			else {
-				resName = name = normalizeName(names[i], cfg);
+				resName = name = normalizeName(names[i], ctx);
 			}
 			// get resource definition
-			var def = cache[name] || (prefix ? fetchPluginDef(name, prefix, resName, cfg) : fetchResDef(resName, cfg));
+			var def = cache[name] || (prefix ? fetchPluginDef(name, prefix, resName, ctx) : fetchResDef(resName, ctx));
 			// hook into promise callbacks
 			def.then(
 				function defSuccess (dep) {
 					deps[i] = dep;
 					if (--count == 0) {
+						completed = true;
 						success(deps);
 					}
 				},
 				function defFailure (ex) {
-					failed = true;
+					completed = true;
 					failure(ex);
 				}
 			);
-		}(i));
-	}
-}
+		}
+	}(i));
 
-function getRes (def, deps) {
-	// TODO: support exports
-	if (isFunction(def.func)) {
-		return def.func.apply(null, deps);
+	// were there none to fetch and did we not already complete the promise?
+	if (count === 0 && !completed) {
+		success([]);
 	}
-	else {
-		return def.module;
-	}
+	
 }
 
 function getCurrentDefName () {
@@ -434,52 +482,53 @@ function getCurrentDefName () {
 	return def;
 }
 
-global.require = function (/* various */) {
+function require (deps, callback, ctx) {
 
-	var args = fixArgs(arguments, false);
-
-	if (args.sync) {
-
+	// sync require
+	// TODO: move this to a CommonJS extensions
+	if (isString(deps)) {
 		// return resource
-		var def = cache[args.sync],
+		var def = normalizeName(cache[deps], ctx),
 			res;
 		if (def) {
 			// this is a silly, convoluted way to get a value out of a resolved promise
 			def.then(function (r) { res = r; });
 		}
 		if (res === undef) {
-			throw new Error('Required resource (' + args.sync + ') is not already resolved.');
+			throw new Error('Required resource (' + deps + ') is not already resolved.');
 		}
 		return res;
-
 	}
-	else {
 
-		var cfg = begetCfg(config);
+	// resolve dependencies
+	getDeps(deps, ctx,
+		function reqResolved (deps) { callback.apply(null, deps); },
+		function reqRejected (ex) { throw ex; }
+	);
 
-		// grab config, if specified
-		if (args.cfg) {
-			// local configuration
-			for (var p in args.cfg) {
-				cfg[p] = args.cfg[p];
-			}
+}
+
+global.require = function globalRequire (/* various */) {
+
+	var len = arguments.length,
+		args;
+
+	if (len === 3) {
+		// local configuration
+		for (var p in arguments[0]) {
+			config[p] = arguments[0][p];
 		}
-
-		// resolve dependencies
-		getDeps(args.deps, cfg,
-			function reqResolved (deps) {
-				getRes(args, deps);
-			},
-			function reqRejected (ex) {
-				throw ex;
-			}
-		);
-
 	}
+
+	var ctx = begetCtx({ doc: config.doc, baseUrl: config.baseUrl, require: require }, '');
+	// extract config, if it's there
+	args = fixArgs(len === 3 ? Array.prototype.slice.call(arguments, 1) : arguments);
+
+	ctx.require(args.deps, args.res, ctx);
 
 };
 
-global.define = function (/* various */) {
+global.define = function define (/* various */) {
 
 	var args = fixArgs(arguments, true),
 		name = args.name;
@@ -496,16 +545,12 @@ global.define = function (/* various */) {
 	if (name != null) {
 		// named define()
 		var def = cache[name],
-			cfg = begetCfg(def.cfg, name);
+			ctx = begetCtx(def.ctx, name);
 		def.useNet = false;
 		// resolve dependencies
-		getDeps(args.deps, cfg,
-			function defResolved (deps) {
-				def.resolve(getRes(args, deps));
-			},
-			function defRejected (ex) {
-				def.reject(ex);
-			}
+		getDeps(args.deps, ctx,
+			function defResolved (deps) { def.resolve(args.res.apply(null, deps)); },
+			function defRejected (ex) { def.reject(ex); }
 		);
 	}
 
