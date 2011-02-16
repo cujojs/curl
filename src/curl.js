@@ -16,8 +16,8 @@
  * Overall operation:
  * When a dependency is encountered and it already exists, it's returned.
  * If it doesn't already exist, it is created and the dependency's script
- * is loaded. If there is a define call in the loaded script with an name,
- * it is resolved asap (i.e. as soon as the depedency's dependencies are
+ * is loaded. If there is a define call in the loaded script with a name,
+ * it is resolved asap (i.e. as soon as the dependency's dependencies are
  * resolved). If there is a (single) define call with no name (anonymous),
  * the resource in the resNet is resolved after the script's onload fires.
  * IE requires a slightly different tactic. IE marks the readyState of the
@@ -34,6 +34,7 @@ var
 	config = {
 		doc: global.document,
 		baseUrl: null, // auto-detect
+		pluginPath: 'curl/plugin/', // prepended to naked plugin references
 		paths: {}
 	},
 	// net to catch anonymous define calls' arguments (non-IE browsers)
@@ -82,6 +83,7 @@ for (var p in paths) {
 		delete paths[p];
 	}
 }
+config.pluginPath = fixEndSlash(config.pluginPath);
 
 function _isType (obj, type) {
 	return op.toString.call(obj) === type;
@@ -94,12 +96,8 @@ function isString (obj) {
 	return _isType(obj, '[object String]');
 }
 
-function isArray (obj) {
-	return _isType(obj, '[object Array]');
-}
-
-function isObject (obj) {
-	return _isType(obj, '[object Object]');
+function isOpera (obj) {
+	return _isType(obj, '[object Opera]');
 }
 
 function findHead (doc) {
@@ -112,9 +110,9 @@ function findHead (doc) {
 function F () {}
 function beget (ancestor) {
 	F.prototype = ancestor;
-	var cfg = new F();
+	var o = new F();
 	delete F.prototype;
-	return cfg;
+	return o;
 }
 
 function begetCtx (oldCtx, name) {
@@ -213,7 +211,7 @@ function loadScript (def, success, failure) {
 		ev = ev || global.event;
 		// script processing rules learned from RequireJS
 		var el = this; // ev.currentTarget || ev.srcElement;
-		if (ev.type === 'load' || /^(complete|loaded)$/.test(el.readyState)) {
+		if (ev.type === 'load' || /^complete$|^interactive$|^loaded$/.test(el.readyState)) {
 			delete activeScripts[def.name];
 			// release event listeners
 			el.onload = el.onreadystatechange = el.onerror = null;
@@ -364,12 +362,18 @@ function fetchResDef (name, ctx) {
 
 function fetchPluginDef (fullName, prefix, name, ctx) {
 
+	// prepend plugin folder path, if it's missing
+	var slashPos = fullName.indexOf('/');
+	if (slashPos < 0 || slashPos > fullName.indexOf('!')) {
+		fullName = config.pluginPath + fullName;
+		prefix = config.pluginPath + prefix;
+	}
 	// the spec is unclear, but we're using the full name (prefix + name) to id resources
 	var def = cache[fullName] = new ResourceDef(name, ctx);
 
 	// curl's plugins prefer to receive the back-side of a promise,
 	// but to be compatible with commonjs's specification, we have to
-	// piggy-back on the its callback function parameter:
+	// piggy-back on the callback function parameter:
 	var loaded = function (res) { def.resolve(res) };
 	loaded.resolve = loaded;
 	loaded.reject = function (ex) { def.reject(ex); };
@@ -394,6 +398,7 @@ function fetchPluginDef (fullName, prefix, name, ctx) {
 		};
 
 		// ouch! RequireJS's i18n plugin (0.22) uses the global require, not the one passed in
+		// TODO: remove. looks like it's fixed in 0.23
 		if (prefix.indexOf('i18n') >= 0) global.require.mixin = r.mixin;
 
 		// load the resource!
