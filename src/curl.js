@@ -96,6 +96,10 @@ function isString (obj) {
 	return _isType(obj, '[object String]');
 }
 
+function isArray (obj) {
+	return _isType(obj, '[object Array]');
+}
+
 function isOpera (obj) {
 	return _isType(obj, '[object Opera]');
 }
@@ -133,14 +137,12 @@ function begetCtx (oldCtx, name) {
 	return ctx;
 }
 
-function ResourceDef (name, ctx) {
-	this.name = name;
-	this.ctx = ctx;
+function Promise () {
 	this._resolves = [];
 	this._rejects = [];
 }
 
-ResourceDef.prototype = {
+Promise.prototype = {
 
 	then: function then (resolved, rejected) {
 		// capture calls to callbacks
@@ -170,6 +172,13 @@ ResourceDef.prototype = {
 	}
 
 };
+
+function ResourceDef (name, ctx) {
+	Promise.call(this);
+	this.name = name;
+	this.ctx = ctx;
+}
+ResourceDef.prototype = Promise.prototype;
 
 
 function fixEndSlash (path) {
@@ -244,7 +253,7 @@ function loadScript (def, success, failure) {
 
 }
 
-function fixArgs (args) {
+function fixArgs (args, isRequire) {
 	// resolve args
 	// valid combinations for define:
 	// (string, array, object|function) sax|saf
@@ -260,49 +269,25 @@ function fixArgs (args) {
 	function toFunc (res) {
 		return isFunction(res) ? res : function () { return res; };
 	}
-	var len = args.length;
+	var len = args.length,
+		res;
 	if (len === 3) {
-		return { name: args[0], deps: args[1], res: toFunc(args[2]) };
+		res = { name: args[0], deps: args[1], res: toFunc(args[2]) };
 	}
 	else if (len == 2 && isString(args[0])) {
-		return { name: args[0], res: toFunc(args[1]) };
+		res = { name: args[0], res: toFunc(args[1]) };
 	}
 	else if (len == 2) {
-		return { deps: args[0], res: toFunc(args[1]) };
+		res = { deps: args[0], res: toFunc(args[1]) };
 	}
-	else if (isString(args[0])) {
-		return { deps: args[0] };
-	}
-	else {
-		return { res: toFunc(args[0]) };
-	}
-
-/*
-	var len = args.length,
-		fixed = {},
-		pos = 0;
-	if (len === 1) {
-		fixed[isDefine ? (isFunction(args[0]) ? 'func' : 'module') : 'sync'] = args[0];
+	// TODO: document this: if a require(array) is encountered , it assumes the array is a list of dependencies so that we can return a promise, define(array) assumes the array is the resource
+	else if (isString(args[0]) || (isArray(args[0]) && isRequire)) {
+		res = { deps: args[0] };
 	}
 	else {
-		if (!isDefine && isObject(args[pos])) {
-			fixed.cfg = args[pos++];
-		}
-		if (isString(args[pos])) {
-			fixed.name = args[pos++];
-		}
-		if (isArray(args[pos])) {
-			fixed.deps = args[pos++];
-		}
-		if (isFunction(args[pos])) {
-			fixed.func = args[pos++];
-		}
-		if (pos < len) {
-			fixed.module = args[pos++];
-		}
+		res = { res: toFunc(args[0]) };
 	}
-	return fixed;
-*/
+	return res;
 }
 
 function fetchResDef (name, ctx) {
@@ -471,7 +456,7 @@ function getDeps (names, ctx, success, failure) {
 	if (count === 0 && !completed) {
 		success([]);
 	}
-	
+
 }
 
 function getCurrentDefName () {
@@ -488,9 +473,10 @@ function getCurrentDefName () {
 }
 
 function require (deps, callback, ctx) {
+	// Note: callback could be a promise
 
 	// sync require
-	// TODO: move this to a CommonJS extensions
+	// TODO: move this to a CommonJS extension
 	if (isString(deps)) {
 		// return resource
 		var def = normalizeName(cache[deps], ctx),
@@ -507,13 +493,19 @@ function require (deps, callback, ctx) {
 
 	// resolve dependencies
 	getDeps(deps, ctx,
-		function reqResolved (deps) { callback.apply(null, deps); },
-		function reqRejected (ex) { throw ex; }
+		function reqResolved (deps) {
+			// Note: deps are passed to a promise as an array, not as individual arguments
+			callback.resolve ? callback.resolve(deps) : callback.apply(null, deps);
+		},
+		function reqRejected (ex) {
+			if (callback.reject) callback.reject(ex);
+			else throw ex;
+		}
 	);
 
 }
 
-global.require = function globalRequire (/* various */) {
+var curl = global.require = global.curl = function globalRequire (/* various */) {
 
 	var len = arguments.length,
 		args;
@@ -527,15 +519,33 @@ global.require = function globalRequire (/* various */) {
 
 	var ctx = begetCtx({ doc: config.doc, baseUrl: config.baseUrl, require: require }, '');
 	// extract config, if it's there
-	args = fixArgs(len === 3 ? Array.prototype.slice.call(arguments, 1) : arguments);
+	args = fixArgs(len === 3 ? Array.prototype.slice.call(arguments, 1) : arguments, true);
 
-	ctx.require(args.deps, args.res, ctx);
+	// check if we should return a promise
+	// TODO: move commonjs behavior out to an extension (if !isString(args.deps) require() returns a resource)
+	if (!isString(args.deps)) {
+		var callback = args.res,
+			promise = args.res = new Promise(),
+			api = {};
+		// return the dependencies as arguments, not an array
+		api.then = function (resolved, rejected) {
+			promise.then(
+				function (deps) { resolved.apply(null, deps) },
+				function (ex) { rejected(beget(ex)); }
+			);
+			return api;
+		};
+		if (callback) api.then(callback);
+	}
+
+	var result = ctx.require(args.deps, args.res, ctx);
+	return api || result;
 
 };
 
-global.define = function define (/* various */) {
+global.define = curl.define = function define (/* various */) {
 
-	var args = fixArgs(arguments, true),
+	var args = fixArgs(arguments, false),
 		name = args.name;
 
 	if (name == null) {
@@ -561,11 +571,8 @@ global.define = function define (/* various */) {
 
 };
 
-var curl = global.define.curl = global.require.curl = {
-	version: '0.1'
-};
 // this is to comply with the AMD CommonJS proposal:
-global.define.amd = { curl: curl };
+global.define.amd = {};
 
 }(window));
 
