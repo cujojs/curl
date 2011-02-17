@@ -1,18 +1,23 @@
 curl (CUjo Resource Loader)
+=====================
 
 version 0.1
 TODO: finish compatibility with non-AMD CommonJS modules (node.js)
-TODO: implement packages and finish core extensions (js, debug, sync first)
+TODO: implement packages
+TODO: finish core extensions (js, debug, sync first)
+TODO: more plugins
 
 ----------------------------------------
 
 What is curl.js?
+============
 
 curl.js is a small, but capable AMD-compliant asynchronous loader.
 
 ----------------------------------------
 
 What is an asynchronous loader?
+========================
 
 Web apps, especially large ones, require many modules and resources. Most of
 these modules and resources need to be loaded at page load, but some may be
@@ -33,8 +38,8 @@ If there are no dependencies between two files, loading them sequentially is
 a waste of time. These files could be loaded and executed in parallel (i.e
 at the same time).
 
-An asynchronous loader does just that: it loads javascript files (and some
-support other types of files) in parallel.
+An asynchronous loader does just that: it loads javascript files (and 
+other types of files) in parallel.
 
 curl.js has lots of company. Other async loaders include LABjs, Steal.js,
 yepnope.js, the backdraft loader, and RequireJS.
@@ -42,6 +47,7 @@ yepnope.js, the backdraft loader, and RequireJS.
 ----------------------------------------
 
 What is AMD?
+===========
 
 Asynchronous Module Definition is the CommonJS proposed standard for
 asynchronous loaders. It defines a simple API that developers can use to
@@ -52,8 +58,19 @@ AMD's API focuses on two globally-available functions: require() and define().
 require() specifies a list of dependent modules or resources that must be
 loaded before running a set of code. This code resides in a callback function
 that is executed asynchronously, i.e. it runs later, not in the current
-"thread". Specifically, it executes when all of the dependencies are loaded
-and ready.
+"thread".  Specifically, it executes when all of the dependencies are loaded
+and ready.  
+
+Actually, the proposal says that the require() function could have a different 
+name -- or could even be implemented differently.  To keep with convention -- 
+and to better integrate with non-AMD CommonJS modules -- we're using
+require(), but curl() is also an alias to require().
+
+It's more important that the define() method be consistent.  This is the method
+that tells the loader what modules have been loaded by a script. define() also
+specifies a list of dependencies and a callback function that defines and/or
+creates the resource when the dependencies are ready.  Optionally, define()
+also takes a name parameter, but this is mainly for build tools and optimizers.
 
 AMD's API also helps code reuse by providing compatibility with CommonJS
 server modules. AMD-compliant loaders support the same require() syntax and
@@ -62,13 +79,19 @@ argument signatures as server-side javascript (ssjs) modules.
 Not all async loaders are AMD-compliant. Of the list above, only the following
 are AMD-compliant:
 
-curl.js
-RequireJS
-backdraft loader
+curl.js (http://github.com/unscriptable/curl)
+RequireJS (http://requirejs.org/)
+backdraft loader (http://http://bdframework.org/bdLoad/index.html)
+
+The beauty of AMD loaders is their ability to remove the drudgery of manually
+managing dependencies.  Since all dependencies are listed within the 
+modules, the loader will ensure that everything is loaded into the browser -- 
+and in the right order.
 
 ----------------------------------------
 
 What makes curl different from other AMD loaders?
+======================================
 
 curl.js is much smaller than other loaders. Less than 1/2 the size of the
 others in the list above. It's able to achieve this via a Promises-based
@@ -106,12 +129,14 @@ isn't returned since the resource is returned synchronously. duh)
 ----------------------------------------
 
 How are modules loaded?
+===================
 
 TODO: overview, baseUrl, paths
 
 ----------------------------------------
 
 What are AMD plugins?
+=================
 
 AMD supports the notion of plugins. Plugins are AMD modules that can be used to
 load javascript modules -- or other types of resources. curl comes with several
@@ -166,10 +191,14 @@ define(['cssx/cssx!myCssFile!ignore:opacity'], function (cssxDef) {
 ----------------------------------------
 
 How do I use curl.js?
+================
 
 TODO: step-by-step instructions
 
 ----------------------------------------
+
+Too Many Modules!
+===============
 
 I have dozens (or hundreds) of modules. Even with parallel loading, the
 performance sucks! What can I do about that?
