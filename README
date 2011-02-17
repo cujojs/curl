@@ -3,6 +3,7 @@ curl (CUjo Resource Loader)
 version 0.1
 TODO: finish compatibility with non-AMD CommonJS modules (node.js)
 TODO: implement packages and finish core extensions (js, debug, sync first)
+TODO: figure out why Opera can't detect anonymous modules
 
 ----------------------------------------
 
@@ -76,7 +77,7 @@ design. (Promises are another CommonJS proposed standard.) curl also requires
 the use of AMD-compliant javascript files, rather than provide backwards
 compatibility with non-AMD files. This eliminated dozens of lines of code.
 
-curl.js will load non-AMD modules with an forthcoming plugin.
+curl.js will load non-AMD modules with a forthcoming plugin.
 
 curl.js communicates with it's plugins via Promises, rather than a simple
 callback function. This allows proactive error handling, rather than detecting
