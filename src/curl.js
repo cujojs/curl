@@ -472,6 +472,41 @@ function getCurrentDefName () {
 	return def;
 }
 
+function domReady (callback) {
+	// adds a callback to be executed when the dom is ready
+
+	var cbs = [],
+		// compression aids:
+		ael = 'addEventListener',
+		rel = 'removeEventListener';
+
+	function loaded () {
+		var cb;
+		while (cb = cbs.pop()) cb();
+		domReady = function (cb) { cb(); };
+	}
+	function w3cLoaded () {
+		global[rel]('DOMContentLoaded', w3cLoaded, false);
+		global[rel]('load', w3cLoaded, false);
+		loaded();
+	}
+
+	if (global.attachEventListener) {
+		// one of these will work
+		global[ael]('DOMContentLoaded', w3cLoaded, false);
+		global[ael]('load', w3cLoaded, false);
+	}
+	else {
+		global.attachEvent('onload', function ieLoaded () {
+			global.detachEvent('onload', ieLoaded);
+			loaded();
+		});
+	}
+
+	(domReady = function (cb) { cbs.push(cb); })(callback);
+
+}
+
 function require (deps, callback, ctx) {
 	// Note: callback could be a promise
 
@@ -535,12 +570,22 @@ var curl = global.require = global.curl = function globalRequire (/* various */)
 			);
 			return api;
 		};
+		// ready will call the callback when both the document and the dependencies are ready
+		api.ready = function (cb) {
+			promise.then(function () { domReady(cb) });
+			return api;
+		};
 		if (callback) api.then(callback);
 	}
 
 	var result = ctx.require(args.deps, args.res, ctx);
 	return api || result;
 
+};
+
+// this is only domReady. it doesn't wait for dependencies
+curl.domReady = function (cb) {
+	domReady(cb);
 };
 
 global.define = curl.define = function define (/* various */) {
