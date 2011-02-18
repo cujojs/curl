@@ -14,6 +14,7 @@ What is curl.js?
 ================
 
 curl.js is a small, but capable AMD-compliant asynchronous loader.
+Current size: 4.84KB (2.26KB gzipped) using Google Closure Compiler
 
 ----------------------------------------
 
@@ -43,7 +44,7 @@ An asynchronous loader does just that: it loads javascript files (and
 other types of files) in parallel.
 
 curl.js has lots of company. Other async loaders include LABjs, Steal.js,
-yepnope.js, the backdraft loader, and RequireJS.
+yepnope.js, $script.js, the Backdraft loader (bdLoader), and RequireJS.
 
 ----------------------------------------
 
@@ -195,6 +196,8 @@ How do I use curl.js?
 =====================
 
 TODO: step-by-step instructions
+
+TODO: curl.domReady() vs. require().ready() / curl().ready()
 
 ----------------------------------------
 
