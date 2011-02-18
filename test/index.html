@@ -4,27 +4,33 @@
 <title>main curl test file</title>
 
 <script>
-	curl = {
+//	console.profile();
+	require = {
 		debug: true,
 		paths: {
-			'testStuff': 'stuff',
-			'cssx': 'cssx/src/cssx/'
+			//'testStuff': 'stuff',
+			'cssx': 'cssx/'
 		}
 	};
 </script>
+<!--<script src="require.js" type="text/javascript"></script>-->
 <script src="../src/curl.js" type="text/javascript"></script>
 
 
 <script type="text/javascript">
 
+	var start = new Date();
 	require(
 		[
-			'testStuff/three',
-			'cssx/css!testStuff/base',
-			'require/i18n!testStuff/nls/strings',
-			'require/text!testStuff/template.html'
-		],
+			'stuff/three',
+			'cssx/css!stuff/base',
+			'require/i18n!stuff/nls/strings',
+			'require/text!stuff/template.html'
+		]
+	).then(
 		function (three, link, strings, template) {
+//			console.profileEnd();
+			console.log('total time:', new Date() - start);
 			console.log('********* loaded:', three);
 			if (document.body) {
 				document.body.appendChild(document.createTextNode('three === ' + three + ' '));
@@ -33,12 +39,27 @@
 				document.body.appendChild(document.createElement('div')).innerHTML = template;
 			}
 		}
-		);
+	);
 
 </script>
 
 </head>
 <body>
+
+speed tests: 
+
+curl.js (full cache):
+total elapsed time: 240, 240, 243 : 241 (9.7% faster)
+total download time: 193, 175, 170 : 179 (same)
+total computational time: 9.83, 9.87, 10.0 : 9.9 (6.6% less)
+total function calls: 422, 422, 422 : 422
+
+require.js (full cache):
+total elapsed time: 319, 203, 280 : 267
+total download time: 176, 165, 197 : 179
+total computational time: 10.6, 9.88, 11.2 : 10.6
+total function calls: 324, 315, 317 : 319
+
 
 </body>
 </html>
