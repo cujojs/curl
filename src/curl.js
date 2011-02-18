@@ -46,8 +46,10 @@ var
 	// be the "interactive" script. too bad IE doesn't send a readystatechange
 	// event to tell us exactly which one.
 	activeScripts = {},
+	// compression aids:
+	prototype = 'prototype',
 	// this is always handy :)
-	op = Object.prototype,
+	op = Object[prototype],
 	// and this
 	undef;
 
@@ -113,9 +115,9 @@ function findHead (doc) {
 
 function F () {}
 function beget (ancestor) {
-	F.prototype = ancestor;
+	F[prototype] = ancestor;
 	var o = new F();
-	delete F.prototype;
+	delete F[prototype];
 	return o;
 }
 
@@ -142,7 +144,7 @@ function Promise () {
 	this._rejects = [];
 }
 
-Promise.prototype = {
+Promise[prototype] = {
 
 	then: function then (resolved, rejected) {
 		// capture calls to callbacks
@@ -178,7 +180,7 @@ function ResourceDef (name, ctx) {
 	this.name = name;
 	this.ctx = ctx;
 }
-ResourceDef.prototype = Promise.prototype;
+ResourceDef[prototype] = Promise[prototype];
 
 
 function fixEndSlash (path) {
@@ -215,6 +217,12 @@ function toUrl (name, ext, ctx) {
 
 function loadScript (def, success, failure) {
 
+	var
+		// compression aids:
+		onload = 'onload',
+		onerror = 'onerror',
+		orc = 'onreadystatechange';
+
 	// initial script processing
 	function process (ev) {
 		ev = ev || global.event;
@@ -223,7 +231,7 @@ function loadScript (def, success, failure) {
 		if (ev.type === 'load' || /^complete$|^interactive$|^loaded$/.test(el.readyState)) {
 			delete activeScripts[def.name];
 			// release event listeners
-			el.onload = el.onreadystatechange = el.onerror = null;
+			el[onload] = el[orc] = el[onerror] = null;
 			success();
 		}
 	}
@@ -238,8 +246,8 @@ function loadScript (def, success, failure) {
 	var el = def.ctx.doc.createElement('script');
 	// detect when it's done loading
 	// using dom0 event handlers instead of wordy w3c/ms
-	el.onload = el.onreadystatechange = process;
-	el.onerror = fail;
+	el[onload] = el[orc] = process;
+	el[onerror] = fail;
 	el.type = 'text/javascript';
 	el.charset = 'utf-8';
 	el.async = true; // for Firefox
@@ -491,7 +499,7 @@ function domReady (callback) {
 		loaded();
 	}
 
-	if (global.attachEventListener) {
+	if (global[ael]) {
 		// one of these will work
 		global[ael]('DOMContentLoaded', w3cLoaded, false);
 		global[ael]('load', w3cLoaded, false);
@@ -554,7 +562,7 @@ var curl = global.require = global.curl = function globalRequire (/* various */)
 
 	var ctx = begetCtx({ doc: config.doc, baseUrl: config.baseUrl, require: require }, '');
 	// extract config, if it's there
-	args = fixArgs(len === 3 ? Array.prototype.slice.call(arguments, 1) : arguments, true);
+	args = fixArgs(len === 3 ? Array[prototype].slice.call(arguments, 1) : arguments, true);
 
 	// check if we should return a promise
 	// TODO: move commonjs behavior out to an extension (if !isString(args.deps) require() returns a resource)

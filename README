@@ -14,7 +14,7 @@ What is curl.js?
 ================
 
 curl.js is a small, but capable AMD-compliant asynchronous loader.
-Current size: 4.84KB (2.26KB gzipped) using Google Closure Compiler
+Current size: 4.82KB (2.28KB gzipped) using Google Closure Compiler
 
 ----------------------------------------
 
