@@ -3,7 +3,7 @@ curl (CUjo Resource Loader)
 
 version 0.1
 TODO: finish compatibility with non-AMD CommonJS modules (node.js)
-TODO: implement packages
+TODO: implement packages, overlays, and aliases that may be specified in an external config file (?)
 TODO: finish core extensions (js, debug, sync first)
 TODO: more plugins
 TODO: figure out why Opera can't detect anonymous modules
