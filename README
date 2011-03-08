@@ -13,8 +13,8 @@ TODO: figure out why Opera can't detect anonymous modules
 What is curl.js?
 ================
 
-curl.js is a small, but capable AMD-compliant asynchronous loader.
-Current size: 4.82KB (2.28KB gzipped) using Google Closure Compiler
+curl.js is a small, but very fast and capable AMD-compliant asynchronous loader.
+Current size: 4.4KB (2.1KB gzipped) using Google Closure Compiler.
 
 ----------------------------------------
 
@@ -23,14 +23,14 @@ What is an asynchronous loader?
 
 Web apps, especially large ones, require many modules and resources. Most of
 these modules and resources need to be loaded at page load, but some may be
-loaded later, either in the background or just in time. They also need to be
+loaded later, either in the background or "just in time". They also need to be
 loaded as quickly as possible.
 
 The traditional way to load javascript modules is via a <SCRIPT> element in
 an HTML page. Similarly, CSS files are loaded via a <LINK> element, and
 text resources are either loaded in the page or via XHR calls.
 
-The problem with <SCRIPT> and <LINK> elements is that browsers must execute
+The problem with <SCRIPT> and <LINK> elements is that a browser must execute
 them sequentially since it has no idea if one may depend on another. It just
 assumes the developer has placed them in the correct order and that there are
 dependencies. (The term "synchronous loading" is used to describe this process
@@ -41,7 +41,7 @@ a waste of time. These files could be loaded and executed in parallel (i.e
 at the same time).
 
 An asynchronous loader does just that: it loads javascript files (and 
-other types of files) in parallel.
+other types of files) in parallel whenever possible.
 
 curl.js has lots of company. Other async loaders include LABjs, Steal.js,
 yepnope.js, $script.js, the Backdraft loader (bdLoader), and RequireJS.

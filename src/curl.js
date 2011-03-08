@@ -102,9 +102,9 @@ function isArray (obj) {
 	return _isType(obj, '[object Array]');
 }
 
-function isOpera (obj) {
-	return _isType(obj, '[object Opera]');
-}
+//function isOpera (obj) {
+//	return _isType(obj, '[object Opera]');
+//}
 
 function findHead (doc) {
 	// find and return the head element
@@ -169,8 +169,6 @@ Promise[prototype] = {
 		while (cb = which[i++]) { cb(arg); }
 		delete this._resolves;
 		delete this._rejects;
-		delete this.ctx;
-		delete this.url;
 	}
 
 };
@@ -180,8 +178,13 @@ function ResourceDef (name, ctx) {
 	this.name = name;
 	this.ctx = ctx;
 }
-ResourceDef[prototype] = Promise[prototype];
 
+ResourceDef[proto] = new Promise();
+ResourceDef[proto]._complete = function (which, arg) {
+	Promise[proto]._complete.call(this, which, arg);
+	delete this.ctx;
+	delete this.url;
+};
 
 function fixEndSlash (path) {
 	return path.charAt(path.length - 1) === '/' ? path : path + '/';
@@ -221,7 +224,7 @@ function loadScript (def, success, failure) {
 		// compression aids:
 		onload = 'onload',
 		onerror = 'onerror',
-		orc = 'onreadystatechange';
+		orsc = 'onreadystatechange';
 
 	// initial script processing
 	function process (ev) {
@@ -231,7 +234,7 @@ function loadScript (def, success, failure) {
 		if (ev.type === 'load' || /^complete$|^interactive$|^loaded$/.test(el.readyState)) {
 			delete activeScripts[def.name];
 			// release event listeners
-			el[onload] = el[orc] = el[onerror] = null;
+			el[onload] = el[orsc] = el[onerror] = null;
 			success();
 		}
 	}
@@ -246,7 +249,7 @@ function loadScript (def, success, failure) {
 	var el = def.ctx.doc.createElement('script');
 	// detect when it's done loading
 	// using dom0 event handlers instead of wordy w3c/ms
-	el[onload] = el[orc] = process;
+	el[onload] = el[orsc] = process;
 	el[onerror] = fail;
 	el.type = 'text/javascript';
 	el.charset = 'utf-8';
