@@ -10,7 +10,8 @@
 // TODO: commonjs exports and module dependencies
 // TODO: finish debug plugin
 
-(function (global) {
+var curl, require, define;
+(function (global, doc) {
 
 /*
  * Overall operation:
@@ -32,7 +33,7 @@ var
 	cache = {},
 	// default configuration
 	config = {
-		doc: global.document,
+		doc: doc,
 		baseUrl: null, // auto-detect
 		pluginPath: 'curl/plugin/', // prepended to naked plugin references
 		paths: {}
@@ -46,20 +47,27 @@ var
 	// be the "interactive" script. too bad IE doesn't send a readystatechange
 	// event to tell us exactly which one.
 	activeScripts = {},
-	// compression aids:
-	prototype = 'prototype',
 	// this is always handy :)
-	op = Object[prototype],
+	op = Object.prototype,
 	// and this
-	undef;
+	undef,
+	aslice = [].slice;
+
+function forin (obj, lambda) {
+	for (var p in obj) {
+		if (!(p in op)) {
+			lambda(obj[p], p, obj);
+		}
+	}
+}
 
 // grab any global configuration info
 var userCfg = global.require || global.curl;
 if (userCfg) {
 	// store global config
-	for (var p in userCfg) {
-		config[p] = userCfg[p];
-	}
+	forin(userCfg, function (value, p) {
+		config[p] = value;
+	});
 }
 
 // TODO: path and baseUrl fixing should happen any time these are specified (e.g. in begetCfg)
@@ -78,13 +86,13 @@ else {
 
 // ensure all paths end in a '/'
 var paths = config.paths;
-for (var p in paths) {
-	paths[p] = fixEndSlash(paths[p]);
+forin(paths, function (path, p) {
+	paths[p] = fixEndSlash(path);
 	if (p.charAt(p.length - 1) !== '/') {
-		paths[p + '/'] = paths[p];
+		paths[p + '/'] = path;
 		delete paths[p];
 	}
-}
+});
 config.pluginPath = fixEndSlash(config.pluginPath);
 
 function _isType (obj, type) {
@@ -115,9 +123,9 @@ function findHead (doc) {
 
 function F () {}
 function beget (ancestor) {
-	F[prototype] = ancestor;
+	F.prototype = ancestor;
 	var o = new F();
-	delete F[prototype];
+	delete F.prototype;
 	return o;
 }
 
@@ -144,9 +152,9 @@ function Promise () {
 	this._rejects = [];
 }
 
-Promise[prototype] = {
+Promise.prototype = {
 
-	then: function then (resolved, rejected) {
+	then: function (resolved, rejected) {
 		// capture calls to callbacks
 		resolved && this._resolves.push(resolved);
 		rejected && this._rejects.push(rejected);
@@ -179,9 +187,9 @@ function ResourceDef (name, ctx) {
 	this.ctx = ctx;
 }
 
-ResourceDef[proto] = new Promise();
-ResourceDef[proto]._complete = function (which, arg) {
-	Promise[proto]._complete.call(this, which, arg);
+ResourceDef.prototype = new Promise();
+ResourceDef.prototype._complete = function (which, arg) {
+	Promise.prototype._complete.call(this, which, arg);
 	delete this.ctx;
 	delete this.url;
 };
@@ -190,25 +198,26 @@ function fixEndSlash (path) {
 	return path.charAt(path.length - 1) === '/' ? path : path + '/';
 }
 
+var pathRe = /[^\/]*(?:\/|$)/g,
+	baseUrlRe = /^\/\/|^[^:]*:\/\//;
 function fixPath (name, baseUrl) {
 	// TODO: stop appending a '/' to all cfg.paths properties to see if it simplifies this routine
 	// takes a resource name (w/o ext!) and resolves it to a url
-	var re = /[^\/]*(?:\/|$)/g,
-		paths = config.paths,
+	var paths = config.paths,
 		part = '',
 		prefix = '',
 		key = fixEndSlash(name),
 		path = paths[key];
 	// we didn't have an exact match so find the longest match in config.paths.
 	if (path === undef) {
-		re.lastIndex = 0; // literal regexes are cached globally, so always reset this
-		while ((part += re.exec(key)) && paths[part]) {
+		pathRe.lastIndex = 0; // literal regexes are cached globally, so always reset this
+		while ((part += pathRe.exec(key)) && paths[part]) {
 			prefix = part;
 		}
-		path = paths[prefix] || ''
+		path = paths[prefix] || '';
 	}
 	// prepend baseUrl if we didn't find an absolute url
-	if (!/^\/\/|^[^:]*:\/\//.test(path)) path = baseUrl + path;
+	if (!baseUrlRe.test(path)) path = baseUrl + path;
 	// append name 
 	return path + name.substr(prefix.length);
 }
@@ -218,23 +227,18 @@ function toUrl (name, ext, ctx) {
 	return fixPath(name, ctx.baseUrl) + (ext ? '.' + ext : '');
 }
 
+var loadedRe = /^complete$|^interactive$|^loaded$/;
 function loadScript (def, success, failure) {
-
-	var
-		// compression aids:
-		onload = 'onload',
-		onerror = 'onerror',
-		orsc = 'onreadystatechange';
 
 	// initial script processing
 	function process (ev) {
 		ev = ev || global.event;
 		// script processing rules learned from RequireJS
 		var el = this; // ev.currentTarget || ev.srcElement;
-		if (ev.type === 'load' || /^complete$|^interactive$|^loaded$/.test(el.readyState)) {
+		if (ev.type === 'load' || loadedRe.test(el.readyState)) {
 			delete activeScripts[def.name];
 			// release event listeners
-			el[onload] = el[orsc] = el[onerror] = null;
+			el.onload = el.onreadystatechange = el.onerror = null;
 			success();
 		}
 	}
@@ -246,11 +250,12 @@ function loadScript (def, success, failure) {
 	}
 
 	// insert script
-	var el = def.ctx.doc.createElement('script');
+	var el = def.ctx.doc.createElement('script'),
+		head  = def.ctx.head;
 	// detect when it's done loading
 	// using dom0 event handlers instead of wordy w3c/ms
-	el[onload] = el[orsc] = process;
-	el[onerror] = fail;
+	el.onload = el.onreadystatechange = process;
+	el.onerror = fail;
 	el.type = 'text/javascript';
 	el.charset = 'utf-8';
 	el.async = true; // for Firefox
@@ -260,7 +265,8 @@ function loadScript (def, success, failure) {
 	// IE will load the script sync if it's in the cache, so
 	// indicate the current resource definition if this happens.
 	activeScripts[def.name] = el;
-	def.ctx.head.appendChild(el);
+	// use insertBefore to keep IE from throwing Operation Aborted (thx Bryan Forbes!)
+	head.insertBefore(el, head.firstChild);
 
 }
 
@@ -321,7 +327,7 @@ function fetchResDef (name, ctx) {
 			if (def.useNet !== false) {
 				if (!args) {
 					// uh oh, nothing was added to the resource net
-					def.reject(new Error('define() not found in ' + def.url + '. Possible syntax error or name mismatch.'));
+					def.reject(new Error('define() not found: ' + def.url + '. Syntax error or name mismatch.'));
 				}
 				else if (args.ex) {
 					// the resNet resource was already rejected, but it didn't know
@@ -386,16 +392,16 @@ function fetchPluginDef (fullName, prefix, name, ctx) {
 			return toUrl(name, ext.substr(1), ctx);
 		};
 		r.mixin = function (target, source, force) {
-			for (var prop in source) {
-				if (!(prop in op) && (!(prop in target) || force)) {
+			forin(source, function (value, prop) {
+				if ((!(prop in target) || force)) {
 					target[prop] = source[prop];
 				}
-			}
+			});
 		};
 
 		// ouch! RequireJS's i18n plugin (0.22) uses the global require, not the one passed in
 		// TODO: remove. looks like it's fixed in 0.23
-		if (prefix.indexOf('i18n') >= 0) global.require.mixin = r.mixin;
+		//if (prefix.indexOf('i18n') >= 0) global.require.mixin = r.mixin;
 
 		// load the resource!
 		plugin.load(name, r, loaded, ctx);
@@ -406,9 +412,10 @@ function fetchPluginDef (fullName, prefix, name, ctx) {
 
 }
 
+var normalizeRe = /^\.\//;
 function normalizeName (name, ctx) {
 	// if name starts with . then use parent's name as a base
-	return name.replace(/^\.\//, ctx.baseName);
+	return name.replace(normalizeRe, ctx.baseName);
 }
 
 function getDeps (names, ctx, success, failure) {
@@ -428,10 +435,10 @@ function getDeps (names, ctx, success, failure) {
 			count--;
 		}
 		else if (dep === 'exports') {
-			throw new Error('CommonJS exports parameter not supported, yet.');
+			throw new Error('exports parameter not supported.');
 		}
 		else if (dep === 'module') {
-			throw new Error('CommonJS module parameter not supported, yet.');
+			throw new Error('module parameter not supported.');
 		}
 		else {
 			var name, parts, prefix, resName;
@@ -483,13 +490,11 @@ function getCurrentDefName () {
 	return def;
 }
 
+// this is only domReady. it doesn't wait for dependencies
 function domReady (callback) {
 	// adds a callback to be executed when the dom is ready
 
-	var cbs = [],
-		// compression aids:
-		ael = 'addEventListener',
-		rel = 'removeEventListener';
+	var cbs = [];
 
 	function loaded () {
 		var cb;
@@ -497,15 +502,15 @@ function domReady (callback) {
 		domReady = function (cb) { cb(); };
 	}
 	function w3cLoaded () {
-		global[rel]('DOMContentLoaded', w3cLoaded, false);
-		global[rel]('load', w3cLoaded, false);
+		global.removeEventListener('DOMContentLoaded', w3cLoaded, false);
+		global.removeEventListener('load', w3cLoaded, false);
 		loaded();
 	}
 
-	if (global[ael]) {
+	if (global.addEventListener) {
 		// one of these will work
-		global[ael]('DOMContentLoaded', w3cLoaded, false);
-		global[ael]('load', w3cLoaded, false);
+		global.addEventListener('DOMContentLoaded', w3cLoaded, false);
+		global.addEventListener('load', w3cLoaded, false);
 	}
 	else {
 		global.attachEvent('onload', function ieLoaded () {
@@ -525,6 +530,7 @@ function require (deps, callback, ctx) {
 	// TODO: move this to a CommonJS extension
 	if (isString(deps)) {
 		// return resource
+		// TODO: Bryan had it this way: def = normalizeName(cache[deps], ctx); he may be right!!!
 		var def = normalizeName(cache[deps], ctx),
 			res;
 		if (def) {
@@ -532,7 +538,7 @@ function require (deps, callback, ctx) {
 			def.then(function (r) { res = r; });
 		}
 		if (res === undef) {
-			throw new Error('Required resource (' + deps + ') is not already resolved.');
+			throw new Error('Resource (' + deps + ') is not already resolved.');
 		}
 		return res;
 	}
@@ -551,21 +557,21 @@ function require (deps, callback, ctx) {
 
 }
 
-var curl = global.require = global.curl = function globalRequire (/* various */) {
+function curl (/* various */) {
 
 	var len = arguments.length,
 		args;
 
 	if (len === 3) {
 		// local configuration
-		for (var p in arguments[0]) {
-			config[p] = arguments[0][p];
-		}
+		forin(arguments[0], function (value, p) {
+			config[p] = value;
+		});
 	}
 
 	var ctx = begetCtx({ doc: config.doc, baseUrl: config.baseUrl, require: require }, '');
 	// extract config, if it's there
-	args = fixArgs(len === 3 ? Array[prototype].slice.call(arguments, 1) : arguments, true);
+	args = fixArgs(len === 3 ? aslice.call(arguments, 1) : arguments, true);
 
 	// check if we should return a promise
 	// TODO: move commonjs behavior out to an extension (if !isString(args.deps) require() returns a resource)
@@ -592,14 +598,9 @@ var curl = global.require = global.curl = function globalRequire (/* various */)
 	var result = ctx.require(args.deps, args.res, ctx);
 	return api || result;
 
-};
+}
 
-// this is only domReady. it doesn't wait for dependencies
-curl.domReady = function (cb) {
-	domReady(cb);
-};
-
-global.define = curl.define = function define (/* various */) {
+function define (/* various */) {
 
 	var args = fixArgs(arguments, false),
 		name = args.name;
@@ -625,12 +626,16 @@ global.define = curl.define = function define (/* various */) {
 		);
 	}
 
-};
+}
+
+global.require = global.curl = curl;
+global.define = curl.define = define;
+curl.domReady = domReady;
 
 // this is to comply with the AMD CommonJS proposal:
-global.define.amd = {};
+define.amd = {};
 
-}(window));
+}(this, document));
 
 
 
