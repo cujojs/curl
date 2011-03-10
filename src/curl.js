@@ -49,6 +49,7 @@ var curl, require, define;
 		activeScripts = {},
 		// this is always handy :)
 		op = Object.prototype,
+		toString = op.toString,
 		// and this
 		undef,
 		aslice = [].slice,
@@ -77,7 +78,7 @@ var curl, require, define;
 	})();
 
 	function _isType (obj, type) {
-		return op.toString.call(obj) === type;
+		return toString.call(obj) === type;
 	}
 	function isFunction (obj) {
 		return _isType(obj, '[object Function]');
