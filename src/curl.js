@@ -53,13 +53,22 @@ var curl, require, define;
 		undef,
 		aslice = [].slice;
 
-	function forin (obj, lambda) {
-		for (var p in obj) {
-			if (!(p in op)) {
-				lambda(obj[p], p, obj);
+	var forin = (function(){
+		// empty is to prevent for-in loop bug with shadowed properties
+		// in IE
+		var empty = {};
+		function forin (obj, lambda) {
+			// keys is to prevent Safari 2 double loop
+			var keys = {}, p;
+			for (p in obj) {
+				if (!(p in op) && !(p in empty) && !(p in keys)) {
+					keys[p] = 1;
+					lambda(obj[p], p, obj);
+				}
 			}
 		}
-	}
+		return forin;
+	})();
 
 	// grab any global configuration info
 	var userCfg = global.require || global.curl;
