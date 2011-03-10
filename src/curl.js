@@ -108,7 +108,7 @@ var curl, require, define;
 		return op.toString.call(obj) === type;
 	}
 	function isFunction (obj) {
-		return _isType(obj, '[object Function]')
+		return _isType(obj, '[object Function]');
 	}
 
 	function isString (obj) {
@@ -183,7 +183,7 @@ var curl, require, define;
 				function () { throw new Error('Promise already completed.'); };
 			// complete all callbacks
 			var cb, i = 0;
-			while (cb = which[i++]) { cb(arg); }
+			while ((cb = which[i++])) { cb(arg); }
 			delete this._resolves;
 			delete this._rejects;
 		}
@@ -388,7 +388,7 @@ var curl, require, define;
 		// curl's plugins prefer to receive the back-side of a promise,
 		// but to be compatible with commonjs's specification, we have to
 		// piggy-back on the callback function parameter:
-		var loaded = function (res) { def.resolve(res) };
+		var loaded = function (res) { def.resolve(res); };
 		loaded.resolve = loaded;
 		loaded.reject = function (ex) { def.reject(ex); };
 
@@ -510,7 +510,7 @@ var curl, require, define;
 
 		function loaded () {
 			var cb;
-			while (cb = cbs.pop()) cb();
+			while ((cb = cbs.pop())) cb();
 			domReady = function (cb) { cb(); };
 		}
 		function w3cLoaded () {
@@ -594,14 +594,14 @@ var curl, require, define;
 			// return the dependencies as arguments, not an array
 			api.then = function (resolved, rejected) {
 				promise.then(
-					function (deps) { resolved.apply(null, deps) },
+					function (deps) { resolved.apply(null, deps); },
 					function (ex) { rejected(beget(ex)); }
 				);
 				return api;
 			};
 			// ready will call the callback when both the document and the dependencies are ready
 			api.ready = function (cb) {
-				promise.then(function () { domReady(cb) });
+				promise.then(function () { domReady(cb); });
 				return api;
 			};
 			if (callback) api.then(callback);
