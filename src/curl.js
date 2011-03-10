@@ -76,40 +76,6 @@ var curl, require, define;
 		return forin;
 	})();
 
-	// grab any global configuration info
-	var userCfg = global.require || global.curl;
-	if (userCfg) {
-		// store global config
-		forin(userCfg, function (value, p) {
-			config[p] = value;
-		});
-	}
-
-	// TODO: path and baseUrl fixing should happen any time these are specified (e.g. in begetCfg)
-	var baseUrl = config.baseUrl;
-	if (!baseUrl) {
-		// if we don't have a baseUrl (null, undefined, or '')
-		// use the document's path as the baseUrl
-		config.baseUrl = '';
-	//	var url = config.doc.location.href;
-	//	config.baseUrl = url.substr(0, url.lastIndexOf('/') + 1);
-	}
-	else {
-		// ensure there's a trailing /
-		config.baseUrl = fixEndSlash(baseUrl);
-	}
-
-	// ensure all paths end in a '/'
-	var paths = config.paths;
-	forin(paths, function (path, p) {
-		paths[p] = fixEndSlash(path);
-		if (p.charAt(p.length - 1) !== '/') {
-			paths[p + '/'] = path;
-			delete paths[p];
-		}
-	});
-	config.pluginPath = fixEndSlash(config.pluginPath);
-
 	function _isType (obj, type) {
 		return op.toString.call(obj) === type;
 	}
@@ -645,6 +611,46 @@ var curl, require, define;
 		}
 
 	}
+
+	// grab any global configuration info
+	var userCfg = global.require || global.curl;
+
+	// exit if it's already been defined
+	if (isFunction(userCfg)) {
+		return;
+	}
+
+	if (userCfg) {
+		// store global config
+		forin(userCfg, function (value, p) {
+			config[p] = value;
+		});
+	}
+
+	// TODO: path and baseUrl fixing should happen any time these are specified (e.g. in begetCfg)
+	var baseUrl = config.baseUrl;
+	if (!baseUrl) {
+		// if we don't have a baseUrl (null, undefined, or '')
+		// use the document's path as the baseUrl
+		config.baseUrl = '';
+	//	var url = config.doc.location.href;
+	//	config.baseUrl = url.substr(0, url.lastIndexOf('/') + 1);
+	}
+	else {
+		// ensure there's a trailing /
+		config.baseUrl = fixEndSlash(baseUrl);
+	}
+
+	// ensure all paths end in a '/'
+	var paths = config.paths;
+	forin(paths, function (path, p) {
+		paths[p] = fixEndSlash(path);
+		if (p.charAt(p.length - 1) !== '/') {
+			paths[p + '/'] = path;
+			delete paths[p];
+		}
+	});
+	config.pluginPath = fixEndSlash(config.pluginPath);
 
 	global.require = global.curl = curl;
 	global.define = curl.define = define;
