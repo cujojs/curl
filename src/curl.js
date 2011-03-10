@@ -58,24 +58,46 @@ var curl, require, define;
 		pathRE,
 		baseUrlRE,
 		loadedRE,
-		normalizeRE;
+		normalizeRE,
 
-	var forin = (function(){
-		// empty is to prevent for-in loop bug with shadowed properties
-		// in IE
-		var empty = {};
-		function forin (obj, lambda) {
-			// keys is to prevent Safari 2 double loop
-			var keys = {}, p;
-			for (p in obj) {
-				if (!(p in op) && !(p in empty) && !(p in keys)) {
-					keys[p] = 1;
-					lambda(obj[p], p, obj);
-				}
+		// for...in bug detection
+		propCount = (function(){
+			var obj = { toString: 1 }, prop;
+			for(prop in obj){ return 1; }
+			return 0;
+		})(),
+		shadowed = [
+			'constructor', 'hasOwnProperty',
+			'isPrototypeOf', 'propertyIsEnumerable',
+			'toLocaleString', 'toString', 'valueOf'
+		],
+		shadowedLen = shadowed.length,
+		forin, oldforin;
+
+	forin = function (obj, lambda) {
+		// keys is to prevent Safari 2 double loop
+		var keys = {}, p;
+		for (p in obj) {
+			if (!(p in op) && !(p in keys)) {
+				keys[p] = 1;
+				lambda(obj[p], p, obj);
 			}
 		}
-		return forin;
-	})();
+	};
+	if(!propCount){
+		oldforin = forin;
+		forin = function (obj, labmda) {
+			var name, i = shadowedLen;
+			oldforin.call(this, obj, lambda);
+			// IE doesn't recognize some custom functions in for..in
+			while(i--){
+				name = shadowed[i];
+				if(target.hasOwnProperty(name)){
+					callback.call(thisArg, target[name], name, target);
+				}
+			}
+		};
+	}
 
 	function _isType (obj, type) {
 		return toString.call(obj) === type;
