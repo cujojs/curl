@@ -262,10 +262,13 @@ var curl, require, define;
 		var el = def.ctx.doc.createElement('script'),
 			head  = def.ctx.head;
 		// detect when it's done loading
+		//
+		// set type first since setting other properties could
+		// prevent us from setting this later
+		el.type = 'text/javascript';
 		// using dom0 event handlers instead of wordy w3c/ms
 		el.onload = el.onreadystatechange = process;
 		el.onerror = fail;
-		el.type = 'text/javascript';
 		el.charset = 'utf-8';
 		el.async = true; // for Firefox
 		el.src = def.url;
