@@ -51,7 +51,13 @@ var curl, require, define;
 		op = Object.prototype,
 		// and this
 		undef,
-		aslice = [].slice;
+		aslice = [].slice,
+
+		// RegExp's defined later
+		pathRE,
+		baseUrlRE,
+		loadedRE,
+		normalizeRE;
 
 	var forin = (function(){
 		// empty is to prevent for-in loop bug with shadowed properties
@@ -207,8 +213,8 @@ var curl, require, define;
 		return path.charAt(path.length - 1) === '/' ? path : path + '/';
 	}
 
-	var pathRe = /[^\/]*(?:\/|$)/g,
-		baseUrlRe = /^\/\/|^[^:]*:\/\//;
+	pathRe = /[^\/]*(?:\/|$)/g;
+	baseUrlRe = /^\/\/|^[^:]*:\/\//;
 	function fixPath (name, baseUrl) {
 		// TODO: stop appending a '/' to all cfg.paths properties to see if it simplifies this routine
 		// takes a resource name (w/o ext!) and resolves it to a url
@@ -236,7 +242,7 @@ var curl, require, define;
 		return fixPath(name, ctx.baseUrl) + (ext ? '.' + ext : '');
 	}
 
-	var loadedRe = /^complete$|^interactive$|^loaded$/;
+	loadedRe = /^complete$|^interactive$|^loaded$/;
 	function loadScript (def, success, failure) {
 
 		// initial script processing
@@ -424,7 +430,7 @@ var curl, require, define;
 
 	}
 
-	var normalizeRe = /^\.\//;
+	normalizeRe = /^\.\//;
 	function normalizeName (name, ctx) {
 		// if name starts with . then use parent's name as a base
 		return name.replace(normalizeRe, ctx.baseName);
