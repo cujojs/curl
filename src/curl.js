@@ -643,14 +643,15 @@ var curl, require, define;
 	}
 
 	// ensure all paths end in a '/'
-	var paths = config.paths;
-	forin(paths, function (path, p) {
+	var paths = {};
+	forin(config.paths, function (path, p) {
 		paths[p] = fixEndSlash(path);
 		if (p.charAt(p.length - 1) !== '/') {
 			paths[p + '/'] = path;
 			delete paths[p];
 		}
 	});
+	config.paths = paths;
 	config.pluginPath = fixEndSlash(config.pluginPath);
 
 	global.require = global.curl = curl;
