@@ -61,10 +61,10 @@ var curl, require, define;
 		normalizeRE,
 
 		// for...in bug detection
-		propCount = (function(){
-			var obj = { toString: 1 }, prop;
-			for(prop in obj){ return 1; }
-			return 0;
+		shadows = (function(){
+			var obj = { toString: 1 };
+			for(var prop in obj){ return 0; }
+			return 1;
 		})(),
 		shadowed = [
 			'constructor', 'hasOwnProperty',
@@ -84,7 +84,7 @@ var curl, require, define;
 			}
 		}
 	};
-	if(!propCount){
+	if(shadows){
 		oldforin = forin;
 		forin = function (obj, labmda) {
 			var name, i = shadowedLen;
