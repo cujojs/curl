@@ -497,39 +497,6 @@ var curl, require, define;
 		return def;
 	}
 
-	// this is only domReady. it doesn't wait for dependencies
-	function domReady (callback) {
-		// adds a callback to be executed when the dom is ready
-
-		var cbs = [];
-
-		function loaded () {
-			var cb;
-			while ((cb = cbs.pop())) cb();
-			domReady = function (cb) { cb(); };
-		}
-		function w3cLoaded () {
-			global.removeEventListener('DOMContentLoaded', w3cLoaded, false);
-			global.removeEventListener('load', w3cLoaded, false);
-			loaded();
-		}
-
-		if (global.addEventListener) {
-			// one of these will work
-			global.addEventListener('DOMContentLoaded', w3cLoaded, false);
-			global.addEventListener('load', w3cLoaded, false);
-		}
-		else {
-			global.attachEvent('onload', function ieLoaded () {
-				global.detachEvent('onload', ieLoaded);
-				loaded();
-			});
-		}
-
-		(domReady = function (cb) { cbs.push(cb); })(callback);
-
-	}
-
 	function require (deps, callback, ctx) {
 		// Note: callback could be a promise
 
@@ -678,7 +645,88 @@ var curl, require, define;
 
 	global.require = global.curl = curl;
 	global.define = curl.define = define;
-	curl.domReady = domReady;
+
+	// this is only domReady. it doesn't wait for dependencies
+	var domReady = curl.domReady = (function () {
+
+		var cbs = [],
+			isLoaded = false,
+			documentReadyStates = { "loaded": 1, "interactive": 1, "complete": 1 },
+			events = { "DOMContentLoaded": 1, "load": 1, "readystatechange": 1},
+			fixReadyState = typeof doc.readyState != "string",
+			hasAEL = typeof global.addEventListener != "undefined",
+			checkDOMReady, remove, pollerTO;
+
+		function loaded () {
+			if (isLoaded) return;
+
+			if (pollerTO) {
+				clearTimeout(pollerTO);
+			}
+			isLoaded = true;
+
+			if (fixReadyState) {
+				doc.readyState = "interactive";
+			}
+
+			var cb;
+			while ((cb = cbs.pop())) cb();
+			domReady = curl.domReady = function (cb) { cb(); };
+		}
+
+		function poller () {
+			checkDOMReady();
+			if (isLoaded) { return; }
+			pollerTO = setTimeout(poller, 30);
+		}
+
+		checkDOMReady = function (evt) {
+			if (isLoaded || (evt && !events[evt.type]) ||
+					!documentReadyStates[doc.readyState]) {
+				return;
+			}
+			/*if (evt) {
+				console.log(evt.type);
+			} else if (documentReadyStates[doc.readyState]) {
+				console.log("readyState poll");
+			}*/
+			remove();
+			loaded();
+		};
+
+		if (doc.readyState == "complete") {
+			loaded();
+		} else {
+			if (hasAEL) {
+				remove = function () {
+					global.removeEventListener('DOMContentLoaded', checkDOMReady, false);
+					global.removeEventListener('load', checkDOMReady, false);
+					doc.removeEventListener('readystatechange', checkDOMReady, false);
+				};
+				// one of these will work
+				global.addEventListener('DOMContentLoaded', checkDOMReady, false);
+				global.addEventListener('load', checkDOMReady, false);
+				doc.addEventListener('readystatechange', checkDOMReady, false);
+			}
+			else if (typeof global.attachEvent != "undefined") {
+				remove = function () {
+					global.detachEvent('onload', checkDOMReady);
+					doc.detachEvent('readystatechange', checkDOMReady);
+				};
+				global.attachEvent('onload', checkDOMReady);
+				doc.attachEvent('onreadystatechange', checkDOMReady);
+			}
+
+			// additionally, poll for readystate
+			pollerTO = setTimeout(poller, 30);
+		}
+
+		return function (cb) {
+			// adds a callback to be executed when the dom is ready
+			cbs.push(cb);
+		};
+
+	})();
 
 	// this is to comply with the AMD CommonJS proposal:
 	define.amd = {};
