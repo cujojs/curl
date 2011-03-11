@@ -3,7 +3,7 @@ curl (CUjo Resource Loader)
 
 version 0.1
 TODO: finish compatibility with non-AMD CommonJS modules (node.js)
-TODO: implement packages, overlays, and aliases that may be specified in an external config file (?)
+TODO: implement packages
 TODO: finish core extensions (js, debug, sync first)
 TODO: more plugins
 TODO: figure out why Opera can't detect anonymous modules
@@ -14,6 +14,7 @@ What is curl.js?
 ================
 
 curl.js is a small, but very fast and capable AMD-compliant asynchronous loader.
+Current size: 4.4KB (2.1KB gzipped) using Google Closure Compiler.
 
 ----------------------------------------
 
@@ -43,7 +44,7 @@ An asynchronous loader does just that: it loads javascript files (and
 other types of files) in parallel whenever possible.
 
 curl.js has lots of company. Other async loaders include LABjs, Steal.js,
-yepnope.js, bdLoad, and RequireJS.
+yepnope.js, $script.js, the Backdraft loader (bdLoader), and RequireJS.
 
 ----------------------------------------
 
@@ -82,7 +83,7 @@ are AMD-compliant:
 
 curl.js (http://github.com/unscriptable/curl)
 RequireJS (http://requirejs.org/)
-bdLoad (http://http://bdframework.org/bdLoad/index.html)
+backdraft loader (http://http://bdframework.org/bdLoad/index.html)
 
 The beauty of AMD loaders is their ability to remove the drudgery of manually
 managing dependencies.  Since all dependencies are listed within the 
@@ -94,8 +95,8 @@ and in the right order.
 What makes curl different from other AMD loaders?
 =================================================
 
-curl.js is much smaller than other CommonJS loaders. Less than 1/2 the size 
-of the others in the list above. It's able to achieve this via a Promises-based
+curl.js is much smaller than other loaders. Less than 1/2 the size of the
+others in the list above. It's able to achieve this via a Promises-based
 design. (Promises are another CommonJS proposed standard.) curl also requires 
 the use of AMD-compliant javascript files, rather than provide backwards
 compatibility with non-AMD files. This eliminated dozens of lines of code.
@@ -195,6 +196,8 @@ How do I use curl.js?
 =====================
 
 TODO: step-by-step instructions
+
+TODO: curl.domReady() vs. require().ready() / curl().ready()
 
 ----------------------------------------
 
