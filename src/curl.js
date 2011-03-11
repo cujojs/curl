@@ -1,7 +1,9 @@
 /**
  * curl (cujo resource loader)
  *
- * (c) copyright 2011, unscriptable.com
+ * (c) copyright 2011, unscriptable.com / John Hann
+ * Licnsed under the MIT License at:
+ * 		http://www.opensource.org/licenses/mit-license.php
  * 
  */
 
