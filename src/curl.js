@@ -86,14 +86,14 @@ var curl, require, define;
 	};
 	if(shadows){
 		oldforin = forin;
-		forin = function (obj, labmda) {
+		forin = function (obj, lambda) {
 			var name, i = shadowedLen;
 			oldforin.call(this, obj, lambda);
 			// IE doesn't recognize some custom functions in for..in
 			while(i--){
 				name = shadowed[i];
-				if(target.hasOwnProperty(name)){
-					callback.call(thisArg, target[name], name, target);
+				if(obj.hasOwnProperty(name)){
+					callback.call(thisArg, obj[name], name, obj);
 				}
 			}
 		};
