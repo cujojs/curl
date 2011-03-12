@@ -86,10 +86,6 @@ var curl, require, define;
 		return _isType(obj, '[object Array]');
 	}
 
-	//function isOpera (obj) {
-	//	return _isType(obj, '[object Opera]');
-	//}
-
 	function F () {}
 	function beget (ancestor) {
 		F.prototype = ancestor;
