@@ -61,45 +61,14 @@ var curl, require, define;
 		baseUrlRe = /^\/\/|^[^:]*:\/\//,
 		//loadedRe = /^complete$|^interactive$|^loaded$/,
 		normalizeRe = /^\.\//,
-		readyStates = { loaded: 1, interactive: 1, complete: 1 },
+		readyStates = { loaded: 1, interactive: 1, complete: 1 };
 
-		// for...in bug detection
-		shadows = (function(){
-			var obj = { toString: 1 };
-			for (var prop in obj) { return 0; }
-			return 1;
-		})(),
-		shadowed = [
-			'constructor', 'hasOwnProperty',
-			'isPrototypeOf', 'propertyIsEnumerable',
-			'toLocaleString', 'toString', 'valueOf'
-		],
-		shadowedLen = shadowed.length,
-		forin, oldforin;
-
-	forin = function (obj, lambda) {
-		// keys is to prevent Safari 2 double loop
-		var keys = {}, p;
-		for (p in obj) {
-			if (!(p in op) && !(p in keys)) {
-				keys[p] = 1;
+	function forin (obj, lambda) {
+		for (var p in obj) {
+			if (!(p in op)) {
 				lambda(obj[p], p, obj);
 			}
 		}
-	};
-	if(shadows){
-		oldforin = forin;
-		forin = function (obj, lambda) {
-			var name, i = shadowedLen;
-			oldforin.call(this, obj, lambda);
-			// IE doesn't recognize some custom functions in for..in
-			while(i--){
-				name = shadowed[i];
-				if(obj.hasOwnProperty(name)){
-					callback.call(thisArg, obj[name], name, obj);
-				}
-			}
-		};
 	}
 
 	function _isType (obj, type) {
@@ -221,7 +190,7 @@ var curl, require, define;
 	}
 
 	function toUrl (name, ext, ctx) {
-		// TODO: packages
+		// TODO: packages in a CommonJS extension
 		return fixPath(name, ctx.baseUrl) + (ext ? '.' + ext : '');
 	}
 
