@@ -1,0 +1,42 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>curl loading test for plain old javascript</title>
+
+<script>
+	require = {
+		debug: true,
+		paths: {
+			'cssx': 'cssx/'
+		}
+	};
+</script>
+<script src="../src/curl.js" type="text/javascript"></script>
+
+
+<script type="text/javascript">
+
+	require(
+		[
+			'stuff/three',
+			'cssx/css!stuff/base',
+			'js!stuff/plain_old.js'
+		]
+	).then(
+		function (three, link) {
+			console.log('********* loaded:', three);
+			if (document.body) {
+				document.body.appendChild(document.createTextNode('three === ' + three + ' '));
+				document.body.appendChild(document.createElement('br'));
+				document.body.appendChild(document.createElement('div')).innerHTML = testDomain.foo.bar;
+			}
+		}
+	);
+
+</script>
+
+</head>
+<body>
+
+</body>
+</html>

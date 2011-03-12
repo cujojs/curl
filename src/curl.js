@@ -536,8 +536,16 @@ var curl, require, define;
 			}
 		}
 		if (name != null) {
-			// named define()
+			// named define(), it is in the cache if we are loading a dependency
+			// (could also be a secondary define() appearing in a built file, etc.)
+			// if it's a secondary define(), grab the current def's context
 			var def = cache[name];
+			if (!def) {
+				var curr = cache[getCurrentDefName()],
+					// TODO: this next line is redundant with curl(). reuse them somehow 
+					ctx = curr ? curr.ctx : begetCtx({ doc: config.doc, baseUrl: config.baseUrl, require: require }, name);
+				def = cache[name] = new ResourceDef(name, ctx);
+			}
 			def.useNet = false;
 			if (!args.deps) {
 				// call definition function
@@ -619,7 +627,6 @@ var curl, require, define;
 		function checkDOMReady (evt) {
 			if (!completed && readyStates[doc.readyState]) {
 				promise.resolve();
-				console.log('resolved');
 			}
 		}
 
@@ -663,9 +670,38 @@ var curl, require, define;
 	// this is to comply with the AMD CommonJS proposal:
 	define.amd = {};
 
+	// inlining the js plugin since it's much more efficient here
+	define('curl/plugin/js', {
+
+		load: function (name, require, promise, ctx) {
+
+			var def = {
+					name: name,
+					url: require.toUrl(name),
+					ctx: ctx
+				};
+
+			function cleanup () {
+				// just remove some of the detritus that loadScript leaves (TODO: fix this somehow)
+				delete activeScripts[def.name];
+			}
+
+			loadScript(def,
+				function () {
+					cleanup();
+					promise.resolve();
+				},
+				function (ex) {
+					cleanup();
+					promise.reject(ex);
+				}
+			);
+
+		}
+
+	});
+
 }(this, document));
-
-
 
 
 //
