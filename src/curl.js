@@ -57,6 +57,7 @@ var curl, require, define;
 		pathRe = /[^\/]*(?:\/|$)/g,
 		baseUrlRe = /^\/\/|^[^:]*:\/\//,
 		normalizeRe = /^\.\//,
+		findCurlRe = /(.*curl).js$/,
 		readyStates = { loaded: 1, interactive: 1, complete: 1 },
 
 		errorSuffix = '. Syntax error or name mismatch.';
@@ -600,6 +601,13 @@ var curl, require, define;
 			delete paths[p];
 		}
 	});
+	if (!('curl/' in paths)) {
+		// find path to curl
+		var scripts = doc.getElementsByTagName('script'),
+			i = scripts.length, script, match;
+		while ((script = scripts[--i]) && !match) { match = script.src.match(findCurlRe); }
+		paths['curl/'] = match[1] + '/';
+	}
 	config.paths = paths;
 	config.pluginPath = fixEndSlash(config.pluginPath);
 
@@ -706,15 +714,6 @@ var curl, require, define;
 }(this, document));
 
 
-//
-//function findScript (doc, rxOrName) {
-//	var scripts = doc.getElementsByTagName('script'),
-//		rx = typeof rxOrName === 'string' ? new RegExp(rxOrName + '$') : rxOrName,
-//		i = scripts.length, me;
-//	while ((me = scripts[--i]) && !rx.test(me.src)) {}
-//	return me;
-//}
-//
 ///* initialization */
 //
 
