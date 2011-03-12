@@ -59,8 +59,9 @@ var curl, require, define;
 		// RegExp's used later, "cached" here
 		pathRe = /[^\/]*(?:\/|$)/g,
 		baseUrlRe = /^\/\/|^[^:]*:\/\//,
-		loadedRe = /^complete$|^interactive$|^loaded$/,
+		//loadedRe = /^complete$|^interactive$|^loaded$/,
 		normalizeRe = /^\.\//,
+		readyStates = { loaded: 1, interactive: 1, complete: 1 },
 
 		// for...in bug detection
 		shadows = (function(){
@@ -231,7 +232,7 @@ var curl, require, define;
 			ev = ev || global.event;
 			// script processing rules learned from RequireJS
 			var el = this; // ev.currentTarget || ev.srcElement;
-			if (ev.type === 'load' || loadedRe.test(el.readyState)) {
+			if (ev.type === 'load' || readyStates[el.readyState]) {
 				delete activeScripts[def.name];
 				// release event listeners
 				el.onload = el.onreadystatechange = el.onerror = null;
@@ -613,8 +614,6 @@ var curl, require, define;
 		// if we don't have a baseUrl (null, undefined, or '')
 		// use the document's path as the baseUrl
 		config.baseUrl = '';
-	//	var url = config.doc.location.href;
-	//	config.baseUrl = url.substr(0, url.lastIndexOf('/') + 1);
 	}
 	else {
 		// ensure there's a trailing /
@@ -639,54 +638,68 @@ var curl, require, define;
 	// this is only domReady. it doesn't wait for dependencies
 	var domReady = curl.domReady = (function () {
 
-		var cbs = [],
+		var promise = new Promise(),
+			//cbs = [],
 			isLoaded = false,
-			documentReadyStates = { "loaded": 1, "interactive": 1, "complete": 1 },
-			events = { "DOMContentLoaded": 1, "load": 1, "readystatechange": 1},
+			//documentReadyStates = { "loaded": 1, "interactive": 1, "complete": 1 },
+			events = { DOMContentLoaded: 1, load: 1, readystatechange: 1},
 			fixReadyState = typeof doc.readyState != "string",
 			hasAEL = typeof global.addEventListener != "undefined",
-			checkDOMReady, remove, pollerTO;
+			/*checkDOMReady,*/ remove, pollerTO;
 
-		function loaded () {
-			if (isLoaded) return;
-
-			if (pollerTO) {
-				clearTimeout(pollerTO);
-			}
-			isLoaded = true;
-
+		promise.resolve = function () {
+			Promise.prototype.resolve.call(this);
+			clearTimeout(pollerTO);
+			remove();
 			if (fixReadyState) {
 				doc.readyState = "interactive";
 			}
+		};
 
-			var cb;
-			while ((cb = cbs.pop())) cb();
-			domReady = curl.domReady = function (cb) { cb(); };
+//		function loaded () {
+//			if (isLoaded) return;
+//
+//			if (pollerTO) {
+//				clearTimeout(pollerTO);
+//			}
+//			isLoaded = true;
+//
+//			if (fixReadyState) {
+//				doc.readyState = "interactive";
+//			}
+//
+//			var cb;
+//			while ((cb = cbs.pop())) cb();
+//			domReady = curl.domReady = function (cb) { cb(); };
+//		}
+
+		function checkDOMReady (evt) {
+//			if (isLoaded || (evt && !events[evt.type]) ||
+//					!readyStates[doc.readyState]) {
+//				return;
+//			}
+			if (readyStates[doc.readyState]) {
+				/*if (evt) {
+					console.log(evt.type);
+				} else if (readyStates[doc.readyState]) {
+					console.log("readyState poll");
+				}*/
+				//remove();
+				promise.resolve();
+			}
 		}
 
 		function poller () {
 			checkDOMReady();
-			if (isLoaded) { return; }
-			pollerTO = setTimeout(poller, 30);
+			//if (!isLoaded) {
+				pollerTO = setTimeout(poller, 30);
+			//}
 		}
 
-		checkDOMReady = function (evt) {
-			if (isLoaded || (evt && !events[evt.type]) ||
-					!documentReadyStates[doc.readyState]) {
-				return;
-			}
-			/*if (evt) {
-				console.log(evt.type);
-			} else if (documentReadyStates[doc.readyState]) {
-				console.log("readyState poll");
-			}*/
-			remove();
-			loaded();
-		};
-
 		if (doc.readyState == "complete") {
-			loaded();
-		} else {
+			promise.resolve();
+		}
+		else {
 			if (hasAEL) {
 				remove = function () {
 					global.removeEventListener('DOMContentLoaded', checkDOMReady, false);
@@ -712,8 +725,7 @@ var curl, require, define;
 		}
 
 		return function (cb) {
-			// adds a callback to be executed when the dom is ready
-			cbs.push(cb);
+			promise.then(cb);
 		};
 
 	})();
