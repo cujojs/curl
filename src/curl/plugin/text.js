@@ -9,8 +9,6 @@
 
 define(function () {
 
-	/***** it'd be nice if we could share these functions with other plugins! *****/
-
 //	function isXDomain (url, doc) {
 //		// using rules at https://developer.mozilla.org/En/Same_origin_policy_for_JavaScript
 //		// Note: file:/// urls are not handled by this function!
@@ -57,19 +55,19 @@ define(function () {
 	}
 
 	function fetchText (url, callback, errback) {
-		var xhr = xhr();
-		xhr.open('GET', url, true);
-		xhr.onreadystatechange = function (e) {
-			if (xhr.readyState === 4) {
-				if (xhr.status < 400) {
-					callback(xhr.responseText);
+		var x = xhr();
+		x.open('GET', url, true);
+		x.onreadystatechange = function (e) {
+			if (x.readyState === 4) {
+				if (x.status < 400) {
+					callback(x.responseText);
 				}
 				else {
-					errback(new Error('fetchText() failed. status: ' + xhr.statusText));
+					errback(new Error('fetchText() failed. status: ' + x.statusText));
 				}
 			}
 		};
-		xhr.send(null);
+		x.send(null);
 	}
 
 	return {
