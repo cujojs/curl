@@ -608,45 +608,33 @@ var curl, require, define;
 	var domReady = curl.domReady = (function () {
 
 		var promise = new Promise(),
-			//cbs = [],
-			//isLoaded = false,
-			//documentReadyStates = { "loaded": 1, "interactive": 1, "complete": 1 },
-			//events = { DOMContentLoaded: 1, load: 1, readystatechange: 1},
 			fixReadyState = typeof doc.readyState != "string",
-			hasAEL = typeof global.addEventListener != "undefined",
-			checkDOMReady, remove, pollerTO;
+			addEvent,
+			checkDOMReady, remove, removes, pollerTO, i = 0;
 
 		promise.resolve = function () {
 			Promise.prototype.resolve.call(this);
 			clearTimeout(pollerTO);
-			remove();
+			while (remove = removes[i++]) remove();
 			if (fixReadyState) {
 				doc.readyState = "interactive";
 			}
 		};
 
-//		function loaded () {
-//			if (isLoaded) return;
-//
-//			if (pollerTO) {
-//				clearTimeout(pollerTO);
-//			}
-//			isLoaded = true;
-//
-//			if (fixReadyState) {
-//				doc.readyState = "interactive";
-//			}
-//
-//			var cb;
-//			while ((cb = cbs.pop())) cb();
-//			domReady = curl.domReady = function (cb) { cb(); };
-//		}
+		addEvent = ('addEventListener' in global) ?
+			function (node, event) {
+				node.addEventListener(event, checkDOMReady, false);
+				return function () { node.removeEventListener(event, checkDOMReady, false); };
+			} :
+			function (node, event) {
+				// DOMContentLoaded will throw in IE. ugly ugly ugly hack
+				if (event != 'DOMContentLoaded') {
+					node.attachEvent('on' + event, checkDOMReady);
+					return function () { node.detachEvent(event, checkDOMReady); };
+				}
+			};
 
 		checkDOMReady = function (evt) {
-//			if (isLoaded || (evt && !events[evt.type]) ||
-//					!readyStates[doc.readyState]) {
-//				return;
-//			}
 //			if (evt) {
 //				console.log(evt.type);
 //			}
@@ -662,35 +650,19 @@ var curl, require, define;
 
 		function poller () {
 			checkDOMReady();
-			//if (!isLoaded) {
-				pollerTO = setTimeout(poller, 30);
-			//}
+			pollerTO = setTimeout(poller, 30);
 		}
 
 		if (doc.readyState == "complete") {
 			promise.resolve();
 		}
 		else {
-			if (hasAEL) {
-				remove = function () {
-					global.removeEventListener('DOMContentLoaded', checkDOMReady, false);
-					global.removeEventListener('load', checkDOMReady, false);
-					doc.removeEventListener('readystatechange', checkDOMReady, false);
-				};
-				// one of these will work
-				global.addEventListener('DOMContentLoaded', checkDOMReady, false);
-				global.addEventListener('load', checkDOMReady, false);
-				doc.addEventListener('readystatechange', checkDOMReady, false);
-			}
-			else if (typeof global.attachEvent != "undefined") {
-				remove = function () {
-					global.detachEvent('onload', checkDOMReady);
-					doc.detachEvent('readystatechange', checkDOMReady);
-				};
-				global.attachEvent('onload', checkDOMReady);
-				doc.attachEvent('onreadystatechange', checkDOMReady);
-			}
-
+			// add event listeners and collect remove functions
+			removes = [
+				addEvent(global, 'DOMContentLoaded'),
+				addEvent(global, 'load'),
+				addEvent(global, 'readystatechange')
+			];
 			// additionally, poll for readystate
 			pollerTO = setTimeout(poller, 30);
 		}
