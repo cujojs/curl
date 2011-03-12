@@ -278,11 +278,8 @@ var curl, require, define;
 		def.url = toUrl(name, 'js', ctx);
 
 		loadScript(def,
-			function () {
 
-				// these are no longer needed
-				delete def.doc;
-				delete def.head;
+			function () {
 
 				var args = argsNet;
 				argsNet = undef; // reset it before we get deps
@@ -315,11 +312,7 @@ var curl, require, define;
 
 			},
 
-			function (ex) {
-				delete def.doc;
-				delete def.head;
-				def.reject(ex);
-			}
+			def.reject
 
 		);
 
@@ -382,7 +375,7 @@ var curl, require, define;
 	}
 
 	function getDeps (names, ctx, success, failure) {
-		// TODO: throw if multiple exports found (and requires?)
+		// TODO: throw if multiple exports found?
 		// TODO: supply exports and module
 
 		var deps = [],
@@ -391,8 +384,7 @@ var curl, require, define;
 			completed = false;
 
 		// obtain each dependency
-		for (var i = 0; i < len && !completed; i++) (function (i) {
-			var dep = names[i];
+		for (var i = 0; i < len && !completed; i++) (function (i, dep) {
 			if (dep === 'require') {
 				deps[i] = ctx.require;
 				count--;
@@ -412,7 +404,7 @@ var curl, require, define;
 					name = prefix + '!' + resName;
 				}
 				else {
-					resName = name = normalizeName(names[i], ctx);
+					resName = name = normalizeName(dep, ctx);
 				}
 				// get resource definition
 				var def = cache[name] || (prefix ? fetchPluginDef(name, prefix, resName, ctx) : fetchResDef(resName, ctx));
@@ -431,7 +423,7 @@ var curl, require, define;
 					}
 				);
 			}
-		}(i));
+		}(i, names[i]));
 
 		// were there none to fetch and did we not already complete the promise?
 		if (count === 0 && !completed) {
