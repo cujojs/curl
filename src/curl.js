@@ -42,9 +42,6 @@ var curl, require, define;
 		},
 		// net to catch anonymous define calls' arguments (non-IE browsers)
 		argsNet,
-		// current definition about to be loaded (this helps catch when
-		// IE loads a script sync from cache)
-		activeName,
 		// this is the list of scripts that IE is loading. one of these will
 		// be the "interactive" script. too bad IE doesn't send a readystatechange
 		// event to tell us exactly which one.
@@ -61,7 +58,9 @@ var curl, require, define;
 		baseUrlRe = /^\/\/|^[^:]*:\/\//,
 		//loadedRe = /^complete$|^interactive$|^loaded$/,
 		normalizeRe = /^\.\//,
-		readyStates = { loaded: 1, interactive: 1, complete: 1 };
+		readyStates = { loaded: 1, interactive: 1, complete: 1 },
+
+		errorSuffix = '. Syntax error or name mismatch.';
 
 	function forin (obj, lambda) {
 		for (var p in obj) {
@@ -196,19 +195,18 @@ var curl, require, define;
 		function process (ev) {
 			ev = ev || global.event;
 			// script processing rules learned from RequireJS
-			var el = this; // ev.currentTarget || ev.srcElement;
-			if (ev.type === 'load' || readyStates[el.readyState]) {
+			if (ev.type === 'load' || readyStates[this.readyState]) {
 				delete activeScripts[def.name];
 				// release event listeners
-				el.onload = el.onreadystatechange = el.onerror = null;
+				this.onload = this.onreadystatechange = this.onerror = null;
 				success();
 			}
 		}
 
 		function fail (e) {
-			// some browsers send an event, others send a string
-			var msg = e.type || e;
-			failure(new Error('Script not loaded: ' + def.url + ' (browser says: ' + msg + ')'));
+			// some browsers send an event, others send a string,
+			// but none of them send anything useful, so just say we failed:
+			failure(new Error('Script error: ' + def.url + errorSuffix));
 		}
 
 		// insert script
@@ -289,7 +287,7 @@ var curl, require, define;
 				if (def.useNet !== false) {
 					if (!args) {
 						// uh oh, nothing was added to the resource net
-						def.reject(new Error('define() not found: ' + def.url + '. Syntax error or name mismatch.'));
+						def.reject(new Error('define() not found: ' + def.url + errorSuffix));
 					}
 					else if (args.ex) {
 						// the resNet resource was already rejected, but it didn't know
@@ -433,13 +431,11 @@ var curl, require, define;
 	}
 
 	function getCurrentDefName () {
-		var def = activeName || null;
-		if (!def) {
-			for (var d in activeScripts) {
-				if (activeScripts[d].readyState === 'interactive') {
-					def = d;
-					break;
-				}
+		var def;
+		for (var d in activeScripts) {
+			if (activeScripts[d].readyState === 'interactive') {
+				def = d;
+				break;
 			}
 		}
 		return def;
@@ -543,8 +539,8 @@ var curl, require, define;
 			def.useNet = false;
 			// resolve dependencies
 			getDeps(args.deps, ctx,
-				function defResolved (deps) { def.resolve(args.res.apply(null, deps)); },
-				function defRejected (ex) { def.reject(ex); }
+				function (deps) { def.resolve(args.res.apply(null, deps)); },
+				function (ex) { def.reject(ex); }
 			);
 		}
 
@@ -598,17 +594,29 @@ var curl, require, define;
 		var promise = new Promise(),
 			fixReadyState = typeof doc.readyState != "string",
 			i = 0,
-			addEvent, checkDOMReady, remover, removers, pollerTO;
+			completed = false,
+			addEvent, remover, removers, pollerTO;
 
+		// override the base resolve function to clean up
 		promise.resolve = function () {
-			Promise.prototype.resolve.call(this);
+			completed = true;
 			clearTimeout(pollerTO);
 			while (remover = removers[i++]) remover();
 			if (fixReadyState) {
 				doc.readyState = "interactive";
 			}
+			Promise.prototype.resolve.call(this);
 		};
 
+		function checkDOMReady (evt) {
+			if (!completed && readyStates[doc.readyState]) {
+				promise.resolve();
+				console.log('resolved');
+			}
+		}
+
+		// select the correct event listener function. all of our supported
+		// browser will use one of these
 		addEvent = ('addEventListener' in global) ?
 			function (node, event) {
 				node.addEventListener(event, checkDOMReady, false);
@@ -619,20 +627,6 @@ var curl, require, define;
 				return function () { node.detachEvent(event, checkDOMReady); };
 			};
 
-		checkDOMReady = function (evt) {
-//			if (evt) {
-//				console.log(evt.type);
-//			}
-//			if (readyStates[doc.readyState]) {
-//				console.log("readyState poll", readyStates[doc.readyState]);
-//			}
-			if (readyStates[doc.readyState]) {
-				//remove();
-				promise.resolve();
-				checkDOMReady = function () {};
-			}
-		};
-
 		function poller () {
 			checkDOMReady();
 			pollerTO = setTimeout(poller, 30);
@@ -642,7 +636,7 @@ var curl, require, define;
 			promise.resolve();
 		}
 		else {
-			// add event listeners and collect remove functions
+			// add event listeners and collect remover functions
 			removers = [
 				addEvent(global, 'load'),
 				addEvent(doc, 'readystatechange'),

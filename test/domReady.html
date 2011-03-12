@@ -6,6 +6,18 @@
 
 	<script src="../src/curl.js" type="text/javascript"></script>
 	<script>
+		if (!window.console) console = {};
+		if (!('log' in console)) {
+			console._msg = [];
+			console.log = function (msg) {
+				var _msg = this._msg;
+				_msg.push(msg);
+				clearTimeout(this._timeout);
+				this._timeout = setTimeout(function () {
+					alert(_msg.join('\n'));
+				}, 100);
+			};
+		}
 		function isDomReady () {
 			return !!(document.body && document.getElementById('a') && document.body.appendChild(document.createElement('span')));
 		}
