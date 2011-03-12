@@ -609,12 +609,12 @@ var curl, require, define;
 
 		var promise = new Promise(),
 			//cbs = [],
-			isLoaded = false,
+			//isLoaded = false,
 			//documentReadyStates = { "loaded": 1, "interactive": 1, "complete": 1 },
-			events = { DOMContentLoaded: 1, load: 1, readystatechange: 1},
+			//events = { DOMContentLoaded: 1, load: 1, readystatechange: 1},
 			fixReadyState = typeof doc.readyState != "string",
 			hasAEL = typeof global.addEventListener != "undefined",
-			/*checkDOMReady,*/ remove, pollerTO;
+			checkDOMReady, remove, pollerTO;
 
 		promise.resolve = function () {
 			Promise.prototype.resolve.call(this);
@@ -642,21 +642,23 @@ var curl, require, define;
 //			domReady = curl.domReady = function (cb) { cb(); };
 //		}
 
-		function checkDOMReady (evt) {
+		checkDOMReady = function (evt) {
 //			if (isLoaded || (evt && !events[evt.type]) ||
 //					!readyStates[doc.readyState]) {
 //				return;
 //			}
+//			if (evt) {
+//				console.log(evt.type);
+//			}
+//			if (readyStates[doc.readyState]) {
+//				console.log("readyState poll", readyStates[doc.readyState]);
+//			}
 			if (readyStates[doc.readyState]) {
-				/*if (evt) {
-					console.log(evt.type);
-				} else if (readyStates[doc.readyState]) {
-					console.log("readyState poll");
-				}*/
 				//remove();
 				promise.resolve();
+				checkDOMReady = function () {};
 			}
-		}
+		};
 
 		function poller () {
 			checkDOMReady();
