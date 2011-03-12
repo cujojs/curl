@@ -313,7 +313,9 @@ var curl, require, define;
 
 			},
 
-			def.reject
+			function (ex) {
+				def.reject(ex);
+			}
 
 		);
 
