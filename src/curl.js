@@ -56,7 +56,6 @@ var curl, require, define;
 		// RegExp's used later, "cached" here
 		pathRe = /[^\/]*(?:\/|$)/g,
 		baseUrlRe = /^\/\/|^[^:]*:\/\//,
-		//loadedRe = /^complete$|^interactive$|^loaded$/,
 		normalizeRe = /^\.\//,
 		readyStates = { loaded: 1, interactive: 1, complete: 1 },
 
@@ -293,6 +292,10 @@ var curl, require, define;
 						// the resNet resource was already rejected, but it didn't know
 						// its name, so reject this def with better information
 						def.reject(new Error(args.ex.replace('${url}', def.url)));
+					}
+					else if (!args.deps) {
+						// no dependencies, just call the definition function
+						def.resolve(args.res());
 					}
 					else {
 						// resolve dependencies and execute definition function here
@@ -534,14 +537,19 @@ var curl, require, define;
 		}
 		if (name != null) {
 			// named define()
-			var def = cache[name],
-				ctx = begetCtx(def.ctx, name);
+			var def = cache[name];
 			def.useNet = false;
-			// resolve dependencies
-			getDeps(args.deps, ctx,
-				function (deps) { def.resolve(args.res.apply(null, deps)); },
-				function (ex) { def.reject(ex); }
-			);
+			if (!args.deps) {
+				// call definition function
+				def.resolve(args.res());
+			}
+			else {
+				// resolve dependencies and call the definition function
+				getDeps(args.deps, begetCtx(def.ctx, name),
+					function (deps) { def.resolve(args.res.apply(null, deps)); },
+					function (ex) { def.reject(ex); }
+				);
+			}
 		}
 
 	}
