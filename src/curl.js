@@ -120,13 +120,6 @@ var curl, require, define;
 	//	return _isType(obj, '[object Opera]');
 	//}
 
-	function findHead (doc) {
-		// find and return the head element
-		var el = doc.documentElement.firstChild;
-		while (el && el.nodeType !== 1) el = el.nextSibling;
-		return el;
-	}
-
 	function F () {}
 	function beget (ancestor) {
 		F.prototype = ancestor;
@@ -148,7 +141,7 @@ var curl, require, define;
 			return fixPath(normalizeName(name, ctx), ctx.baseUrl);
 		};
 		if (ctx.doc && !ctx.head) {
-			ctx.head = findHead(ctx.doc);
+			ctx.head = ctx.doc.getElementsByTagName('head')[0];
 		}
 		return ctx;
 	}
@@ -406,8 +399,7 @@ var curl, require, define;
 			};
 
 			// ouch! RequireJS's i18n plugin (0.22) uses the global require, not the one passed in
-			// TODO: remove. looks like it's fixed in 0.23
-			//if (prefix.indexOf('i18n') >= 0) global.require.mixin = r.mixin;
+			if (prefix.indexOf('i18n') >= 0) global.require.mixin = r.mixin;
 
 			// load the resource!
 			plugin.load(name, r, loaded, ctx);
