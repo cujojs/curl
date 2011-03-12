@@ -278,7 +278,7 @@ var curl, require, define;
 		def.url = toUrl(name, 'js', ctx);
 
 		loadScript(def,
-			function scriptSuccess () {
+			function () {
 
 				// these are no longer needed
 				delete def.doc;
@@ -303,10 +303,10 @@ var curl, require, define;
 						// resolve dependencies and execute definition function here
 						// because we couldn't get the cfg in the anonymous define()
 						getDeps(args.deps, begetCtx(ctx, def.name),
-							function depsSuccess (deps) {
+							function (deps) {
 								def.resolve(args.res.apply(null, deps));
 							},
-							function depsFailure (ex) {
+							function (ex) {
 								def.reject(ex);
 							}
 						);
@@ -315,7 +315,7 @@ var curl, require, define;
 
 			},
 
-			function scriptFailure (ex) {
+			function (ex) {
 				delete def.doc;
 				delete def.head;
 				def.reject(ex);
@@ -418,14 +418,14 @@ var curl, require, define;
 				var def = cache[name] || (prefix ? fetchPluginDef(name, prefix, resName, ctx) : fetchResDef(resName, ctx));
 				// hook into promise callbacks
 				def.then(
-					function defSuccess (dep) {
+					function (dep) {
 						deps[i] = dep;
 						if (--count == 0) {
 							completed = true;
 							success(deps);
 						}
 					},
-					function defFailure (ex) {
+					function (ex) {
 						completed = true;
 						failure(ex);
 					}
@@ -475,11 +475,11 @@ var curl, require, define;
 
 		// resolve dependencies
 		getDeps(deps, ctx,
-			function reqResolved (deps) {
+			function (deps) {
 				// Note: deps are passed to a promise as an array, not as individual arguments
 				callback.resolve ? callback.resolve(deps) : callback.apply(null, deps);
 			},
-			function reqRejected (ex) {
+			function (ex) {
 				if (callback.reject) callback.reject(ex);
 				else throw ex;
 			}
@@ -605,13 +605,13 @@ var curl, require, define;
 
 		var promise = new Promise(),
 			fixReadyState = typeof doc.readyState != "string",
-			addEvent,
-			checkDOMReady, remove, removes, pollerTO, i = 0;
+			i = 0,
+			addEvent, checkDOMReady, remover, removers, pollerTO;
 
 		promise.resolve = function () {
 			Promise.prototype.resolve.call(this);
 			clearTimeout(pollerTO);
-			while (remove = removes[i++]) remove();
+			while (remover = removers[i++]) remover();
 			if (fixReadyState) {
 				doc.readyState = "interactive";
 			}
@@ -623,11 +623,8 @@ var curl, require, define;
 				return function () { node.removeEventListener(event, checkDOMReady, false); };
 			} :
 			function (node, event) {
-				// DOMContentLoaded will throw in IE. ugly ugly ugly hack
-				if (event != 'DOMContentLoaded') {
-					node.attachEvent('on' + event, checkDOMReady);
-					return function () { node.detachEvent(event, checkDOMReady); };
-				}
+				node.attachEvent('on' + event, checkDOMReady);
+				return function () { node.detachEvent(event, checkDOMReady); };
 			};
 
 		checkDOMReady = function (evt) {
@@ -654,10 +651,10 @@ var curl, require, define;
 		}
 		else {
 			// add event listeners and collect remove functions
-			removes = [
-				addEvent(global, 'DOMContentLoaded'),
+			removers = [
 				addEvent(global, 'load'),
-				addEvent(global, 'readystatechange')
+				addEvent(doc, 'readystatechange'),
+				addEvent(global, 'DOMContentLoaded')
 			];
 			// additionally, poll for readystate
 			pollerTO = setTimeout(poller, 30);
