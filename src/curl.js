@@ -51,57 +51,61 @@ var curl, require, define;
 		activeScripts = {},
 		// this is always handy :)
 		op = Object.prototype,
+		toString = op.toString,
 		// and this
 		undef,
-		aslice = [].slice;
+		aslice = [].slice,
 
-	function forin (obj, lambda) {
-		for (var p in obj) {
-			if (!(p in op)) {
+		// RegExp's defined later
+		pathRE,
+		baseUrlRE,
+		loadedRE,
+		normalizeRE,
+
+		// for...in bug detection
+		shadows = (function(){
+			var obj = { toString: 1 };
+			for(var prop in obj){ return 0; }
+			return 1;
+		})(),
+		shadowed = [
+			'constructor', 'hasOwnProperty',
+			'isPrototypeOf', 'propertyIsEnumerable',
+			'toLocaleString', 'toString', 'valueOf'
+		],
+		shadowedLen = shadowed.length,
+		forin, oldforin;
+
+	forin = function (obj, lambda) {
+		// keys is to prevent Safari 2 double loop
+		var keys = {}, p;
+		for (p in obj) {
+			if (!(p in op) && !(p in keys)) {
+				keys[p] = 1;
 				lambda(obj[p], p, obj);
 			}
 		}
+	};
+	if(shadows){
+		oldforin = forin;
+		forin = function (obj, lambda) {
+			var name, i = shadowedLen;
+			oldforin.call(this, obj, lambda);
+			// IE doesn't recognize some custom functions in for..in
+			while(i--){
+				name = shadowed[i];
+				if(obj.hasOwnProperty(name)){
+					callback.call(thisArg, obj[name], name, obj);
+				}
+			}
+		};
 	}
-
-	// grab any global configuration info
-	var userCfg = global.require || global.curl;
-	if (userCfg) {
-		// store global config
-		forin(userCfg, function (value, p) {
-			config[p] = value;
-		});
-	}
-
-	// TODO: path and baseUrl fixing should happen any time these are specified (e.g. in begetCfg)
-	var baseUrl = config.baseUrl;
-	if (!baseUrl) {
-		// if we don't have a baseUrl (null, undefined, or '')
-		// use the document's path as the baseUrl
-		config.baseUrl = '';
-	//	var url = config.doc.location.href;
-	//	config.baseUrl = url.substr(0, url.lastIndexOf('/') + 1);
-	}
-	else {
-		// ensure there's a trailing /
-		config.baseUrl = fixEndSlash(baseUrl);
-	}
-
-	// ensure all paths end in a '/'
-	var paths = config.paths;
-	forin(paths, function (path, p) {
-		paths[p] = fixEndSlash(path);
-		if (p.charAt(p.length - 1) !== '/') {
-			paths[p + '/'] = path;
-			delete paths[p];
-		}
-	});
-	config.pluginPath = fixEndSlash(config.pluginPath);
 
 	function _isType (obj, type) {
-		return op.toString.call(obj) === type;
+		return toString.call(obj) === type;
 	}
 	function isFunction (obj) {
-		return _isType(obj, '[object Function]')
+		return _isType(obj, '[object Function]');
 	}
 
 	function isString (obj) {
@@ -176,7 +180,7 @@ var curl, require, define;
 				function () { throw new Error('Promise already completed.'); };
 			// complete all callbacks
 			var cb, i = 0;
-			while (cb = which[i++]) { cb(arg); }
+			while ((cb = which[i++])) { cb(arg); }
 			delete this._resolves;
 			delete this._rejects;
 		}
@@ -200,8 +204,8 @@ var curl, require, define;
 		return path.charAt(path.length - 1) === '/' ? path : path + '/';
 	}
 
-	var pathRe = /[^\/]*(?:\/|$)/g,
-		baseUrlRe = /^\/\/|^[^:]*:\/\//;
+	pathRe = /[^\/]*(?:\/|$)/g;
+	baseUrlRe = /^\/\/|^[^:]*:\/\//;
 	function fixPath (name, baseUrl) {
 		// TODO: stop appending a '/' to all cfg.paths properties to see if it simplifies this routine
 		// takes a resource name (w/o ext!) and resolves it to a url
@@ -229,7 +233,7 @@ var curl, require, define;
 		return fixPath(name, ctx.baseUrl) + (ext ? '.' + ext : '');
 	}
 
-	var loadedRe = /^complete$|^interactive$|^loaded$/;
+	loadedRe = /^complete$|^interactive$|^loaded$/;
 	function loadScript (def, success, failure) {
 
 		// initial script processing
@@ -255,10 +259,13 @@ var curl, require, define;
 		var el = def.ctx.doc.createElement('script'),
 			head  = def.ctx.head;
 		// detect when it's done loading
+		//
+		// set type first since setting other properties could
+		// prevent us from setting this later
+		el.type = 'text/javascript';
 		// using dom0 event handlers instead of wordy w3c/ms
 		el.onload = el.onreadystatechange = process;
 		el.onerror = fail;
-		el.type = 'text/javascript';
 		el.charset = 'utf-8';
 		el.async = true; // for Firefox
 		el.src = def.url;
@@ -378,7 +385,7 @@ var curl, require, define;
 		// curl's plugins prefer to receive the back-side of a promise,
 		// but to be compatible with commonjs's specification, we have to
 		// piggy-back on the callback function parameter:
-		var loaded = function (res) { def.resolve(res) };
+		var loaded = function (res) { def.resolve(res); };
 		loaded.resolve = loaded;
 		loaded.reject = function (ex) { def.reject(ex); };
 
@@ -414,7 +421,7 @@ var curl, require, define;
 
 	}
 
-	var normalizeRe = /^\.\//;
+	normalizeRe = /^\.\//;
 	function normalizeName (name, ctx) {
 		// if name starts with . then use parent's name as a base
 		return name.replace(normalizeRe, ctx.baseName);
@@ -492,39 +499,6 @@ var curl, require, define;
 		return def;
 	}
 
-	// this is only domReady. it doesn't wait for dependencies
-	function domReady (callback) {
-		// adds a callback to be executed when the dom is ready
-
-		var cbs = [];
-
-		function loaded () {
-			var cb;
-			while (cb = cbs.pop()) cb();
-			domReady = function (cb) { cb(); };
-		}
-		function w3cLoaded () {
-			global.removeEventListener('DOMContentLoaded', w3cLoaded, false);
-			global.removeEventListener('load', w3cLoaded, false);
-			loaded();
-		}
-
-		if (global.addEventListener) {
-			// one of these will work
-			global.addEventListener('DOMContentLoaded', w3cLoaded, false);
-			global.addEventListener('load', w3cLoaded, false);
-		}
-		else {
-			global.attachEvent('onload', function ieLoaded () {
-				global.detachEvent('onload', ieLoaded);
-				loaded();
-			});
-		}
-
-		(domReady = function (cb) { cbs.push(cb); })(callback);
-
-	}
-
 	function require (deps, callback, ctx) {
 		// Note: callback could be a promise
 
@@ -584,14 +558,14 @@ var curl, require, define;
 			// return the dependencies as arguments, not an array
 			api.then = function (resolved, rejected) {
 				promise.then(
-					function (deps) { resolved.apply(null, deps) },
+					function (deps) { resolved.apply(null, deps); },
 					function (ex) { rejected(beget(ex)); }
 				);
 				return api;
 			};
 			// ready will call the callback when both the document and the dependencies are ready
 			api.ready = function (cb) {
-				promise.then(function () { domReady(cb) });
+				promise.then(function () { domReady(cb); });
 				return api;
 			};
 			if (callback) api.then(callback);
@@ -630,9 +604,131 @@ var curl, require, define;
 
 	}
 
+	// grab any global configuration info
+	var userCfg = global.require || global.curl;
+
+	// exit if it's already been defined
+	if (isFunction(userCfg)) {
+		return;
+	}
+
+	if (userCfg) {
+		// store global config
+		forin(userCfg, function (value, p) {
+			config[p] = value;
+		});
+	}
+
+	// TODO: path and baseUrl fixing should happen any time these are specified (e.g. in begetCfg)
+	var baseUrl = config.baseUrl;
+	if (!baseUrl) {
+		// if we don't have a baseUrl (null, undefined, or '')
+		// use the document's path as the baseUrl
+		config.baseUrl = '';
+	//	var url = config.doc.location.href;
+	//	config.baseUrl = url.substr(0, url.lastIndexOf('/') + 1);
+	}
+	else {
+		// ensure there's a trailing /
+		config.baseUrl = fixEndSlash(baseUrl);
+	}
+
+	// ensure all paths end in a '/'
+	var paths = {};
+	forin(config.paths, function (path, p) {
+		paths[p] = fixEndSlash(path);
+		if (p.charAt(p.length - 1) !== '/') {
+			paths[p + '/'] = path;
+			delete paths[p];
+		}
+	});
+	config.paths = paths;
+	config.pluginPath = fixEndSlash(config.pluginPath);
+
 	global.require = global.curl = curl;
 	global.define = curl.define = define;
-	curl.domReady = domReady;
+
+	// this is only domReady. it doesn't wait for dependencies
+	var domReady = curl.domReady = (function () {
+
+		var cbs = [],
+			isLoaded = false,
+			documentReadyStates = { "loaded": 1, "interactive": 1, "complete": 1 },
+			events = { "DOMContentLoaded": 1, "load": 1, "readystatechange": 1},
+			fixReadyState = typeof doc.readyState != "string",
+			hasAEL = typeof global.addEventListener != "undefined",
+			checkDOMReady, remove, pollerTO;
+
+		function loaded () {
+			if (isLoaded) return;
+
+			if (pollerTO) {
+				clearTimeout(pollerTO);
+			}
+			isLoaded = true;
+
+			if (fixReadyState) {
+				doc.readyState = "interactive";
+			}
+
+			var cb;
+			while ((cb = cbs.pop())) cb();
+			domReady = curl.domReady = function (cb) { cb(); };
+		}
+
+		function poller () {
+			checkDOMReady();
+			if (isLoaded) { return; }
+			pollerTO = setTimeout(poller, 30);
+		}
+
+		checkDOMReady = function (evt) {
+			if (isLoaded || (evt && !events[evt.type]) ||
+					!documentReadyStates[doc.readyState]) {
+				return;
+			}
+			/*if (evt) {
+				console.log(evt.type);
+			} else if (documentReadyStates[doc.readyState]) {
+				console.log("readyState poll");
+			}*/
+			remove();
+			loaded();
+		};
+
+		if (doc.readyState == "complete") {
+			loaded();
+		} else {
+			if (hasAEL) {
+				remove = function () {
+					global.removeEventListener('DOMContentLoaded', checkDOMReady, false);
+					global.removeEventListener('load', checkDOMReady, false);
+					doc.removeEventListener('readystatechange', checkDOMReady, false);
+				};
+				// one of these will work
+				global.addEventListener('DOMContentLoaded', checkDOMReady, false);
+				global.addEventListener('load', checkDOMReady, false);
+				doc.addEventListener('readystatechange', checkDOMReady, false);
+			}
+			else if (typeof global.attachEvent != "undefined") {
+				remove = function () {
+					global.detachEvent('onload', checkDOMReady);
+					doc.detachEvent('readystatechange', checkDOMReady);
+				};
+				global.attachEvent('onload', checkDOMReady);
+				doc.attachEvent('onreadystatechange', checkDOMReady);
+			}
+
+			// additionally, poll for readystate
+			pollerTO = setTimeout(poller, 30);
+		}
+
+		return function (cb) {
+			// adds a callback to be executed when the dom is ready
+			cbs.push(cb);
+		};
+
+	})();
 
 	// this is to comply with the AMD CommonJS proposal:
 	define.amd = {};
