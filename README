@@ -13,11 +13,74 @@ TODO: figure out why Opera can't detect anonymous modules
 What is curl.js?
 ================
 
-curl.js is a small, but very fast and capable AMD-compliant asynchronous loader.
+curl.js is a small, but very fast AMD-compliant asynchronous loader.
 Current size: 5.7KB (2.5KB gzipped) using Google's Closure Compiler.
 
 If you're already familiar with CommonJS AMD loaders, skip down to the section
 "How do I use curl.js?"
+
+----------------------------------------
+
+Features at a glance:
+=====================
+
+* Loads CommonJS AMD-formatted javascript modules
+* Loads non-AMD javascript files, too
+* Loads CSS files and text files (via plugins)
+* Waits for dependencies (js, css, text, etc) before executing javascript
+* Waits for domReady --OR-- waits for all dependencies and domReady
+* Tested with Chrome, FF3+, Safari 3.2+, IE6-8, Opera 9.5+
+
+----------------------------------------
+
+API at a glance
+===============
+
+"curl" and "require" are synonyms. You may use them interchangeably.
+
+curl(dependencies, callback);
+require(dependencies, callback);
+
+	Loads dependencies and the executes callback.
+	dependencies: Array of module names or plugin-prefixed resource files
+	callback: Function to receive modules or resources
+
+curl(dependencies)
+	.then(callback, errorback);
+require(dependencies)
+	.then(callback, errorback);
+
+	Promises-based API for executing callbacks.
+	dependencies: Array of module names or plugin-prefixed resource files
+	callback: Function to receive modules or resources
+	errorback: Function to call if an exception occurred while loading
+
+curl(config, dependencies, callback);
+require(config, dependencies, callback);
+
+	Specify configuration options, load dependencies, and execute callback.
+	config: Object containing curl configuration options (paths, etc.)
+	dependencies: Array of module names or plugin-prefixed resource files
+	callback: Function to receive modules or resources
+
+curl.domReady(callback);
+curl.domReady().then(callback);
+
+	Executes the callback when the dom is ready for manipulation.
+	callback: Function (no parameters)
+
+define(dependencies, definition);
+define(dependencies, module);
+define(module);
+define(name, dependencies, definition);
+define(name, dependencies, module);
+define(name, module);
+
+	Defines a module per the CommonJS AMD proposed specification.
+	dependencies: Array of module names or plugin-prefixed resource files
+	definition: Function called to define the module
+	module: Any javascript object, function, constructor, or primitive
+	name: String used to name a module (not necessary nor recommended)
 
 ----------------------------------------
 
@@ -157,6 +220,27 @@ require(
 
 ----------------------------------------
 
+Can curl.js load non-javascript files?
+=======================
+
+Yes, curl.js follows the CommonJS Loader Plugin specification, so you can use
+any compatible plugin. The following plugins are included:
+
+js! -- loads non-AMD javascript files
+text! -- loads text files
+
+You can also load css files by using the AMD plugin at the following repo:
+https://github.com/unscriptable/cssx/blob/master/src/cssx/css.js
+
+The following plugins are planned:
+
+i18n! -- loads text strings and other locale-specific constants
+cssx! -- loads and automatically shims css files for older browsers
+
+----------------------------------------
+
+----------------------------------------
+
 How are modules loaded?
 =======================
 
@@ -225,6 +309,8 @@ How do I use curl.js?
 TODO: step-by-step instructions
 
 TODO: curl.domReady() vs. require().ready() / curl().ready()
+
+(take a look at the test files for some example code)
 
 ----------------------------------------
 
