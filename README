@@ -1,10 +1,10 @@
 curl (CUjo Resource Loader)
 =====================
 
-version 0.1
+version 0.2
 TODO: finish compatibility with non-AMD CommonJS modules (node.js)
 TODO: implement packages
-TODO: finish core extensions (js, debug, sync first)
+TODO: finish core extensions (debug, commonjs, etc)
 TODO: more plugins
 TODO: figure out why Opera can't detect anonymous modules
 
@@ -14,7 +14,10 @@ What is curl.js?
 ================
 
 curl.js is a small, but very fast and capable AMD-compliant asynchronous loader.
-Current size: 4.4KB (2.1KB gzipped) using Google Closure Compiler.
+Current size: 5.7KB (2.5KB gzipped) using Google's Closure Compiler.
+
+If you're already familiar with CommonJS AMD loaders, skip down to the section
+"How do I use curl.js?"
 
 ----------------------------------------
 
@@ -127,6 +130,30 @@ require(
 
 (When using CommonJS sync syntax {{{var res = require('resName');}}}, a promise
 isn't returned since the resource is returned synchronously. duh)
+
+----------------------------------------
+
+Can curl.js work with non-AMD javascript files?
+===============================================
+
+Yes, but why would you?  Once you start using AMD, you'll never go back! :)
+
+You may use non-AMD javascript files by specifying the js! plugin prefix
+like this:
+
+require(
+	[
+		'js!plainOldJsFile1.js',
+		'js!anotherPlainOldJsFile.js'
+	]
+).then(
+	function () {
+		/* do something with your plain, boring javascript files */
+	},
+	function () {
+		/* do something if any fail to load */
+	}
+);
 
 ----------------------------------------
 
