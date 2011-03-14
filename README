@@ -343,3 +343,6 @@ AsseMbler. cram will be ready by mid 2011, so use another build tool or a
 custom shell script in the mean time.
 
 ----------------------------------------
+
+Many thanks to Bryan Forbes for helping to clean up my code.
+Kudos also to James Burke who instigated the CommonJS AMD proposal.
