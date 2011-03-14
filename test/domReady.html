@@ -11,20 +11,25 @@
 			console._msg = [];
 			console.log = function (msg) {
 				var _msg = this._msg;
-				_msg.push(msg);
+				_msg.push(msg && msg.join ? msg.join(' ') : msg);
 				clearTimeout(this._timeout);
 				this._timeout = setTimeout(function () {
 					alert(_msg.join('\n'));
 				}, 100);
 			};
 		}
+
+		var handle;
 		function isDomReady () {
 			return !!(document.body && document.getElementById('a') && document.body.appendChild(document.createElement('span')));
 		}
+		function poller () {
+			var isReady = isDomReady();
+			console.log('it is ready?', isReady);
+			if (!isReady) setTimeout(poller, 10);
+		}
 		console.log('dom should not be ready: false ==', isDomReady());
-		var handle = setInterval(function () {
-			console.log('it is ready?', isDomReady());
-		}, 10);
+		handle = setTimeout(poller, 10);
 		curl.domReady(function(){
 			clearInterval(handle);
 			console.log('DOM Ready!', isDomReady());
