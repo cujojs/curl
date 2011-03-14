@@ -52,14 +52,13 @@ var curl, require, define;
 		// and this
 		undef,
 		aslice = [].slice,
-
 		// RegExp's used later, "cached" here
 		pathRe = /[^\/]*(?:\/|$)/g,
 		baseUrlRe = /^\/\/|^[^:]*:\/\//,
 		normalizeRe = /^\.\//,
 		findCurlRe = /(.*curl).js$/,
 		readyStates = { loaded: 1, interactive: 1, complete: 1 },
-
+		// reused strings
 		errorSuffix = '. Syntax error or name mismatch.';
 
 	function forin (obj, lambda) {
@@ -154,7 +153,6 @@ var curl, require, define;
 	ResourceDef.prototype = new Promise();
 	ResourceDef.prototype._complete = function (which, arg) {
 		Promise.prototype._complete.call(this, which, arg);
-//console.log('completing', this.url, this.name);
 		delete this.ctx;
 		delete this.url;
 	};
@@ -608,20 +606,19 @@ var curl, require, define;
 			completed = false,
 			addEvent, remover, removers, pollerTO;
 
-		// override the base resolve function to clean up
-		promise.resolve = function () {
+		function ready () {
 			completed = true;
 			clearTimeout(pollerTO);
 			while (remover = removers[i++]) remover();
 			if (fixReadyState) {
 				doc.readyState = "interactive";
 			}
-			Promise.prototype.resolve.call(this);
-		};
+			promise.resolve();
+		}
 
 		function checkDOMReady (evt) {
 			if (!completed && readyStates[doc.readyState]) {
-				promise.resolve();
+				ready();
 			}
 		}
 
@@ -643,7 +640,7 @@ var curl, require, define;
 		}
 
 		if (doc.readyState == "complete") {
-			promise.resolve();
+			ready();
 		}
 		else {
 			// add event listeners and collect remover functions
