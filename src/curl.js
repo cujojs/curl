@@ -493,7 +493,6 @@ var curl, require, define;
 				return api;
 			};
 			// ready will call the callback when both the document and the dependencies are ready
-			// TODO: finish this and chain the promises so .ready().then() works!
 			api.ready = function (cb) {
 				promise.then(function () { domReady(cb); });
 				return api;
