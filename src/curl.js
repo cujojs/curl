@@ -100,7 +100,7 @@ var curl, require, define;
 			ctx.baseName = name.substr(0, pos + 1);
 		}
 		ctx.require = function (deps, callback) {
-			return require(deps, callback, ctx);
+			return _require(deps, callback, ctx);
 		};
 		ctx.require.toUrl = function (name) {
 			return fixPath(normalizeName(name, ctx), ctx.baseUrl);
@@ -154,6 +154,7 @@ var curl, require, define;
 	ResourceDef.prototype = new Promise();
 	ResourceDef.prototype._complete = function (which, arg) {
 		Promise.prototype._complete.call(this, which, arg);
+//console.log('completing', this.url, this.name);
 		delete this.ctx;
 		delete this.url;
 	};
@@ -190,12 +191,18 @@ var curl, require, define;
 	}
 
 	function loadScript (def, success, failure) {
+		// script processing rules learned from RequireJS
+
+		// insert script
+		var el = def.ctx.doc.createElement('script'),
+			head  = def.ctx.head;
 
 		// initial script processing
 		function process (ev) {
 			ev = ev || global.event;
-			// script processing rules learned from RequireJS
+			// detect when it's done loading
 			if (ev.type === 'load' || readyStates[this.readyState]) {
+//console.log('success', this.src);
 				delete activeScripts[def.name];
 				// release event listeners
 				this.onload = this.onreadystatechange = this.onerror = null;
@@ -209,11 +216,6 @@ var curl, require, define;
 			failure(new Error('Script error: ' + def.url + errorSuffix));
 		}
 
-		// insert script
-		var el = def.ctx.doc.createElement('script'),
-			head  = def.ctx.head;
-		// detect when it's done loading
-		//
 		// set type first since setting other properties could
 		// prevent us from setting this later
 		el.type = 'text/javascript';
@@ -344,28 +346,8 @@ var curl, require, define;
 
 		// go get plugin
 		ctx.require([prefix], function (plugin) {
-
-			// create a custom require for RequireJS 0.22 compatibility
-			var r = function () { return ctx.require.apply(null, arguments); };
-			r.toUrl = function (name) {
-				return fixPath(normalizeName(name, ctx), ctx.baseUrl);
-			};
-			r.nameToUrl = function (name, ext) {
-				return toUrl(name, ext.substr(1), ctx);
-			};
-			r.mixin = function (target, source, force) {
-				forin(source, function (value, prop) {
-					if ((!(prop in target) || force)) {
-						target[prop] = source[prop];
-					}
-				});
-			};
-
-			// ouch! RequireJS's i18n plugin (0.22) uses the global require, not the one passed in
-			if (prefix.indexOf('i18n') >= 0) global.require.mixin = r.mixin;
-
 			// load the resource!
-			plugin.load(name, r, loaded, ctx);
+			plugin.load(name, begetCtx(ctx, name).require, loaded, ctx);
 
 		});
 
@@ -380,7 +362,7 @@ var curl, require, define;
 
 	function getDeps (names, ctx, success, failure) {
 		// TODO: throw if multiple exports found?
-		// TODO: supply exports and module
+		// TODO: supply exports and module in a commonjs extension
 
 		var deps = [],
 			count = names ? names.length : 0,
@@ -393,12 +375,12 @@ var curl, require, define;
 				deps[i] = ctx.require;
 				count--;
 			}
-			else if (dep === 'exports') {
-				throw new Error('exports parameter not supported.');
-			}
-			else if (dep === 'module') {
-				throw new Error('module parameter not supported.');
-			}
+			//else if (dep === 'exports') {
+			//	throw new Error('exports parameter not supported.');
+			//}
+			//else if (dep === 'module') {
+			//	throw new Error('module parameter not supported.');
+			//}
 			else {
 				var name, parts, prefix, resName;
 				// check for plugin prefix
@@ -447,7 +429,7 @@ var curl, require, define;
 		return def;
 	}
 
-	function require (deps, callback, ctx) {
+	function _require (deps, callback, ctx) {
 		// Note: callback could be a promise
 
 		// sync require
@@ -481,7 +463,7 @@ var curl, require, define;
 
 	}
 
-	function curl (/* various */) {
+	function _curl (/* various */) {
 
 		var len = arguments.length,
 			args;
@@ -493,7 +475,7 @@ var curl, require, define;
 			});
 		}
 
-		var ctx = begetCtx({ doc: config.doc, baseUrl: config.baseUrl, require: require }, '');
+		var ctx = begetCtx({ doc: config.doc, baseUrl: config.baseUrl, require: _require }, '');
 		// extract config, if it's there
 		args = fixArgs(len === 3 ? aslice.call(arguments, 1) : arguments, true);
 
@@ -524,7 +506,7 @@ var curl, require, define;
 
 	}
 
-	function define (/* various */) {
+	function _define (/* various */) {
 
 		var args = fixArgs(arguments, false),
 			name = args.name;
@@ -533,7 +515,7 @@ var curl, require, define;
 			if (argsNet !== undef) {
 				argsNet = {ex: 'Multiple anonymous defines found in ${url}.'};
 			}
-			else if (!(name = getCurrentDefName())) {
+			else if (!(name = getCurrentDefName())/* intentional assignment */) {
 				// anonymous define(), defer processing until after script loads
 				argsNet = args;
 			}
@@ -546,7 +528,7 @@ var curl, require, define;
 			if (!def) {
 				var curr = cache[getCurrentDefName()],
 					// TODO: this next line is redundant with curl(). reuse them somehow 
-					ctx = curr ? curr.ctx : begetCtx({ doc: config.doc, baseUrl: config.baseUrl, require: require }, name);
+					ctx = curr ? curr.ctx : begetCtx({ doc: config.doc, baseUrl: config.baseUrl, require: _require }, name);
 				def = cache[name] = new ResourceDef(name, ctx);
 			}
 			def.useNet = false;
@@ -604,22 +586,25 @@ var curl, require, define;
 	if (!('curl/' in paths)) {
 		// find path to curl
 		var scripts = doc.getElementsByTagName('script'),
-			i = scripts.length, script, match;
-		while ((script = scripts[--i]) && !match) { match = script.src.match(findCurlRe); }
+			i, match;
+		for (i = scripts.length - 1; i >= 0 && !match ; i--) {
+			match = scripts[i].src.match(findCurlRe);
+		}
 		paths['curl/'] = match[1] + '/';
 	}
 	config.paths = paths;
 	config.pluginPath = fixEndSlash(config.pluginPath);
 
-	global.require = global.curl = curl;
-	global.define = curl.define = define;
+	global.require = global.curl = _curl;
+	global.define = _curl.define = _define;
 
 	// this is only domReady. it doesn't wait for dependencies
-	var domReady = curl.domReady = (function () {
+	var domReady = _curl.domReady = (function () {
 
 		var promise = new Promise(),
 			fixReadyState = typeof doc.readyState != "string",
 			i = 0,
+			// IE needs this cuz it won't stop setTimeout if it's already queued up
 			completed = false,
 			addEvent, remover, removers, pollerTO;
 
@@ -678,10 +663,11 @@ var curl, require, define;
 	})();
 
 	// this is to comply with the AMD CommonJS proposal:
-	define.amd = {};
+	_define.amd = {};
 
+	// Plugin to load plain old javascript.
 	// inlining the js plugin since it's much more efficient here
-	define('curl/plugin/js', {
+	_define('curl/plugin/js', {
 
 		load: function (name, require, promise, ctx) {
 
@@ -713,50 +699,6 @@ var curl, require, define;
 
 }(this, document));
 
-
-///* initialization */
-//
-
-
-//cjsProto.createDepList = function (ids) {
-//	// this should be called on resources that are already known to be loaded
-//	var deps = [],
-//		i = 0,
-//		id, r;
-//	while ((id = ids[i++])) {
-//		if (id === 'require') {
-//			// supply a scoped require function, if requested
-//			var self = this;
-//			r = beget(global.require);
-//			r.toUrl = function (relUrl) { return self.toUrl(relUrl); };
-//		}
-//		else if (id === ' exports') {
-//			// supply a new exports object, if requested
-//			if (deps.exports) throw new Error('"exports" may only be specified once. ' + id);
-//			deps.push(deps.exports = {});
-//		}
-//		else {
-//			r = resources[id].r;
-//		}
-//		deps.push(r);
-//	}
-//	return deps;
-//};
-//
-
-//cjsProto.evalResource = function (deps, resource) {
-//	var res = resource;
-//	if (isFunction(res)) {
-//		var params = this.createDepList(deps);
-//		res = res.apply(null, params);
-//		// pull out and return the exports, if using that variant of AMD
-//		if (params.exports) {
-//			res = params.exports;
-//		}
-//	}
-//	return res;
-//};
-//
 
 
 
