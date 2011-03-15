@@ -531,10 +531,8 @@ var curl, require, define;
 			// if it's a secondary define(), grab the current def's context
 			var def = cache[name];
 			if (!def) {
-				// TODO: FIXME: this is not the current def for anything but IE:
-				var curr = cache[getCurrentDefName()],
-					// TODO: this next line is redundant with curl(). reuse them somehow 
-					ctx = curr ? curr.ctx : begetCtx({ doc: config.doc, baseUrl: config.baseUrl, require: _require }, name);
+				// TODO: this next line is redundant with curl(). reuse them somehow 
+				var ctx = begetCtx({ doc: config.doc, baseUrl: config.baseUrl, require: _require }, name);
 				def = cache[name] = new ResourceDef(name, ctx);
 			}
 			def.useNet = false;
