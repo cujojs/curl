@@ -2,9 +2,12 @@ curl (CUjo Resource Loader)
 =====================
 
 version 0.2.1
+NOTE: do NOT use google closure compiler on this version.
+	wait for 0.2.2
+TODO: i18n plugin
 TODO: finish core extensions (debug, commonjs, etc)
 TODO: commonjs extension: Modules 1.1 and packages
-TODO: i18n plugin
+TODO: start using markdown for this README
 
 ----------------------------------------
 
@@ -23,11 +26,13 @@ Features at a glance:
 =====================
 
 * Loads CommonJS AMD-formatted javascript modules
-* Loads non-AMD javascript files, too
+* Loads non-AMD javascript files, too (via embedded plugin)
 * Loads CSS files and text files (via plugins)
 * Waits for dependencies (js, css, text, etc) before executing javascript
 * Waits for domReady --OR-- waits for all dependencies and domReady
 * Tested with Chrome, FF3+, Safari 3.2+, IE6-8, Opera 9.5+
+
+Plays nice with Opera as of version 0.2.1! :)
 
 ----------------------------------------
 
@@ -61,10 +66,18 @@ require(config, dependencies, callback);
 	dependencies: Array of module names or plugin-prefixed resource files
 	callback: Function to receive modules or resources
 
-curl.domReady(callback);
-curl.domReady().then(callback);
+curl(dependencies)
+	.ready()
+	.then(callback, errorback);
 
-	Executes the callback when the dom is ready for manipulation.
+	Executes the callback when the dom is ready for manipulation AND
+	all dependencies have loaded.
+	callback: Function to receive modules or resources
+	errorback: Function to call if an exception occurred while loading
+
+curl.domReady(callback);
+
+	Simply executes a callback when the dom is ready for manipulation.
 	callback: Function (no parameters)
 
 define(dependencies, definition);
@@ -79,6 +92,56 @@ define(name, module);
 	definition: Function called to define the module
 	module: Any javascript object, function, constructor, or primitive
 	name: String used to name a module (not necessary nor recommended)
+
+----------------------------------------
+
+Very Simple Example
+===================
+
+	<script>
+
+		// configure curl
+		curl = {
+			paths: {
+				cssx: 'cssx/src/cssx/',
+				stuff: 'path/to/stuff/folder/
+			}
+		};
+
+	</script>
+	<script src="../js/curl.js" type="text/javascript"></script>
+	<script type="text/javascript">
+
+		curl(
+			// fetch all of these resources ("dependencies")
+			[
+				'stuff/three', // an AMD module
+				'cssx/css!stuff/base', // a css file
+				'i18n!stuff/nls/strings', // a translation file
+				'text!stuff/template.html' // an html template
+			]
+		)
+		// when they are loaded and the dom is ready
+		.ready()
+		.then(
+			// execute this callback, passing all dependencies as params
+			function (three, link, strings, template) {
+				var body = document.body;
+				if (body) {
+					body.appendChild(document.createTextNode('three == ' + three.toString() + ' '));
+					body.appendChild(document.createElement('br'));
+					body.appendChild(document.createTextNode(strings.hello));
+					body.appendChild(document.createElement('div')).innerHTML = template;
+				}
+			},
+			// execute this callback if there was a problem
+			function (ex) {
+				var msg = 'OH SNAP: ' + ex.message;
+				document.body.appendChild(document.createTextNode(msg));
+			}
+		);
+
+	</script>
 
 ----------------------------------------
 
