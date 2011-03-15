@@ -488,6 +488,7 @@ var curl, require, define;
 		if (!isString(args.deps)) {
 			var callback = args.res,
 				promise = args.res = new Promise(),
+				waitingForDomReady,
 				api = {};
 			// return the dependencies as arguments, not an array
 			api.then = function (resolved, rejected) {
@@ -499,8 +500,20 @@ var curl, require, define;
 			};
 			// ready will call the callback when both the document and the dependencies are ready
 			api.ready = function (cb) {
-				// TODO: create a new promise so any subsequent .then()s wait for .ready()
-				promise.then(function () { domReady(cb); });
+				// create a new promise so any subsequent .then()s wait for .ready()
+				if (!waitingForDomReady) {
+					waitingForDomReady = true;
+					var origPromise = promise;
+					promise = new Promise();
+					origPromise.then(
+						function (deps) {
+							domReady(function () {
+								promise.resolve(deps);
+							});
+						},
+						function (ex) { promise.reject(ex); }
+					);
+				}
 				return api;
 			};
 			if (callback) api.then(callback);
