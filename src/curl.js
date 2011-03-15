@@ -493,7 +493,7 @@ var curl, require, define;
 			api.then = function (resolved, rejected) {
 				promise.then(
 					function (deps) { resolved.apply(null, deps); },
-					function (ex) { if (rejected) rejected(beget(ex)); else throw new Error(ex); }
+					function (ex) { if (rejected) rejected(ex); else throw ex; }
 				);
 				return api;
 			};
