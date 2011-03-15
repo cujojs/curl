@@ -418,11 +418,16 @@ var curl, require, define;
 	}
 
 	function getCurrentDefName () {
+		// Note: Opera lies about which scripts are "interactive", so we
+		// just have to test for it. Opera provides a true test, not a sniff
+		// thankfully.
 		var def;
-		for (var d in activeScripts) {
-			if (activeScripts[d].readyState === 'interactive') {
-				def = d;
-				break;
+		if (!_isType(global.opera, '[object Opera]')) {
+			for (var d in activeScripts) {
+				if (activeScripts[d].readyState == 'interactive') {
+					def = d;
+					break;
+				}
 			}
 		}
 		return def;
@@ -488,12 +493,13 @@ var curl, require, define;
 			api.then = function (resolved, rejected) {
 				promise.then(
 					function (deps) { resolved.apply(null, deps); },
-					function (ex) { rejected(beget(ex)); }
+					function (ex) { if (rejected) rejected(beget(ex)); else throw new Error(ex); }
 				);
 				return api;
 			};
 			// ready will call the callback when both the document and the dependencies are ready
 			api.ready = function (cb) {
+				// TODO: create a new promise so any subsequent .then()s wait for .ready()
 				promise.then(function () { domReady(cb); });
 				return api;
 			};
@@ -525,6 +531,7 @@ var curl, require, define;
 			// if it's a secondary define(), grab the current def's context
 			var def = cache[name];
 			if (!def) {
+				// TODO: FIXME: this is not the current def for anything but IE:
 				var curr = cache[getCurrentDefName()],
 					// TODO: this next line is redundant with curl(). reuse them somehow 
 					ctx = curr ? curr.ctx : begetCtx({ doc: config.doc, baseUrl: config.baseUrl, require: _require }, name);
