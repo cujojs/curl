@@ -1,12 +1,10 @@
 curl (CUjo Resource Loader)
 =====================
 
-version 0.2
-TODO: finish compatibility with non-AMD CommonJS modules (node.js)
-TODO: implement packages
+version 0.2.1
 TODO: finish core extensions (debug, commonjs, etc)
-TODO: more plugins (i18n)
-TODO: figure out why Opera can't detect anonymous modules
+TODO: commonjs extension: Modules 1.1 and packages
+TODO: i18n plugin
 
 ----------------------------------------
 

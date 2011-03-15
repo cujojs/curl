@@ -31,7 +31,7 @@ var curl, require, define;
 
 
 	var
-		version = '0.2',
+		version = '0.2.1',
 		// local cache of resource definitions (lightweight promises)
 		cache = {},
 		// default configuration
