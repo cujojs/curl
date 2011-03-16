@@ -30,7 +30,7 @@
 
 
 	var
-		version = '0.2.1',
+		version = '0.2.2',
 		// local cache of resource definitions (lightweight promises)
 		cache = {},
 		// default configuration
