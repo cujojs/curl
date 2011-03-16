@@ -1,9 +1,7 @@
 curl (CUjo Resource Loader)
 =====================
 
-version 0.2.1
-NOTE: do NOT use google closure compiler on this version.
-	wait for 0.2.2
+version 0.2.2
 TODO: i18n plugin
 TODO: finish core extensions (debug, commonjs, etc)
 TODO: commonjs extension: Modules 1.1 and packages
