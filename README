@@ -405,5 +405,10 @@ custom shell script in the mean time.
 
 ----------------------------------------
 
-Many thanks to Bryan Forbes for helping to clean up my code.
-Kudos also to James Burke who instigated the CommonJS AMD proposal.
+Many thanks to Bryan Forbes for helping to clean up my code and for making
+cujo's domReady much more robust.
+More about Bryan: http://www.reigndropsfall.net/
+
+Kudos also to James Burke who instigated the CommonJS AMD proposal and
+paved the way to create AMD-style loaders.
+More about James: http://tagneto.blogspot.com/
