@@ -12,7 +12,6 @@
 // TODO: commonjs exports and module dependencies
 // TODO: finish debug plugin
 
-var curl, require, define;
 (function (global, doc) {
 
 	/*
@@ -38,7 +37,7 @@ var curl, require, define;
 		config = {
 			doc: doc,
 			baseUrl: null, // auto-detect
-			pluginPath: 'curl/plugin/', // prepended to naked plugin references
+			pluginPath: 'plugin/', // prepended to naked plugin references
 			paths: {}
 		},
 		// net to catch anonymous define calls' arguments (non-IE browsers)
@@ -57,7 +56,7 @@ var curl, require, define;
 		pathRe = /[^\/]*(?:\/|$)/g,
 		baseUrlRe = /^\/\/|^[^:]*:\/\//,
 		normalizeRe = /^\.\//,
-		findCurlRe = /(.*curl).js$/,
+		findCurlRe = /(.*\/curl)\..*js$/,
 		readyStates = { loaded: 1, interactive: 1, complete: 1 },
 		// reused strings
 		errorSuffix = '. Syntax error or name mismatch.';
@@ -102,7 +101,7 @@ var curl, require, define;
 		ctx.require = function (deps, callback) {
 			return _require(deps, callback, ctx);
 		};
-		ctx.require.toUrl = function (name) {
+		ctx.require['toUrl'] = function (name) {
 			return fixPath(normalizeName(name, ctx), ctx.baseUrl);
 		};
 		if (ctx.doc && !ctx.head) {
@@ -340,8 +339,8 @@ var curl, require, define;
 		// but to be compatible with commonjs's specification, we have to
 		// piggy-back on the callback function parameter:
 		var loaded = function (res) { def.resolve(res); };
-		loaded.resolve = loaded;
-		loaded.reject = function (ex) { def.reject(ex); };
+		loaded['resolve'] = loaded;
+		loaded['reject'] = function (ex) { def.reject(ex); };
 
 		// go get plugin
 		ctx.require([prefix], function (plugin) {
@@ -491,7 +490,7 @@ var curl, require, define;
 				waitingForDomReady,
 				api = {};
 			// return the dependencies as arguments, not an array
-			api.then = function (resolved, rejected) {
+			api['then'] = function (resolved, rejected) {
 				promise.then(
 					function (deps) { resolved.apply(null, deps); },
 					function (ex) { if (rejected) rejected(ex); else throw ex; }
@@ -499,7 +498,7 @@ var curl, require, define;
 				return api;
 			};
 			// ready will call the callback when both the document and the dependencies are ready
-			api.ready = function (cb) {
+			api['ready'] = function (cb) {
 				// create a new promise so any subsequent .then()s wait for .ready()
 				if (!waitingForDomReady) {
 					waitingForDomReady = true;
@@ -579,7 +578,6 @@ var curl, require, define;
 		});
 	}
 
-	// TODO: path and baseUrl fixing should happen any time these are specified (e.g. in begetCfg)
 	var baseUrl = config.baseUrl;
 	if (!baseUrl) {
 		// if we don't have a baseUrl (null, undefined, or '')
@@ -610,13 +608,13 @@ var curl, require, define;
 		paths['curl/'] = match[1] + '/';
 	}
 	config.paths = paths;
-	config.pluginPath = fixEndSlash(config.pluginPath);
+	config.pluginPath = paths['curl/'] + fixEndSlash(config.pluginPath);
 
-	global.require = global.curl = _curl;
-	global.define = _curl.define = _define;
+	global['require'] = global['curl'] = _curl;
+	global['define'] = _curl['define'] = _define;
 
 	// this is only domReady. it doesn't wait for dependencies
-	var domReady = _curl.domReady = (function () {
+	var domReady = _curl['domReady'] = (function () {
 
 		var promise = new Promise(),
 			fixReadyState = typeof doc.readyState != "string",
@@ -715,6 +713,7 @@ var curl, require, define;
 
 }(this, document));
 
-
-
-
+// ==ClosureCompiler==
+// @output_file_name curl.min.js
+// @compilation_level ADVANCED_OPTIMIZATIONS
+// ==/ClosureCompiler==
