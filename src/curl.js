@@ -200,7 +200,6 @@
 			ev = ev || global.event;
 			// detect when it's done loading
 			if (ev.type === 'load' || readyStates[this.readyState]) {
-//console.log('success', this.src);
 				delete activeScripts[def.name];
 				// release event listeners
 				this.onload = this.onreadystatechange = this.onerror = null;
@@ -216,12 +215,12 @@
 
 		// set type first since setting other properties could
 		// prevent us from setting this later
-		el.type = 'text/javascript';
+		el.type = def.mimetype || 'text/javascript';
 		// using dom0 event handlers instead of wordy w3c/ms
 		el.onload = el.onreadystatechange = process;
 		el.onerror = fail;
-		el.charset = 'utf-8';
-		el.async = true; // for Firefox
+		el.charset = def.charset || 'utf-8';
+		el.async = 'async' in def ? def.async : true; // for Firefox
 		el.src = def.url;
 
 		// loading will start when the script is inserted into the dom.
@@ -369,7 +368,7 @@
 
 		// obtain each dependency
 		for (var i = 0; i < len && !completed; i++) (function (i, dep) {
-			if (dep === 'require') {
+			if (dep == 'require') {
 				deps[i] = ctx.require;
 				count--;
 			}
@@ -681,31 +680,59 @@
 
 	// Plugin to load plain old javascript.
 	// inlining the js plugin since it's much more efficient here
+	var queue = [], inFlightCount = 0;
 	_define('curl/plugin/js', {
 
-		load: function (name, require, promise, ctx) {
+		'load': function (name, require, promise, ctx) {
 
-			var def = {
-					name: name,
+			var wait = name.indexOf('!wait') >= 0,
+				prefetch = 'jsPrefetch' in ctx ? ctx.prefetch : true,
+				def = {
+					name: name.substr(name.indexOf('!')),
 					url: require.toUrl(name),
 					ctx: ctx
 				};
 
-			function cleanup () {
-				// just remove some of the detritus that loadScript leaves (TODO: fix this somehow)
-				delete activeScripts[def.name];
+			function fetch (def, require, promise, ctx) {
+
+				inFlightCount++;
+				loadScript(def,
+					function () {
+						var next;
+						inFlightCount--;
+						// if we've loaded all of the non-blocking scripts
+						if (inFlightCount == 0) {
+							// grab next queued script
+							next = queue.shift();
+							// remove any fake mime type
+							delete def.mimetype;
+							// go get it (from cache hopefully)
+							fetch.apply(null, queue.shift());
+						}
+						promise.resolve();
+					},
+					function (ex) {
+						inFlightCount--;
+						promise.reject(ex);
+					}
+				);
+
 			}
 
-			loadScript(def,
-				function () {
-					cleanup();
-					promise.resolve();
-				},
-				function (ex) {
-					cleanup();
-					promise.reject(ex);
+			// if this script has to wait for another
+			if (wait && inFlightCount > 0) {
+				// if we're prefetching
+				if (prefetch) {
+					// go get the file under a fake mime type
+					def.mimetype = 'text/cache';
+					fetch(def, require, promise, ctx);
 				}
-			);
+				queue.push([def, require, promise, ctx]);
+			}
+			// otherwise, just go get it
+			else {
+				fetch(def, require, promise, ctx);
+			}
 
 		}
 
