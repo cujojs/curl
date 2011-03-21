@@ -515,6 +515,15 @@
 				);
 				return api;
 			};
+			api['require'] = function (deps, cb) {
+				var origPromise = promise;
+				promise = new Promise();
+				origPromise.then(
+					function () {
+						ctx.require(deps, promise, ctx);
+					}
+				);
+			};
 			// ready will call the callback when both the document and the dependencies are ready
 			api['ready'] = function (cb) {
 				// create a new promise so any subsequent .then()s wait for .ready()
@@ -579,6 +588,43 @@
 
 	}
 
+	function _extend (/* arguments */) {
+		/*
+			curl.extend('debug', 'js', 'commonjs', 'domReady')
+				.require(['js!myApp.js', 'css!locale.css', 'domReady'])
+				.then(function (myApp, localeSheet) {
+					// do stuff
+				});
+			The js extension defines a js! plugin that uses internal curl
+			functions.  The domReady extension overrides the fetchResDef
+			function and watches for requests to a module named domReady.
+			Steps:
+			1) DON'T make curl functions overridable (object or eval)
+			2) Finish the extend and require api functions
+			3) expose some useful functions
+			4) Move js! and _domReady into extensions
+			5) Test
+		 */
+		var extensions, exposed;
+
+		exposed = {
+			loadScript: loadScript,
+			loadDef: fetchResDef,
+			loadPlugin: fetchPluginDef
+		};
+
+		function extend () {
+			var extension, i = 0;
+			while ((extension = arguments[i++])) {
+				extension.extend(exposed);
+			}
+		}
+
+		// get args whether in _extend(arg1, arg2) or _extend([arg1, arg2]) syntax
+		extensions = [].concat([].slice.call(arguments, 0));
+		return _curl(extensions, extend);
+	}
+
 	// grab any global configuration info
 	var userCfg = global.require || global.curl;
 
@@ -618,12 +664,13 @@
 	config.paths = paths;
 	config.pluginPath = fixEndSlash(config.pluginPath);
 
-	// using bracket property notation to closure won't clobber name
-	global['require'] = global['curl'] = _curl;
+	// using bracket property notation so closure won't clobber name
+	global['require'] = global['curl'] = _curl['require'] = _curl;
 	global['define'] = _curl['define'] = _define;
+	_curl['extend'] = _extend;
 
 	// this is only domReady. it doesn't wait for dependencies
-	// using bracket property notation to closure won't clobber name
+	// using bracket property notation so closure won't clobber name
 	var domReady = _curl['domReady'] = (function () {
 
 		var promise = new Promise(),
