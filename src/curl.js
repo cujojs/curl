@@ -37,7 +37,7 @@
 		config = {
 			doc: doc,
 			baseUrl: null, // auto-detect
-			pluginPath: 'plugin/', // prepended to naked plugin references
+			pluginPath: 'curl/plugin/', // prepended to naked plugin references
 			paths: {}
 		},
 		// net to catch anonymous define calls' arguments (non-IE browsers)
@@ -69,8 +69,11 @@
 		}
 	}
 
+	function isType (obj, type) {
+		return toString.call(obj).indexOf('[object ' + type) == 0;
+	}
 	function _isType (obj, type) {
-		return toString.call(obj) === type;
+		return toString.call(obj) == type;
 	}
 	function isFunction (obj) {
 		return _isType(obj, '[object Function]');
@@ -93,7 +96,7 @@
 	}
 
 	function begetCtx (oldCtx, name) {
-		var ctx = beget(oldCtx);
+		var ctx = beget(oldCtx || { doc: config.doc, baseUrl: config.baseUrl, require: _require });
 		if (name) {
 			var pos = name.lastIndexOf('/');
 			ctx.baseName = name.substr(0, pos + 1);
@@ -101,6 +104,7 @@
 		ctx.require = function (deps, callback) {
 			return _require(deps, callback, ctx);
 		};
+		// using bracket property notation to closure won't clobber name
 		ctx.require['toUrl'] = function (name) {
 			return fixPath(normalizeName(name, ctx), ctx.baseUrl);
 		};
@@ -203,7 +207,7 @@
 				delete activeScripts[def.name];
 				// release event listeners
 				this.onload = this.onreadystatechange = this.onerror = null;
-				success();
+				success(el);
 			}
 		}
 
@@ -338,8 +342,10 @@
 		// but to be compatible with commonjs's specification, we have to
 		// piggy-back on the callback function parameter:
 		var loaded = function (res) { def.resolve(res); };
+		// using bracket property notation to closure won't clobber name
 		loaded['resolve'] = loaded;
 		loaded['reject'] = function (ex) { def.reject(ex); };
+		loaded['then'] = function (resolved, rejected) { def.then(resolved, rejected); };
 
 		// go get plugin
 		ctx.require([prefix], function (plugin) {
@@ -364,12 +370,13 @@
 		var deps = [],
 			count = names ? names.length : 0,
 			len = count,
-			completed = false;
+			completed = false,
+			depName;
 
 		// obtain each dependency
-		for (var i = 0; i < len && !completed; i++) (function (i, dep) {
-			if (dep == 'require') {
-				deps[i] = ctx.require;
+		for (var i = 0; i < len && !completed; i++) (function (index, depName) {
+			if (depName == 'require') {
+				deps[index] = ctx.require;
 				count--;
 			}
 			//else if (dep === 'exports') {
@@ -379,22 +386,33 @@
 			//	throw new Error('module parameter not supported.');
 			//}
 			else {
-				var name, parts, prefix, resName;
+				var name, /*parts, */delPos, prefix, suffixes, resName;
 				// check for plugin prefix
-				if ((parts = dep.split('!')).length > 1) {
-					prefix = normalizeName(parts[0], ctx);
-					resName = parts[1]; // ignore any suffixes
+				//parts = depName.split('!');
+				delPos = depName.indexOf('!');
+				//if (parts.length > 1) {
+				if (delPos >= 0) {
+					// hm, this normalizeName allows plugins to be relative to
+					// the parent module. is this a feature?
+					//prefix = normalizeName(parts[0], ctx);
+					prefix = normalizeName(depName.substr(0, delPos), ctx);
+					//resName = parts[1];
+					resName = depName.substr(delPos + 1);
 					name = prefix + '!' + resName;
 				}
 				else {
-					resName = name = normalizeName(dep, ctx);
+					resName = name = normalizeName(depName, ctx);
 				}
 				// get resource definition
-				var def = cache[name] || (prefix ? fetchPluginDef(name, prefix, resName, ctx) : fetchResDef(resName, ctx));
+				var def = cache[name] || 
+						(prefix ?
+							fetchPluginDef(name, prefix, resName, ctx) :
+							fetchResDef(resName, ctx)
+						);
 				// hook into promise callbacks
 				def.then(
 					function (dep) {
-						deps[i] = dep;
+						deps[index] = dep; // got it!
 						if (--count == 0) {
 							completed = true;
 							success(deps);
@@ -477,7 +495,7 @@
 			});
 		}
 
-		var ctx = begetCtx({ doc: config.doc, baseUrl: config.baseUrl, require: _require }, '');
+		var ctx = begetCtx(null, '');
 		// extract config, if it's there
 		args = fixArgs(len === 3 ? aslice.call(arguments, 1) : arguments, true);
 
@@ -489,6 +507,7 @@
 				waitingForDomReady,
 				api = {};
 			// return the dependencies as arguments, not an array
+			// using bracket property notation to closure won't clobber name
 			api['then'] = function (resolved, rejected) {
 				promise.then(
 					function (deps) { resolved.apply(null, deps); },
@@ -542,9 +561,7 @@
 			// if it's a secondary define(), grab the current def's context
 			var def = cache[name];
 			if (!def) {
-				// TODO: this next line is redundant with curl(). reuse them somehow 
-				var ctx = begetCtx({ doc: config.doc, baseUrl: config.baseUrl, require: _require }, name);
-				def = cache[name] = new ResourceDef(name, ctx);
+				def = cache[name] = new ResourceDef(name, begetCtx(null, name));
 			}
 			def.useNet = false;
 			if (!args.deps) {
@@ -570,23 +587,15 @@
 		return;
 	}
 
-	if (userCfg) {
-		// store global config
-		forin(userCfg, function (value, p) {
-			config[p] = value;
-		});
-	}
+	// store global config
+	forin(userCfg, function (value, p) {
+		config[p] = value;
+	});
 
-	var baseUrl = config.baseUrl;
-	if (!baseUrl) {
-		// if we don't have a baseUrl (null, undefined, or '')
-		// use the document's path as the baseUrl
-		config.baseUrl = '';
-	}
-	else {
-		// ensure there's a trailing /
-		config.baseUrl = fixEndSlash(baseUrl);
-	}
+	// if we don't have a baseUrl (null, undefined, or '')
+	// use the document's path as the baseUrl
+	// ensure there's a trailing /
+	config.baseUrl = config.baseUrl ? fixEndSlash(config.baseUrl) : '';
 
 	// ensure all paths end in a '/'
 	var paths = {};
@@ -607,12 +616,14 @@
 		paths['curl/'] = match[1] + '/';
 	}
 	config.paths = paths;
-	config.pluginPath = paths['curl/'] + fixEndSlash(config.pluginPath);
+	config.pluginPath = fixEndSlash(config.pluginPath);
 
+	// using bracket property notation to closure won't clobber name
 	global['require'] = global['curl'] = _curl;
 	global['define'] = _curl['define'] = _define;
 
 	// this is only domReady. it doesn't wait for dependencies
+	// using bracket property notation to closure won't clobber name
 	var domReady = _curl['domReady'] = (function () {
 
 		var promise = new Promise(),
@@ -685,29 +696,30 @@
 
 		'load': function (name, require, promise, ctx) {
 
-			var wait = name.indexOf('!wait') >= 0,
-				prefetch = 'jsPrefetch' in ctx ? ctx.prefetch : true,
-				def = {
-					name: name.substr(name.indexOf('!')),
-					url: require.toUrl(name),
-					ctx: ctx
-				};
+			var wait, prefetch, def;
 
-			function fetch (def, require, promise, ctx) {
+			wait = name.indexOf('!wait') >= 0;
+			name = wait ? name.substr(0, name.indexOf('!')) : name;
+			prefetch = 'jsPrefetch' in ctx ? ctx.jsPrefetch : true;
+			def = {
+				name: name,
+				url: require.toUrl(name),
+				ctx: ctx
+			};
 
-				inFlightCount++;
+			function fetch (def, promise) {
+
 				loadScript(def,
-					function () {
+					function (el) {
 						var next;
 						inFlightCount--;
-						// if we've loaded all of the non-blocking scripts
-						if (inFlightCount == 0) {
+						// if we've loaded all of the non-blocked scripts
+						if (inFlightCount == 0 && queue.length > 0) {
 							// grab next queued script
 							next = queue.shift();
-							// remove any fake mime type
-							delete def.mimetype;
 							// go get it (from cache hopefully)
-							fetch.apply(null, queue.shift());
+							inFlightCount++;
+							fetch.apply(null, next);
 						}
 						promise.resolve();
 					},
@@ -721,17 +733,24 @@
 
 			// if this script has to wait for another
 			if (wait && inFlightCount > 0) {
+				// push before fetch in case IE has file cached
+				queue.push([def, promise]);
 				// if we're prefetching
 				if (prefetch) {
-					// go get the file under a fake mime type
-					def.mimetype = 'text/cache';
-					fetch(def, require, promise, ctx);
+					// go get the file under an unknown mime type
+					var fakeDef = beget(def);
+					fakeDef.mimetype = 'text/cache';
+					loadScript(fakeDef,
+						// remove the fake script when loaded
+						function (el) { el.parentNode.removeChild(el); },
+						function () {}
+					);
 				}
-				queue.push([def, require, promise, ctx]);
 			}
 			// otherwise, just go get it
 			else {
-				fetch(def, require, promise, ctx);
+				inFlightCount++;
+				fetch(def, promise);
 			}
 
 		}

@@ -3,59 +3,61 @@
 <head>
 <title>main curl test file</title>
 
-<script>
-//	console.profile();
-	require = {
-		debug: true,
-		paths: {
-			//'testStuff': 'stuff',
-			'cssx': 'cssx/'
-		}
-	};
-
-	if (!window.console) console = {};
-	if (!('log' in console)) {
-		console._msg = [];
-		console.log = function (msg) {
-			var _msg = this._msg;
-			_msg.push([].join.call(arguments, ' '));
-			clearTimeout(this._timeout);
-			this._timeout = setTimeout(function () {
-				alert(_msg.join('\n'));
-			}, 100);
-		};
-	}
-
-</script>
-<!--<script src="require.js" type="text/javascript"></script>-->
-<script src="../src/curl.js" type="text/javascript"></script>
-
-
-<script type="text/javascript">
-
-	var start = new Date();
-	require(
-		[
-			'stuff/three',
-			'cssx/css!stuff/base',
-			//'require/i18n!stuff/nls/strings',
-			'text!stuff/template.html'
-		]
-	).then(
-		function (three, link, /*strings,*/ template) {
-//			console.profileEnd();
-			console.log('total time:', new Date() - start);
-			console.log('********* loaded:', three);
-			if (document.body) {
-				document.body.appendChild(document.createTextNode('three === ' + three + ' '));
-				document.body.appendChild(document.createElement('br'));
-				//document.body.appendChild(document.createTextNode(strings.hello));
-				document.body.appendChild(document.createElement('div')).innerHTML = template;
+	<script>
+	//	console.profile();
+		require = {
+			debug: true,
+			paths: {
+				//'testStuff': 'stuff',
+				cssx: 'cssx/',
+				curl: '../src/curl/'
 			}
-		}
-	);
+		};
 
-</script>
+		if (!window.console) console = {};
+		if (!('log' in console)) {
+			console._msg = [];
+			console.log = function (msg) {
+				var _msg = this._msg;
+				_msg.push([].join.call(arguments, ' '));
+				clearTimeout(this._timeout);
+				this._timeout = setTimeout(function () {
+					alert(_msg.join('\n'));
+				}, 100);
+			};
+		}
+
+	</script>
+	<!--<script src="require.js" type="text/javascript"></script>-->
+	<script src="../src/curl.js" type="text/javascript"></script>
+	<!--<script src="../bin/curl.min.js" type="text/javascript"></script>-->
+
+
+	<script type="text/javascript">
+
+		var start = new Date();
+		require(
+			[
+				'stuff/three',
+				'cssx/css!stuff/base',
+				//'require/i18n!stuff/nls/strings',
+				'text!stuff/template.html'
+			]
+		).then(
+			function (three, link, /*strings,*/ template) {
+	//			console.profileEnd();
+				console.log('total time:', new Date() - start);
+				console.log('********* loaded:', three);
+				if (document.body) {
+					document.body.appendChild(document.createTextNode('three === ' + three + ' '));
+					document.body.appendChild(document.createElement('br'));
+					//document.body.appendChild(document.createTextNode(strings.hello));
+					document.body.appendChild(document.createElement('div')).innerHTML = template;
+				}
+			}
+		);
+
+	</script>
 
 </head>
 <body>
