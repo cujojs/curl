@@ -30,7 +30,7 @@
 
 
 	var
-		version = '0.2.2',
+		version = '0.3',
 		// local cache of resource definitions (lightweight promises)
 		cache = {},
 		// default configuration
@@ -330,8 +330,9 @@
 	function fetchPluginDef (fullName, prefix, name, ctx) {
 
 		// prepend plugin folder path, if it's missing
-		var slashPos = fullName.indexOf('/');
-		if (slashPos < 0 || slashPos > fullName.indexOf('!')) {
+		prefix = fixPath(prefix, '');
+		var slashPos = prefix.indexOf('/');
+		if (slashPos < 0) {
 			fullName = config.pluginPath + fullName;
 			prefix = config.pluginPath + prefix;
 		}
@@ -524,24 +525,6 @@
 					}
 				);
 			};
-			// ready will call the callback when both the document and the dependencies are ready
-			api['ready'] = function (cb) {
-				// create a new promise so any subsequent .then()s wait for .ready()
-				if (!waitingForDomReady) {
-					waitingForDomReady = true;
-					var origPromise = promise;
-					promise = new Promise();
-					origPromise.then(
-						function (deps) {
-							domReady(function () {
-								promise.resolve(deps);
-							});
-						},
-						function (ex) { promise.reject(ex); }
-					);
-				}
-				return api;
-			};
 			if (callback) api.then(callback);
 		}
 
@@ -588,42 +571,42 @@
 
 	}
 
-	function _extend (/* arguments */) {
-		/*
-			curl.extend('debug', 'js', 'commonjs', 'domReady')
-				.require(['js!myApp.js', 'css!locale.css', 'domReady'])
-				.then(function (myApp, localeSheet) {
-					// do stuff
-				});
-			The js extension defines a js! plugin that uses internal curl
-			functions.  The domReady extension overrides the fetchResDef
-			function and watches for requests to a module named domReady.
-			Steps:
-			1) DON'T make curl functions overridable (object or eval)
-			2) Finish the extend and require api functions
-			3) expose some useful functions
-			4) Move js! and _domReady into extensions
-			5) Test
-		 */
-		var extensions, exposed;
-
-		exposed = {
-			loadScript: loadScript,
-			loadDef: fetchResDef,
-			loadPlugin: fetchPluginDef
-		};
-
-		function extend () {
-			var extension, i = 0;
-			while ((extension = arguments[i++])) {
-				extension.extend(exposed);
-			}
-		}
-
-		// get args whether in _extend(arg1, arg2) or _extend([arg1, arg2]) syntax
-		extensions = [].concat([].slice.call(arguments, 0));
-		return _curl(extensions, extend);
-	}
+//	function _extend (/* arguments */) {
+//		/*
+//			curl.extend('debug', 'js', 'commonjs', 'domReady')
+//				.require(['js!myApp.js', 'css!locale.css', 'domReady'])
+//				.then(function (myApp, localeSheet) {
+//					// do stuff
+//				});
+//			The js extension defines a js! plugin that uses internal curl
+//			functions.  The domReady extension overrides the fetchResDef
+//			function and watches for requests to a module named domReady.
+//			Steps:
+//			v DON'T make curl functions overridable (object or eval)
+//			v Finish the extend and require api functions
+//			v expose some useful functions
+//			- Move js! and _domReady into extensions
+//			- Test
+//		 */
+//		var extensions, exposed;
+//
+//		exposed = {
+//			loadScript: loadScript,
+//			loadDef: fetchResDef,
+//			loadPlugin: fetchPluginDef
+//		};
+//
+//		function extend () {
+//			var extension, i = 0;
+//			while ((extension = arguments[i++])) {
+//				extension.extend(exposed);
+//			}
+//		}
+//
+//		// get args whether in _extend(arg1, arg2) or _extend([arg1, arg2]) syntax
+//		extensions = [].concat([].slice.call(arguments, 0));
+//		return _curl(extensions, extend);
+//	}
 
 	// grab any global configuration info
 	var userCfg = global.require || global.curl;
@@ -669,140 +652,76 @@
 	global['define'] = _curl['define'] = _define;
 	_curl['extend'] = _extend;
 
-	// this is only domReady. it doesn't wait for dependencies
-	// using bracket property notation so closure won't clobber name
-	var domReady = _curl['domReady'] = (function () {
-
-		var promise = new Promise(),
-			fixReadyState = typeof doc.readyState != "string",
-			i = 0,
-			// IE needs this cuz it won't stop setTimeout if it's already queued up
-			completed = false,
-			addEvent, remover, removers, pollerTO;
-
-		function ready () {
-			completed = true;
-			clearTimeout(pollerTO);
-			while (remover = removers[i++]) remover();
-			if (fixReadyState) {
-				doc.readyState = "interactive";
-			}
-			promise.resolve();
-		}
-
-		function checkDOMReady (evt) {
-			if (!completed && readyStates[doc.readyState]) {
-				ready();
-			}
-		}
-
-		// select the correct event listener function. all of our supported
-		// browser will use one of these
-		addEvent = ('addEventListener' in global) ?
-			function (node, event) {
-				node.addEventListener(event, checkDOMReady, false);
-				return function () { node.removeEventListener(event, checkDOMReady, false); };
-			} :
-			function (node, event) {
-				node.attachEvent('on' + event, checkDOMReady);
-				return function () { node.detachEvent(event, checkDOMReady); };
-			};
-
-		function poller () {
-			checkDOMReady();
-			pollerTO = setTimeout(poller, 30);
-		}
-
-		if (doc.readyState == "complete") {
-			ready();
-		}
-		else {
-			// add event listeners and collect remover functions
-			removers = [
-				addEvent(global, 'load'),
-				addEvent(doc, 'readystatechange'),
-				addEvent(global, 'DOMContentLoaded')
-			];
-			// additionally, poll for readystate
-			pollerTO = setTimeout(poller, 30);
-		}
-
-		return function (cb) {
-			promise.then(cb);
-		};
-
-	})();
-
 	// this is to comply with the AMD CommonJS proposal:
 	_define.amd = {};
 
-	// Plugin to load plain old javascript.
-	// inlining the js plugin since it's much more efficient here
-	var queue = [], inFlightCount = 0;
-	_define('curl/plugin/js', {
-
-		'load': function (name, require, promise, ctx) {
-
-			var wait, prefetch, def;
-
-			wait = name.indexOf('!wait') >= 0;
-			name = wait ? name.substr(0, name.indexOf('!')) : name;
-			prefetch = 'jsPrefetch' in ctx ? ctx.jsPrefetch : true;
-			def = {
-				name: name,
-				url: require.toUrl(name),
-				ctx: ctx
-			};
-
-			function fetch (def, promise) {
-
-				loadScript(def,
-					function (el) {
-						var next;
-						inFlightCount--;
-						// if we've loaded all of the non-blocked scripts
-						if (inFlightCount == 0 && queue.length > 0) {
-							// grab next queued script
-							next = queue.shift();
-							// go get it (from cache hopefully)
-							inFlightCount++;
-							fetch.apply(null, next);
-						}
-						promise.resolve();
-					},
-					function (ex) {
-						inFlightCount--;
-						promise.reject(ex);
-					}
-				);
-
-			}
-
-			// if this script has to wait for another
-			if (wait && inFlightCount > 0) {
-				// push before fetch in case IE has file cached
-				queue.push([def, promise]);
-				// if we're prefetching
-				if (prefetch) {
-					// go get the file under an unknown mime type
-					var fakeDef = beget(def);
-					fakeDef.mimetype = 'text/cache';
-					loadScript(fakeDef,
-						// remove the fake script when loaded
-						function (el) { el.parentNode.removeChild(el); },
-						function () {}
-					);
-				}
-			}
-			// otherwise, just go get it
-			else {
-				inFlightCount++;
-				fetch(def, promise);
-			}
-
-		}
-
-	});
+//	// Plugin to load plain old javascript.
+//	// inlining the js plugin since it's much more efficient here
+//	var queue = [], inFlightCount = 0;
+//	_define('curl/plugin/js', {
+//
+//		'load': function (name, require, promise, ctx) {
+//
+//			var wait, prefetch, def;
+//
+//			wait = name.indexOf('!wait') >= 0;
+//			name = wait ? name.substr(0, name.indexOf('!')) : name;
+//			prefetch = 'jsPrefetch' in ctx ? ctx.jsPrefetch : true;
+//			def = {
+//				name: name,
+//				url: require.toUrl(name),
+//				ctx: ctx
+//			};
+//
+//			function fetch (def, promise) {
+//
+//				loadScript(def,
+//					function (el) {
+//						var next;
+//						inFlightCount--;
+//						// if we've loaded all of the non-blocked scripts
+//						if (inFlightCount == 0 && queue.length > 0) {
+//							// grab next queued script
+//							next = queue.shift();
+//							// go get it (from cache hopefully)
+//							inFlightCount++;
+//							fetch.apply(null, next);
+//						}
+//						promise.resolve(el);
+//					},
+//					function (ex) {
+//						inFlightCount--;
+//						promise.reject(ex);
+//					}
+//				);
+//
+//			}
+//
+//			// if this script has to wait for another
+//			if (wait && inFlightCount > 0) {
+//				// push before fetch in case IE has file cached
+//				queue.push([def, promise]);
+//				// if we're prefetching
+//				if (prefetch) {
+//					// go get the file under an unknown mime type
+//					var fakeDef = beget(def);
+//					fakeDef.mimetype = 'text/cache';
+//					loadScript(fakeDef,
+//						// remove the fake script when loaded
+//						function (el) { el.parentNode.removeChild(el); },
+//						function () {}
+//					);
+//				}
+//			}
+//			// otherwise, just go get it
+//			else {
+//				inFlightCount++;
+//				fetch(def, promise);
+//			}
+//
+//		}
+//
+//	});
 
 }(this, document));
 

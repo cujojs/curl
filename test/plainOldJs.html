@@ -7,7 +7,8 @@
 	require = {
 		debug: true,
 		paths: {
-			'cssx': 'cssx/'
+			css: 'cssx/',
+			text: '../src/curl/plugin/'
 		},
 		jsPrefetch: true
 	};
@@ -22,6 +23,7 @@
 		[
 			'stuff/three',
 			'cssx/css!stuff/base',
+			'text!stuff/template.html',
 			'js!stuff/plain_old.js',
 			'js!stuff/plain_old_2.js!wait'
 		]
