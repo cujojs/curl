@@ -21,6 +21,7 @@ domReady module.  The combined curl+js+domReady loader is still only
 6.1KB (2.7KB gzipped).
 
 What's new?
+----------
 * The API has changed a bit. The .ready() and .domReady() methods are gone,
   replaced by the domReady module.  See the "API at a glance" section.
 * The js! plugin has been moved out into it's own file and now supports
@@ -28,7 +29,7 @@ What's new?
   all previous non-AMD files are executed.
 
 If you're already familiar with CommonJS AMD loaders, skip down to the section
-"How do I use curl.js?"
+"**How do I use curl.js?**"
 
 ----------------------------------------
 
@@ -42,83 +43,81 @@ Features at a glance:
 * Waits for domReady --OR-- waits for all dependencies and domReady
 * Tested with Chrome, FF3+, Safari 3.2+, IE6-8, Opera 9.5+
 
-Plays nice with Opera as of version 0.2.1! :)
-
 ----------------------------------------
 
 API at a glance
 ===============
 
-"curl" and "require" are synonyms. You may use them interchangeably.
+**"curl" and "require" are synonyms. You may use them interchangeably.**
 
-curl(['dep1', 'dep2', 'dep3' /* etc */], callback);
-require(['dep1', 'dep2', 'dep3' /* etc */], callback);
+	curl(['dep1', 'dep2', 'dep3' /* etc */], callback);
+	require(['dep1', 'dep2', 'dep3' /* etc */], callback);
 
-	Loads dependencies and the executes callback.
-	['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
-	callback: Function to receive modules or resources
-
-
-curl(['dep1', 'dep2', 'dep3' /* etc */])
-	.then(callback, errorback);
-require(['dep1', 'dep2', 'dep3' /* etc */])
-	.then(callback, errorback);
-
-	Promises-based API for executing callbacks.
-	['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
-	callback: Function to receive modules or resources
-	errorback: Function to call if an exception occurred while loading
+Loads dependencies and the executes callback.
+['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
+callback: Function to receive modules or resources
 
 
-curl(config, ['dep1', 'dep2', 'dep3' /* etc */], callback);
-require(config, ['dep1', 'dep2', 'dep3' /* etc */], callback);
+	curl(['dep1', 'dep2', 'dep3' /* etc */])
+		.then(callback, errorback);
+	require(['dep1', 'dep2', 'dep3' /* etc */])
+		.then(callback, errorback);
 
-	Specify configuration options, load dependencies, and execute callback.
-	config: Object containing curl configuration options (paths, etc.)
-	['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
-	callback: Function to receive modules or resources
-
-
-curl(['domReady', 'dep2', 'dep3' /* etc */])
-	.then(
-		function (domReady, dep2, dep3) {
-			domReady(callback);
-		},
-		errorback
-	);
-curl(['domReady', 'dep2', 'dep3' /* etc */], function (domReady, dep2, dep3) {
-	domReady(callback);
-});
-
-	Executes the callback when the dom is ready for manipulation AND
-	all dependencies have loaded.
-	callback: No parameters
-	errorback: Function to call if an exception occurred while loading
+Promises-based API for executing callbacks.
+['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
+callback: Function to receive modules or resources
+errorback: Function to call if an exception occurred while loading
 
 
-curl(['domReady', 'js!nonAMD.js', 'js!another.js!wait']), function (domReady) {
-	domReady(function () {
-		/* do something cool here */
-	};
-});
+	curl(config, ['dep1', 'dep2', 'dep3' /* etc */], callback);
+	require(config, ['dep1', 'dep2', 'dep3' /* etc */], callback);
 
-	Executes the function in domReady() when the non-AMD javascript files
-	are loaded and the dom is ready.
-	The another.js file will wait for the nonAMD.js file before executing.
+Specify configuration options, load dependencies, and execute callback.
+config: Object containing curl configuration options (paths, etc.)
+['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
+callback: Function to receive modules or resources
 
 
-define(['dep1', 'dep2', 'dep3' /* etc */], definition);
-define(['dep1', 'dep2', 'dep3' /* etc */], module);
-define(module);
-define(name, ['dep1', 'dep2', 'dep3' /* etc */], definition);
-define(name, ['dep1', 'dep2', 'dep3' /* etc */], module);
-define(name, module);
+	curl(['domReady', 'dep2', 'dep3' /* etc */])
+		.then(
+			function (domReady, dep2, dep3) {
+				domReady(callback);
+			},
+			errorback
+		);
+	curl(['domReady', 'dep2', 'dep3' /* etc */], function (domReady, dep2, dep3) {
+		domReady(callback);
+	});
 
-	Defines a module per the CommonJS AMD proposed specification.
-	['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
-	definition: Function called to define the module
-	module: Any javascript object, function, constructor, or primitive
-	name: String used to name a module (not necessary nor recommended)
+Executes the callback when the dom is ready for manipulation AND
+all dependencies have loaded.
+callback: No parameters
+errorback: Function to call if an exception occurred while loading
+
+
+	curl(['domReady', 'js!nonAMD.js', 'js!another.js!wait']), function (domReady) {
+		domReady(function () {
+			/* do something cool here */
+		};
+	});
+
+Executes the function in domReady() when the non-AMD javascript files
+are loaded and the dom is ready.
+The another.js file will wait for the nonAMD.js file before executing.
+
+
+	define(['dep1', 'dep2', 'dep3' /* etc */], definition);
+	define(['dep1', 'dep2', 'dep3' /* etc */], module);
+	define(module);
+	define(name, ['dep1', 'dep2', 'dep3' /* etc */], definition);
+	define(name, ['dep1', 'dep2', 'dep3' /* etc */], module);
+	define(name, module);
+
+Defines a module per the CommonJS AMD proposed specification.
+['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
+definition: Function called to define the module
+module: Any javascript object, function, constructor, or primitive
+name: String used to name a module (not necessary nor recommended)
 
 ----------------------------------------
 
@@ -142,29 +141,32 @@ Very Simple Example
 		curl(
 			// fetch all of these resources ("dependencies")
 			[
+				'curl/domReady',
 				'stuff/three', // an AMD module
 				'cssx/css!stuff/base', // a css file
 				'i18n!stuff/nls/strings', // a translation file
 				'text!stuff/template.html' // an html template
 			]
 		)
-		// when they are loaded and the dom is ready
-		.ready()
+		// when they are loaded
 		.then(
 			// execute this callback, passing all dependencies as params
-			function (three, link, strings, template) {
-				var body = document.body;
-				if (body) {
-					body.appendChild(document.createTextNode('three == ' + three.toString() + ' '));
-					body.appendChild(document.createElement('br'));
-					body.appendChild(document.createTextNode(strings.hello));
-					body.appendChild(document.createElement('div')).innerHTML = template;
-				}
+			function (ready, three, link, strings, template) {
+				// when the dom is ready
+				ready(function () {
+					var body = document.body;
+					if (body) {
+						body.appendChild(document.createTextNode('three == ' + three.toString() + ' '));
+						body.appendChild(document.createElement('br'));
+						body.appendChild(document.createTextNode(strings.hello));
+						body.appendChild(document.createElement('div')).innerHTML = template;
+					}
+				})
 			},
 			// execute this callback if there was a problem
 			function (ex) {
 				var msg = 'OH SNAP: ' + ex.message;
-				document.body.appendChild(document.createTextNode(msg));
+				alert(msg);
 			}
 		);
 
@@ -265,19 +267,19 @@ a backwards-compatible way so AMD-compliant plugins will still work in curl.
 curl.js will also return a promise from require() calls. This allows you to
 write code like this:
 
-require(
-	[
-		'myApp/moduleA',
-		'myApp/moduleB'
-	],
-).then(
-	function success (A, B) {
-		// load myApp here!
-	},
-	function failure (ex) {
-		alert('myApp didn't load. reason: ' + ex.message);
-	}
-);
+	require(
+		[
+			'myApp/moduleA',
+			'myApp/moduleB'
+		],
+	).then(
+		function success (A, B) {
+			// load myApp here!
+		},
+		function failure (ex) {
+			alert('myApp didn't load. reason: ' + ex.message);
+		}
+	);
 
 (When using CommonJS sync syntax {{{var res = require('resName');}}}, a promise
 isn't returned since the resource is returned synchronously. duh)
@@ -292,19 +294,25 @@ Yes, but why would you?  Once you start using AMD, you'll never go back! :)
 You may use non-AMD javascript files by specifying the js! plugin prefix
 like this:
 
-require(
-	[
-		'js!plainOldJsFile1.js',
-		'js!anotherPlainOldJsFile.js'
-	]
-).then(
-	function () {
-		/* do something with your plain, boring javascript files */
-	},
-	function () {
-		/* do something if any fail to load */
-	}
-);
+	require(
+		[
+			'js!plainOldJsFile1.js',
+			'js!anotherPlainOldJsFile.js!wait'
+		]
+	).then(
+		function () {
+			/* do something with your plain, boring javascript files */
+		},
+		function () {
+			/* do something if any fail to load */
+		}
+	);
+
+The !wait suffix instructs curl.js to wait for previous scripts to execute
+before executing. It downloads in parallel with the previous scripts, though,
+unless you specify jsPrefetch:false in the config.  Be sure to have proper
+cache headers set if you plan to use jsPrefetch:true or scripts will get
+downloaded twice.
 
 ----------------------------------------
 
@@ -350,15 +358,15 @@ Plugins are designated by a prefix on the name of the module or resource to be
 loaded. They are delineated by a ! symbol. The following example shows the use
 of some plugins:
 
-define(
-	[
-		'text!myTemplate.html',
-		'css!myCssFile'
-	],
-	function (templateString, cssLinkNode) {
-		// do something with the template and css here
-	}
-);
+	define(
+		[
+			'text!myTemplate.html',
+			'css!myCssFile'
+		],
+		function (templateString, cssLinkNode) {
+			// do something with the template and css here
+		}
+	);
 
 Since plugins are just AMD modules, they would typically be referenced using
 their fully-pathed names. curl provides a pluginPath configuration option that
@@ -371,10 +379,10 @@ If one or more of your plugins does not reside in the folder specified by the
 pluginPath config option, you can use its full path or you can specify a path
 for it in curl's paths config object.
 
-// example of a fully-pathed plugin under the cssx folder
-define(['cssx/cssx!myCssFile'], function (cssxDef) {
-	// do some awesome css stuff here
-});
+	// example of a fully-pathed plugin under the cssx folder
+	define(['cssx/cssx!myCssFile'], function (cssxDef) {
+		// do some awesome css stuff here
+	});
 
 (cssx is the Cujo Style Sheet eXtender AMD plugin that repairs browser css
 deficiencies on-the-fly.)
@@ -384,10 +392,10 @@ on curl's configuration object. Options can also be supplied to plugins via
 suffixes. Suffixes are also delineated by the ! symbol. Here's an example of
 a plugin using options:
 
-// don't try to repair IE6-8 opacity issues in my css file 
-define(['cssx/cssx!myCssFile!ignore:opacity'], function (cssxDef) {
-	// do some awesome css stuff here
-});
+	// don't try to repair IE6-8 opacity issues in my css file
+	define(['cssx/cssx!myCssFile!ignore:opacity'], function (cssxDef) {
+		// do some awesome css stuff here
+	});
 
 ----------------------------------------
 
@@ -437,3 +445,6 @@ More about Bryan: http://www.reigndropsfall.net/
 Kudos also to James Burke who instigated the CommonJS AMD proposal and
 paved the way to create AMD-style loaders.
 More about James: http://tagneto.blogspot.com/
+
+Shout out to Kris Zyp for excellent ideas and feedback and Kyle Simpson who
+is inarguably the godfather of javascript loading.
