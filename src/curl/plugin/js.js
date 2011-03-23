@@ -30,8 +30,7 @@
 		function process (ev) {
 			ev = ev || global.event;
 			// detect when it's done loading
-			if (ev.type === 'load' || readyStates[this.readyState]) {
-				delete activeScripts[def.name];
+			if (ev.type == 'load' || readyStates[this.readyState]) {
 				// release event listeners
 				this.onload = this.onreadystatechange = this.onerror = null;
 				success(el);
@@ -41,7 +40,7 @@
 		function fail (e) {
 			// some browsers send an event, others send a string,
 			// but none of them send anything useful, so just say we failed:
-			failure(new Error('Script error: ' + def.url + errorSuffix));
+			failure(new Error('Script error: ' + def.url));
 		}
 
 		// set type first since setting other properties could
@@ -109,13 +108,14 @@
 				// if we're prefetching
 				if (prefetch) {
 					// go get the file under an unknown mime type
-					var fakeDef = beget(def);
-					fakeDef.mimetype = 'text/cache';
-					loadScript(fakeDef,
+					var mimetype = def.mimetype;
+					def.mimetype = 'text/cache';
+					loadScript(def,
 						// remove the fake script when loaded
 						function (el) { el.parentNode.removeChild(el); },
 						function () {}
 					);
+					def.mimetype = mimetype;
 				}
 			}
 			// otherwise, just go get it
