@@ -16,15 +16,17 @@
  */
 (function (global, doc) {
 
-	var queue = [], inFlightCount = 0;
+	var queue = [],
+		inFlightCount = 0,
+		readyStates = { loaded: 1, interactive: 1, complete: 1 },
+		head = doc.getElementsByTagName('head')[0];
 
 	// TODO: find a way to reuse the loadScript from curl.js
 	function loadScript (def, success, failure) {
 		// script processing rules learned from RequireJS
 
 		// insert script
-		var el = def.ctx.doc.createElement('script'),
-			head  = def.ctx.head;
+		var el = doc.createElement('script');
 
 		// initial script processing
 		function process (ev) {
@@ -127,4 +129,4 @@
 		}
 	});
 
-}());
+}(this, document));

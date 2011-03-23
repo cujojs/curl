@@ -30,9 +30,11 @@
 		}
 		console.log('dom should not be ready: false ==', isDomReady());
 		handle = setTimeout(poller, 10);
-		curl.domReady(function(){
-			clearInterval(handle);
-			console.log('DOM Ready!', isDomReady());
+		curl(['curl/domReady'], function(domReady){
+			domReady(function () {
+				clearInterval(handle);
+				console.log('DOM Ready!', isDomReady());
+			});
 		});
 	</script>
 

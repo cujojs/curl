@@ -4,11 +4,24 @@
 <title>curl loading test for plain old javascript</title>
 
 <script>
+		if (!window.console) console = {};
+		if (!('log' in console)) {
+			console._msg = [];
+			console.log = function (msg) {
+				var _msg = this._msg;
+				_msg.push(msg && msg.join ? msg.join(' ') : msg);
+				clearTimeout(this._timeout);
+				this._timeout = setTimeout(function () {
+					alert(_msg.join('\n'));
+				}, 100);
+			};
+		}
+
 	require = {
 		debug: true,
 		paths: {
-			css: 'cssx/',
-			text: '../src/curl/plugin/'
+			css: 'cssx/css',
+			text: '../src/curl/plugin/text'
 		},
 		jsPrefetch: true
 	};
@@ -22,7 +35,7 @@
 	require(
 		[
 			'stuff/three',
-			'cssx/css!stuff/base',
+			'css!stuff/base',
 			'text!stuff/template.html',
 			'js!stuff/plain_old.js',
 			'js!stuff/plain_old_2.js!wait'
