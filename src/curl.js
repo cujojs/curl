@@ -4,7 +4,7 @@
  * (c) copyright 2011, unscriptable.com / John Hann
  * Licnsed under the MIT License at:
  * 		http://www.opensource.org/licenses/mit-license.php
- * 
+ *
  */
 
 // TODO: code documentation!!!
@@ -50,7 +50,7 @@
 		undef,
 		aslice = [].slice,
 		// RegExp's used later, "cached" here
-		pathRe = /[^\/]*(?:\/|$)/g,
+		pathRe = /(?:\/|^)[^\/$]*/g, // /(?:\/|^).*(?:\/|$)/g,
 		absUrlRe = /^\/|^[^:]*:\/\//,
 		normalizeRe = /^\.\//,
 		findCurlRe = /(.*\/curl)\..*js$/,
@@ -68,20 +68,6 @@
 
 	function isType (obj, type) {
 		return toString.call(obj).indexOf('[object ' + type) == 0;
-	}
-	function _isType (obj, type) {
-		return toString.call(obj) == type;
-	}
-	function isFunction (obj) {
-		return _isType(obj, '[object Function]');
-	}
-
-	function isString (obj) {
-		return _isType(obj, '[object String]');
-	}
-
-	function isArray (obj) {
-		return _isType(obj, '[object Array]');
 	}
 
 	function F () {}
@@ -165,10 +151,6 @@
 	function joinPath (path, file) {
 		return (!path || endsWithSlash(path) ? path : path + '/') + file;
 	}
-
-//	function addEndSlash (path) {
-//		return joinPath(path, '');
-//	}
 
 	function removeEndSlash (path) {
 		return endsWithSlash(path) ? path.substr(0, path.length - 1) : path;
@@ -257,21 +239,21 @@
 		// TODO: check invalid argument combos here?
 		// TODO: CommonJS require('string') syntax in an extension
 		function toFunc (res) {
-			return isFunction(res) ? res : function () { return res; };
+			return isType(res, 'Function') ? res : function () { return res; };
 		}
 		var len = args.length,
 			res;
 		if (len === 3) {
 			res = { name: args[0], deps: args[1], res: toFunc(args[2]) };
 		}
-		else if (len == 2 && isString(args[0])) {
+		else if (len == 2 && isType(args[0], 'String')) {
 			res = { name: args[0], res: toFunc(args[1]) };
 		}
 		else if (len == 2) {
 			res = { deps: args[0], res: toFunc(args[1]) };
 		}
 		// TODO: document this: if a require(array) is encountered , it assumes the array is a list of dependencies so that we can return a promise, define(array) assumes the array is the resource
-		else if (isString(args[0]) || (isArray(args[0]) && isRequire)) {
+		else if (isType(args[0], 'String') || (isType(args[0], 'Array') && isRequire)) {
 			res = { deps: args[0] };
 		}
 		else {
@@ -351,7 +333,7 @@
 		// but to be compatible with commonjs's specification, we have to
 		// piggy-back on the callback function parameter:
 		var loaded = function (res) { def.resolve(res); };
-		// using bracket property notation to closure won't clobber name
+		// using bracket property notation so closure won't clobber name
 		loaded['resolve'] = loaded;
 		loaded['reject'] = function (ex) { def.reject(ex); };
 		loaded['then'] = function (resolved, rejected) { def.then(resolved, rejected); };
@@ -388,12 +370,6 @@
 				deps[index] = ctx.require;
 				count--;
 			}
-			//else if (dep === 'exports') {
-			//	throw new Error('exports parameter not supported.');
-			//}
-			//else if (dep === 'module') {
-			//	throw new Error('module parameter not supported.');
-			//}
 			else {
 				var name, /*parts, */delPos, prefix, suffixes, resName;
 				// check for plugin prefix
@@ -413,7 +389,7 @@
 					resName = name = normalizeName(depName, ctx);
 				}
 				// get resource definition
-				var def = cache[name] || 
+				var def = cache[name] ||
 						(prefix ?
 							fetchPluginDef(name, prefix, resName, ctx) :
 							fetchResDef(resName, ctx)
@@ -447,7 +423,7 @@
 		// just have to test for it. Opera provides a true test, not a sniff
 		// thankfully.
 		var def;
-		if (!_isType(global.opera, '[object Opera]')) {
+		if (!isType(global.opera, 'Opera')) {
 			for (var d in activeScripts) {
 				if (activeScripts[d].readyState == 'interactive') {
 					def = d;
@@ -463,7 +439,7 @@
 
 		// sync require
 		// TODO: move this to a CommonJS extension
-		if (isString(deps)) {
+		if (isType(deps, 'String')) {
 			// return resource
 			// TODO: Bryan had it this way: def = normalizeName(cache[deps], ctx); he may be right!!!
 			var def = normalizeName(cache[deps], ctx),
@@ -510,13 +486,13 @@
 
 		// check if we should return a promise
 		// TODO: move commonjs behavior out to an extension (if !isString(args.deps) require() returns a resource)
-		if (!isString(args.deps)) {
+		if (!isType(args.deps, 'String')) {
 			var callback = args.res,
 				promise = args.res = new Promise(),
 				waitingForDomReady,
 				api = {};
 			// return the dependencies as arguments, not an array
-			// using bracket property notation to closure won't clobber name
+			// using bracket property notation so closure won't clobber name
 			api['then'] = function (resolved, rejected) {
 				promise.then(
 					function (deps) { resolved.apply(null, deps); },
@@ -599,9 +575,9 @@
 //		var extensions, exposed;
 //
 //		exposed = {
-//			loadScript: loadScript,
-//			loadDef: fetchResDef,
-//			loadPlugin: fetchPluginDef
+//			'loadScript': loadScript,
+//			'loadDef': fetchResDef,
+//			'loadPlugin': fetchPluginDef
 //		};
 //
 //		function extend () {
@@ -617,10 +593,10 @@
 //	}
 
 	// grab any global configuration info
-	var userCfg = global.require || global.curl;
+	var userCfg = global['require'] || global['curl'];
 
 	// exit if it's already been defined
-	if (isFunction(userCfg)) {
+	if (isType(userCfg, 'Function')) {
 		return;
 	}
 
@@ -635,7 +611,7 @@
 		config.baseUrl = '';
 	}
 
-	// ensure all paths end in a '/'
+	// fix all paths
 	var paths = {};
 	forin(config.paths, function (path, p) {
 		paths[p] = removeEndSlash(path);
@@ -645,9 +621,9 @@
 		}
 	});
 	if (!('curl' in paths)) {
-		// find path to curl
-		var scripts = doc.getElementsByTagName('script'),
-			i, match;
+		// find path to curl. search backwards since we're likely the most recent
+		var scripts, i, match;
+		scripts = doc.getElementsByTagName('script')
 		for (i = scripts.length - 1; i >= 0 && !match ; i--) {
 			match = scripts[i].src.match(findCurlRe);
 		}
