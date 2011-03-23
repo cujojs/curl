@@ -8,9 +8,6 @@
  */
 
 // TODO: code documentation!!!
-// TODO: packages
-// TODO: commonjs exports and module dependencies
-// TODO: finish debug plugin
 
 (function (global, doc) {
 
@@ -37,7 +34,7 @@
 		config = {
 			doc: doc,
 			baseUrl: null, // auto-detect
-			pluginPath: 'curl/plugin/', // prepended to naked plugin references
+			pluginPath: null, // prepended to naked plugin references
 			paths: {}
 		},
 		// net to catch anonymous define calls' arguments (non-IE browsers)
@@ -54,7 +51,7 @@
 		aslice = [].slice,
 		// RegExp's used later, "cached" here
 		pathRe = /[^\/]*(?:\/|$)/g,
-		baseUrlRe = /^\/\/|^[^:]*:\/\//,
+		absUrlRe = /^\/|^[^:]*:\/\//,
 		normalizeRe = /^\.\//,
 		findCurlRe = /(.*\/curl)\..*js$/,
 		readyStates = { loaded: 1, interactive: 1, complete: 1 },
@@ -106,7 +103,7 @@
 		};
 		// using bracket property notation to closure won't clobber name
 		ctx.require['toUrl'] = function (name) {
-			return fixPath(normalizeName(name, ctx), ctx.baseUrl);
+			return resolvePath(normalizeName(name, ctx), ctx.baseUrl);
 		};
 		if (ctx.doc && !ctx.head) {
 			ctx.head = ctx.doc.getElementsByTagName('head')[0];
@@ -161,35 +158,45 @@
 		delete this.url;
 	};
 
-	function fixEndSlash (path) {
-		return path.charAt(path.length - 1) === '/' ? path : path + '/';
+	function endsWithSlash (str) {
+		return str.charAt(str.length - 1) == '/';
 	}
 
-	function fixPath (name, baseUrl) {
-		// TODO: stop appending a '/' to all cfg.paths properties to see if it simplifies this routine
+	function joinPath (path, file) {
+		return (!path || endsWithSlash(path) ? path : path + '/') + file;
+	}
+
+//	function addEndSlash (path) {
+//		return joinPath(path, '');
+//	}
+
+	function removeEndSlash (path) {
+		return endsWithSlash(path) ? path.substr(0, path.length - 1) : path;
+	}
+
+	function resolvePath (name, baseUrl) {
 		// takes a resource name (w/o ext!) and resolves it to a url
 		var paths = config.paths,
 			part = '',
 			prefix = '',
-			key = fixEndSlash(name),
-			path = paths[key];
-		// we didn't have an exact match so find the longest match in config.paths.
-		if (path === undef) {
-			pathRe.lastIndex = 0; // literal regexes are cached globally, so always reset this
-			while ((part += pathRe.exec(key)) && paths[part]) {
-				prefix = part;
-			}
-			path = paths[prefix] || '';
+			path = paths[name];
+		pathRe.lastIndex = 0; // literal regexes are cached globally, so always reset this
+		// pull off a folder in the path
+		// does it match an entry in paths?
+		//		if so, grab it as a prefix and go back
+		// using part != prefix to detect if the regex is stuck
+		while ((part += pathRe.exec(name)) && paths[part] && part != prefix) {
+			prefix = part;
 		}
+		path = (paths[prefix] || '') + name.substr(prefix.length);
 		// prepend baseUrl if we didn't find an absolute url
-		if (!baseUrlRe.test(path)) path = baseUrl + path;
+		if (!absUrlRe.test(path)) path = joinPath(baseUrl, path);
 		// append name
-		return path + name.substr(prefix.length);
+		return path;
 	}
 
 	function toUrl (name, ext, ctx) {
-		// TODO: packages in a CommonJS extension
-		return fixPath(name, ctx.baseUrl) + (ext ? '.' + ext : '');
+		return resolvePath(name, ctx.baseUrl) + (ext ? '.' + ext : '');
 	}
 
 	function loadScript (def, success, failure) {
@@ -329,12 +336,13 @@
 
 	function fetchPluginDef (fullName, prefix, name, ctx) {
 
-		// prepend plugin folder path, if it's missing
-		prefix = fixPath(prefix, '');
+		// prepend plugin folder path, if it's missing and path isn't in config.paths
+		var prev = prefix;
+		prefix = resolvePath(prefix, '');
 		var slashPos = prefix.indexOf('/');
-		if (slashPos < 0) {
-			fullName = config.pluginPath + fullName;
-			prefix = config.pluginPath + prefix;
+		if (slashPos < 0 && prefix == prev) {
+			fullName = joinPath(config.pluginPath, fullName);
+			prefix = joinPath(config.pluginPath, prefix);
 		}
 		// the spec is unclear, but we're using the full name (prefix + name) to id resources
 		var def = cache[fullName] = new ResourceDef(name, ctx);
@@ -623,105 +631,40 @@
 
 	// if we don't have a baseUrl (null, undefined, or '')
 	// use the document's path as the baseUrl
-	// ensure there's a trailing /
-	config.baseUrl = config.baseUrl ? fixEndSlash(config.baseUrl) : '';
+	if (config.baseUrl == null) {
+		config.baseUrl = '';
+	}
 
 	// ensure all paths end in a '/'
 	var paths = {};
 	forin(config.paths, function (path, p) {
-		paths[p] = fixEndSlash(path);
-		if (p.charAt(p.length - 1) !== '/') {
-			paths[p + '/'] = path;
+		paths[p] = removeEndSlash(path);
+		if (p.charAt(p.length - 1) == '/') {
+			paths[removeEndSlash(p)] = paths[p];
 			delete paths[p];
 		}
 	});
-	if (!('curl/' in paths)) {
+	if (!('curl' in paths)) {
 		// find path to curl
 		var scripts = doc.getElementsByTagName('script'),
 			i, match;
 		for (i = scripts.length - 1; i >= 0 && !match ; i--) {
 			match = scripts[i].src.match(findCurlRe);
 		}
-		paths['curl/'] = match[1] + '/';
+		paths['curl'] = match[1];
 	}
 	config.paths = paths;
-	config.pluginPath = fixEndSlash(config.pluginPath);
+	if (config.pluginPath == null) {
+		config.pluginPath = joinPath(paths['curl'], 'plugin');
+	}
 
 	// using bracket property notation so closure won't clobber name
 	global['require'] = global['curl'] = _curl['require'] = _curl;
 	global['define'] = _curl['define'] = _define;
-	_curl['extend'] = _extend;
+//	_curl['extend'] = _extend;
 
 	// this is to comply with the AMD CommonJS proposal:
 	_define.amd = {};
-
-//	// Plugin to load plain old javascript.
-//	// inlining the js plugin since it's much more efficient here
-//	var queue = [], inFlightCount = 0;
-//	_define('curl/plugin/js', {
-//
-//		'load': function (name, require, promise, ctx) {
-//
-//			var wait, prefetch, def;
-//
-//			wait = name.indexOf('!wait') >= 0;
-//			name = wait ? name.substr(0, name.indexOf('!')) : name;
-//			prefetch = 'jsPrefetch' in ctx ? ctx.jsPrefetch : true;
-//			def = {
-//				name: name,
-//				url: require.toUrl(name),
-//				ctx: ctx
-//			};
-//
-//			function fetch (def, promise) {
-//
-//				loadScript(def,
-//					function (el) {
-//						var next;
-//						inFlightCount--;
-//						// if we've loaded all of the non-blocked scripts
-//						if (inFlightCount == 0 && queue.length > 0) {
-//							// grab next queued script
-//							next = queue.shift();
-//							// go get it (from cache hopefully)
-//							inFlightCount++;
-//							fetch.apply(null, next);
-//						}
-//						promise.resolve(el);
-//					},
-//					function (ex) {
-//						inFlightCount--;
-//						promise.reject(ex);
-//					}
-//				);
-//
-//			}
-//
-//			// if this script has to wait for another
-//			if (wait && inFlightCount > 0) {
-//				// push before fetch in case IE has file cached
-//				queue.push([def, promise]);
-//				// if we're prefetching
-//				if (prefetch) {
-//					// go get the file under an unknown mime type
-//					var fakeDef = beget(def);
-//					fakeDef.mimetype = 'text/cache';
-//					loadScript(fakeDef,
-//						// remove the fake script when loaded
-//						function (el) { el.parentNode.removeChild(el); },
-//						function () {}
-//					);
-//				}
-//			}
-//			// otherwise, just go get it
-//			else {
-//				inFlightCount++;
-//				fetch(def, promise);
-//			}
-//
-//		}
-//
-//	});
 
 }(this, document));
 
