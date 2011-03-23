@@ -2,10 +2,13 @@ curl (CUjo Resource Loader)
 =====================
 
 version 0.3
-TODO: i18n plugin
-TODO: finish core extensions (debug, commonjs, etc)
-TODO: commonjs extension: Modules 1.1 and packages
-TODO: start using markdown for this README
+
+TODO:
+
+* i18n plugin
+* finish core extensions (debug, commonjs, etc)
+* commonjs extension: Modules 1.1 and packages
+* start using markdown for this README
 
 ----------------------------------------
 
@@ -182,11 +185,11 @@ these modules and resources need to be loaded at page load, but some may be
 loaded later, either in the background or "just in time". They also need to be
 loaded as quickly as possible.
 
-The traditional way to load javascript modules is via a <SCRIPT> element in
-an HTML page. Similarly, CSS files are loaded via a <LINK> element, and
+The traditional way to load javascript modules is via a `<SCRIPT>` element in
+an HTML page. Similarly, CSS files are loaded via a `<LINK>` element, and
 text resources are either loaded in the page or via XHR calls.
 
-The problem with <SCRIPT> and <LINK> elements is that a browser must execute
+The problem with `<SCRIPT>` and `<LINK>` elements is that a browser must execute
 them sequentially since it has no idea if one may depend on another. It just
 assumes the developer has placed them in the correct order and that there are
 dependencies. (The term "synchronous loading" is used to describe this process
