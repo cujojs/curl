@@ -237,9 +237,9 @@ argument signatures as server-side javascript (ssjs) modules.
 Not all async loaders are AMD-compliant. Of the list above, only the following
 are AMD-compliant:
 
-curl.js (http://github.com/unscriptable/curl)
-RequireJS (http://requirejs.org/)
-backdraft loader (http://http://bdframework.org/bdLoad/index.html)
+curl.js <http://github.com/unscriptable/curl>
+RequireJS <http://requirejs.org/>
+backdraft loader <http://http://bdframework.org/bdLoad>
 
 The beauty of AMD loaders is their ability to remove the drudgery of manually
 managing dependencies.  Since all dependencies are listed within the 
@@ -326,7 +326,7 @@ js! -- loads non-AMD javascript files
 text! -- loads text files
 
 You can also load css files by using the AMD plugin at the following repo:
-https://github.com/unscriptable/cssx/blob/master/src/cssx/css.js
+<https://github.com/unscriptable/cssx/blob/master/src/cssx/css.js>
 
 The following plugins are planned:
 
@@ -440,11 +440,11 @@ custom shell script in the mean time.
 
 Many thanks to Bryan Forbes for helping to clean up my code and for making
 cujo's domReady much more robust.
-More about Bryan: http://www.reigndropsfall.net/
+More about Bryan: <http://www.reigndropsfall.net/>
 
 Kudos also to James Burke who instigated the CommonJS AMD proposal and
 paved the way to create AMD-style loaders.
-More about James: http://tagneto.blogspot.com/
+More about James: <http://tagneto.blogspot.com/>
 
 Shout out to Kris Zyp for excellent ideas and feedback and Kyle Simpson who
 is inarguably the godfather of javascript loading.
