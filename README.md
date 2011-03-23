@@ -203,7 +203,7 @@ An asynchronous loader does just that: it loads javascript files (and
 other types of files) in parallel whenever possible.
 
 curl.js has lots of company. Other async loaders include LABjs, Steal.js,
-yepnope.js, $script.js, the Backdraft loader (bdLoader), and RequireJS.
+yepnope.js, $script.js, the Backdraft loader (bdLoad), and RequireJS.
 
 ----------------------------------------
 
@@ -241,7 +241,9 @@ Not all async loaders are AMD-compliant. Of the list above, only the following
 are AMD-compliant:
 
 curl.js <http://github.com/unscriptable/curl>
+
 RequireJS <http://requirejs.org/>
+
 backdraft loader <http://http://bdframework.org/bdLoad>
 
 The beauty of AMD loaders is their ability to remove the drudgery of manually
@@ -326,6 +328,7 @@ Yes, curl.js follows the CommonJS Loader Plugin specification, so you can use
 any compatible plugin. The following plugins are included:
 
 js! -- loads non-AMD javascript files
+
 text! -- loads text files
 
 You can also load css files by using the AMD plugin at the following repo:
@@ -334,6 +337,7 @@ You can also load css files by using the AMD plugin at the following repo:
 The following plugins are planned:
 
 i18n! -- loads text strings and other locale-specific constants
+
 cssx! -- loads and automatically shims css files for older browsers
 
 ----------------------------------------
