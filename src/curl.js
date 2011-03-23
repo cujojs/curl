@@ -637,6 +637,7 @@
 	// using bracket property notation so closure won't clobber name
 	global['require'] = global['curl'] = _curl['require'] = _curl;
 	global['define'] = _curl['define'] = _define;
+	_curl['version'] = version;
 //	_curl['extend'] = _extend;
 
 	// this is to comply with the AMD CommonJS proposal:

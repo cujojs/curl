@@ -1,7 +1,7 @@
 curl (CUjo Resource Loader)
 =====================
 
-version 0.2.2
+version 0.3
 TODO: i18n plugin
 TODO: finish core extensions (debug, commonjs, etc)
 TODO: commonjs extension: Modules 1.1 and packages
@@ -13,7 +13,19 @@ What is curl.js?
 ================
 
 curl.js is a small, but very fast AMD-compliant asynchronous loader.
-Current size: 5.7KB (2.5KB gzipped) using Google's Closure Compiler.
+Current size: 4.5KB (2.1KB gzipped) using Google's Closure Compiler.
+
+If you'd like to use curl.js for non-AMD modules, you'll want to  use the
+version with the js! plugin built in.  You may also want to build-in the
+domReady module.  The combined curl+js+domReady loader is still only
+6.1KB (2.7KB gzipped).
+
+What's new?
+* The API has changed a bit. The .ready() and .domReady() methods are gone,
+  replaced by the domReady module.  See the "API at a glance" section.
+* The js! plugin has been moved out into it's own file and now supports
+  the !wait suffix which will load, but not execute, the file until
+  all previous non-AMD files are executed.
 
 If you're already familiar with CommonJS AMD loaders, skip down to the section
 "How do I use curl.js?"
@@ -39,54 +51,71 @@ API at a glance
 
 "curl" and "require" are synonyms. You may use them interchangeably.
 
-curl(dependencies, callback);
-require(dependencies, callback);
+curl(['dep1', 'dep2', 'dep3' /* etc */], callback);
+require(['dep1', 'dep2', 'dep3' /* etc */], callback);
 
 	Loads dependencies and the executes callback.
-	dependencies: Array of module names or plugin-prefixed resource files
+	['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
 	callback: Function to receive modules or resources
 
-curl(dependencies)
+
+curl(['dep1', 'dep2', 'dep3' /* etc */])
 	.then(callback, errorback);
-require(dependencies)
+require(['dep1', 'dep2', 'dep3' /* etc */])
 	.then(callback, errorback);
 
 	Promises-based API for executing callbacks.
-	dependencies: Array of module names or plugin-prefixed resource files
+	['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
 	callback: Function to receive modules or resources
 	errorback: Function to call if an exception occurred while loading
 
-curl(config, dependencies, callback);
-require(config, dependencies, callback);
+
+curl(config, ['dep1', 'dep2', 'dep3' /* etc */], callback);
+require(config, ['dep1', 'dep2', 'dep3' /* etc */], callback);
 
 	Specify configuration options, load dependencies, and execute callback.
 	config: Object containing curl configuration options (paths, etc.)
-	dependencies: Array of module names or plugin-prefixed resource files
+	['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
 	callback: Function to receive modules or resources
 
-curl(dependencies)
-	.ready()
-	.then(callback, errorback);
+
+curl(['domReady', 'dep2', 'dep3' /* etc */])
+	.then(
+		function (domReady, dep2, dep3) {
+			domReady(callback);
+		},
+		errorback
+	);
+curl(['domReady', 'dep2', 'dep3' /* etc */], function (domReady, dep2, dep3) {
+	domReady(callback);
+});
 
 	Executes the callback when the dom is ready for manipulation AND
 	all dependencies have loaded.
-	callback: Function to receive modules or resources
+	callback: No parameters
 	errorback: Function to call if an exception occurred while loading
 
-curl.domReady(callback);
 
-	Simply executes a callback when the dom is ready for manipulation.
-	callback: Function (no parameters)
+curl(['domReady', 'js!nonAMD.js', 'js!another.js!wait']), function (domReady) {
+	domReady(function () {
+		/* do something cool here */
+	};
+});
 
-define(dependencies, definition);
-define(dependencies, module);
+	Executes the function in domReady() when the non-AMD javascript files
+	are loaded and the dom is ready.
+	The another.js file will wait for the nonAMD.js file before executing.
+
+
+define(['dep1', 'dep2', 'dep3' /* etc */], definition);
+define(['dep1', 'dep2', 'dep3' /* etc */], module);
 define(module);
-define(name, dependencies, definition);
-define(name, dependencies, module);
+define(name, ['dep1', 'dep2', 'dep3' /* etc */], definition);
+define(name, ['dep1', 'dep2', 'dep3' /* etc */], module);
 define(name, module);
 
 	Defines a module per the CommonJS AMD proposed specification.
-	dependencies: Array of module names or plugin-prefixed resource files
+	['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
 	definition: Function called to define the module
 	module: Any javascript object, function, constructor, or primitive
 	name: String used to name a module (not necessary nor recommended)
@@ -366,8 +395,6 @@ How do I use curl.js?
 =====================
 
 TODO: step-by-step instructions
-
-TODO: curl.domReady() vs. require().ready() / curl().ready()
 
 (take a look at the test files for some example code)
 
