@@ -87,7 +87,7 @@ callback: Function to receive modules or resources
 			callback,
 			errorback
 		);
-	curl(['dep1', 'dep2', domReady' /* etc */], function (dep1, dep2) {
+	curl(['dep1', 'dep2', 'domReady' /* etc */], function (dep1, dep2) {
 		// do something here
 	});
 
@@ -303,7 +303,7 @@ write code like this:
 		}
 	);
 
-(When using CommonJS sync syntax {{{var res = require('resName');}}}, a promise
+(When using CommonJS sync syntax `var res = require('resName');`, a promise
 isn't returned since the resource is returned synchronously. duh)
 
 ----------------------------------------
