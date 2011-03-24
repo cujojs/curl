@@ -2,7 +2,7 @@
  * curl domReady
  *
  * (c) copyright 2011, unscriptable.com / John Hann
- * Licnsed under the MIT License at:
+ * Licensed under the MIT License at:
  * 		http://www.opensource.org/licenses/mit-license.php
  *
  * usage:
@@ -13,12 +13,14 @@
  * 		});
  * 	});
  *
+ * HT to Bryan Forbes: http://www.reigndropsfall.net/
+ *
  */
 (function (global, doc) {
 
 	var
 		readyState = 'readyState',
-		// kep these quoted so closure compiler doesn't squash them
+		// keep these quoted so closure compiler doesn't squash them
 		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
 		callbacks = [],
 		fixReadyState = typeof doc[readyState] != "string",
@@ -79,9 +81,15 @@
 	}
 
 	define(function () {
-		return function (cb) {
+
+		// this is simply a callback, but make it look like a promise
+		function domReady (cb) {
 			if (completed) cb(); else callbacks.push(cb);
 		}
+		domReady['then'] = domReady;
+
+		return domReady;
+
 	});
 
 }(this, document));

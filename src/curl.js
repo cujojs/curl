@@ -27,7 +27,7 @@
 
 
 	var
-		version = '0.3',
+		version = '0.3.1',
 		// local cache of resource definitions (lightweight promises)
 		cache = {},
 		// default configuration
@@ -237,7 +237,6 @@
 		// (array, object|function) ax|af
 		// (string) s
 		// TODO: check invalid argument combos here?
-		// TODO: CommonJS require('string') syntax in an extension
 		function toFunc (res) {
 			return isType(res, 'Function') ? res : function () { return res; };
 		}
@@ -260,6 +259,36 @@
 			res = { res: toFunc(args[0]) };
 		}
 		return res;
+	}
+
+	function resolveResDef (def, args, ctx) {
+
+		function success (res) {
+			def.resolve(res);
+		}
+
+		function failure (ex) {
+			def.reject(ex);
+		}
+
+		// get the dependencies and then resolve/reject
+		// even if there are no dependencies, we're still taking
+		// this path to simplify the code
+		getDeps(args.deps, begetCtx(ctx, def.name),
+			function (deps) {
+				var res = args.res.apply(null, deps);
+				if (res && isType(res['then'], 'Function')) {
+					// oooooh lookee! we got a promise!
+					// chain it
+					res['then'](success, failure);
+				}
+				else {
+					success(res);
+				}
+			},
+			failure
+		);
+
 	}
 
 	function fetchResDef (name, ctx) {
@@ -286,21 +315,8 @@
 						// its name, so reject this def with better information
 						def.reject(new Error(args.ex.replace('${url}', def.url)));
 					}
-					else if (!args.deps) {
-						// no dependencies, just call the definition function
-						def.resolve(args.res());
-					}
 					else {
-						// resolve dependencies and execute definition function here
-						// because we couldn't get the cfg in the anonymous define()
-						getDeps(args.deps, begetCtx(ctx, def.name),
-							function (deps) {
-								def.resolve(args.res.apply(null, deps));
-							},
-							function (ex) {
-								def.reject(ex);
-							}
-						);
+						resolveResDef(def, args, ctx);
 					}
 				}
 
@@ -355,8 +371,6 @@
 	}
 
 	function getDeps (names, ctx, success, failure) {
-		// TODO: throw if multiple exports found?
-		// TODO: supply exports and module in a commonjs extension
 
 		var deps = [],
 			count = names ? names.length : 0,
@@ -412,7 +426,7 @@
 		}(i, names[i]));
 
 		// were there none to fetch and did we not already complete the promise?
-		if (count === 0 && !completed) {
+		if (count == 0 && !completed) {
 			success([]);
 		}
 
@@ -540,17 +554,7 @@
 				def = cache[name] = new ResourceDef(name, begetCtx(null, name));
 			}
 			def.useNet = false;
-			if (!args.deps) {
-				// call definition function
-				def.resolve(args.res());
-			}
-			else {
-				// resolve dependencies and call the definition function
-				getDeps(args.deps, begetCtx(def.ctx, name),
-					function (deps) { def.resolve(args.res.apply(null, deps)); },
-					function (ex) { def.reject(ex); }
-				);
-			}
+			resolveResDef(def, args, def.ctx);
 		}
 
 	}

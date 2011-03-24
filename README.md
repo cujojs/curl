@@ -1,7 +1,7 @@
 curl (CUjo Resource Loader)
 =====================
 
-version 0.3
+version 0.3.1
 
 TODO:
 
@@ -27,6 +27,7 @@ What's new?
 ----------
 * The API has changed a bit. The .ready() and .domReady() methods are gone,
   replaced by the domReady module.  See the "API at a glance" section.
+* The domReady module now returns a promise. This makes the API a bit cleaner.
 * The js! plugin has been moved out into it's own file and now supports
   the !wait suffix which will load, but not execute, the file until
   all previous non-AMD files are executed.
@@ -83,9 +84,7 @@ callback: Function to receive modules or resources
 
 	curl(['domReady', 'dep2', 'dep3' /* etc */])
 		.then(
-			function (domReady, dep2, dep3) {
-				domReady(callback);
-			},
+			callback,
 			errorback
 		);
 	curl(['domReady', 'dep2', 'dep3' /* etc */], function (domReady, dep2, dep3) {
@@ -94,32 +93,36 @@ callback: Function to receive modules or resources
 
 Executes the callback when the dom is ready for manipulation AND
 all dependencies have loaded.
-callback: No parameters
+callback: No parameters except the domReady object
 errorback: Function to call if an exception occurred while loading
 
 
 	curl(['domReady', 'js!nonAMD.js', 'js!another.js!wait']), function (domReady) {
-		domReady(function () {
-			/* do something cool here */
-		};
+		/* do something cool here */
 	});
 
-Executes the function in domReady() when the non-AMD javascript files
-are loaded and the dom is ready.
-The another.js file will wait for the nonAMD.js file before executing.
+Executes the function when the non-AMD javascript files are loaded and
+the dom is ready. The another.js file will wait for the nonAMD.js file
+before executing.
 
 
 	define(['dep1', 'dep2', 'dep3' /* etc */], definition);
 	define(['dep1', 'dep2', 'dep3' /* etc */], module);
+	define(['dep1', 'dep2', 'dep3' /* etc */], promise);
 	define(module);
+	define(promise);
 	define(name, ['dep1', 'dep2', 'dep3' /* etc */], definition);
 	define(name, ['dep1', 'dep2', 'dep3' /* etc */], module);
+	define(name, ['dep1', 'dep2', 'dep3' /* etc */], promise);
 	define(name, module);
+	define(name, promise);
 
 Defines a module per the CommonJS AMD proposed specification.
 ['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
 definition: Function called to define the module
 module: Any javascript object, function, constructor, or primitive
+promise: Object compatible with CommonJS Promises/A. Useful for further
+deferring resolution of the module.
 name: String used to name a module (not necessary nor recommended)
 
 ----------------------------------------
@@ -155,16 +158,13 @@ Very Simple Example
 		.then(
 			// execute this callback, passing all dependencies as params
 			function (ready, three, link, strings, template) {
-				// when the dom is ready
-				ready(function () {
-					var body = document.body;
-					if (body) {
-						body.appendChild(document.createTextNode('three == ' + three.toString() + ' '));
-						body.appendChild(document.createElement('br'));
-						body.appendChild(document.createTextNode(strings.hello));
-						body.appendChild(document.createElement('div')).innerHTML = template;
-					}
-				})
+				var body = document.body;
+				if (body) {
+					body.appendChild(document.createTextNode('three == ' + three.toString() + ' '));
+					body.appendChild(document.createElement('br'));
+					body.appendChild(document.createTextNode(strings.hello));
+					body.appendChild(document.createElement('div')).innerHTML = template;
+				}
 			},
 			// execute this callback if there was a problem
 			function (ex) {
