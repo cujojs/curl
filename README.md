@@ -87,8 +87,8 @@ callback: Function to receive modules or resources
 			callback,
 			errorback
 		);
-	curl(['domReady', 'dep2', 'dep3' /* etc */], function (domReady, dep2, dep3) {
-		domReady(callback);
+	curl(['dep1', 'dep2', domReady' /* etc */], function (dep1, dep2) {
+		// do something here
 	});
 
 Executes the callback when the dom is ready for manipulation AND
@@ -104,6 +104,23 @@ errorback: Function to call if an exception occurred while loading
 Executes the function when the non-AMD javascript files are loaded and
 the dom is ready. The another.js file will wait for the nonAMD.js file
 before executing.
+
+
+	curl(['js!nonAMD.js'])
+		.next(['dep1', 'dep2', 'dep3'], function (dep1, dep2, dep3) {
+			// do something before the dom is ready
+		})
+		.next(['domReady'])
+		.then(
+			function () {
+				// do something after the dom is ready
+			},
+			function (ex) {
+				// show an error to the user
+			}
+		);
+
+Executes callbacks is stages using `.next(deps, callback)`.
 
 
 	define(['dep1', 'dep2', 'dep3' /* etc */], definition);
@@ -147,17 +164,17 @@ Very Simple Example
 		curl(
 			// fetch all of these resources ("dependencies")
 			[
-				'curl/domReady',
 				'stuff/three', // an AMD module
 				'cssx/css!stuff/base', // a css file
 				'i18n!stuff/nls/strings', // a translation file
-				'text!stuff/template.html' // an html template
+				'text!stuff/template.html', // an html template
+				'curl/domReady'
 			]
 		)
 		// when they are loaded
 		.then(
 			// execute this callback, passing all dependencies as params
-			function (ready, three, link, strings, template) {
+			function (three, link, strings, template) {
 				var body = document.body;
 				if (body) {
 					body.appendChild(document.createTextNode('three == ' + three.toString() + ' '));
@@ -445,13 +462,13 @@ custom shell script in the mean time.
 
 ----------------------------------------
 
-Many thanks to Bryan Forbes for helping to clean up my code and for making
-cujo's domReady much more robust.
+Many thanks to Bryan Forbes (@bryanforbes) for helping to clean up my code and
+for making cujo's domReady much more robust.
 More about Bryan: <http://www.reigndropsfall.net/>
 
-Kudos also to James Burke who instigated the CommonJS AMD proposal and
-paved the way to create AMD-style loaders.
+Kudos also to James Burke (@jrburke) who instigated the CommonJS AMD proposal
+and paved the way to create AMD-style loaders.
 More about James: <http://tagneto.blogspot.com/>
 
-Shout out to Kris Zyp for excellent ideas and feedback and Kyle Simpson who
-is inarguably the godfather of javascript loading.
+Shout out to Kris Zyp (@kriszyp) for excellent ideas and feedback and Kyle
+Simpson (@getify) who is inarguably the godfather of javascript loading.

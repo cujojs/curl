@@ -514,7 +514,8 @@
 				);
 				return api;
 			};
-			api['require'] = function (deps, cb) {
+			// promise chaining
+			api['next'] = function (deps, cb) {
 				var origPromise = promise;
 				promise = new Promise();
 				origPromise.then(
@@ -522,6 +523,10 @@
 						ctx.require(deps, promise, ctx);
 					}
 				);
+				if (cb) {
+					promise.then(cb);
+				}
+				return api;
 			};
 			if (callback) api.then(callback);
 		}
