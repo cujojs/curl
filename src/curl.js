@@ -91,8 +91,8 @@
 		ctx.require['toUrl'] = function (name) {
 			return resolvePath(normalizeName(name, ctx), ctx.baseUrl);
 		};
-		if (ctx.doc && !ctx.head) {
-			ctx.head = ctx.doc.getElementsByTagName('head')[0];
+		if (ctx.doc && !ctx.doc.head) {
+			ctx.doc.head = ctx.doc.getElementsByTagName('head')[0];
 		}
 		return ctx;
 	}
@@ -186,7 +186,7 @@
 
 		// insert script
 		var el = def.ctx.doc.createElement('script'),
-			head  = def.ctx.head;
+			head  = def.ctx.doc.head;
 
 		// initial script processing
 		function process (ev) {

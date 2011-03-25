@@ -1,5 +1,5 @@
 /**
- * curl domReady
+ * curl js plugin
  *
  * (c) copyright 2011, unscriptable.com / John Hann
  * Licnsed under the MIT License at:
@@ -19,7 +19,7 @@
 	var queue = [],
 		inFlightCount = 0,
 		readyStates = { loaded: 1, interactive: 1, complete: 1 },
-		head = doc.getElementsByTagName('head')[0];
+		head = doc.head || doc.getElementsByTagName('head')[0];
 
 	// TODO: find a way to reuse the loadScript from curl.js
 	function loadScript (def, success, failure) {
