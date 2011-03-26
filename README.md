@@ -1,4 +1,4 @@
-curl (CUjo Resource Loader)
+curl (Cujo Resource Loader)
 =====================
 
 version 0.3.1
@@ -228,9 +228,24 @@ What is AMD?
 ============
 
 Asynchronous Module Definition is the CommonJS proposed standard for
-asynchronous loaders. It defines a simple API that developers can use to
-write their javascript modules so that they may be loaded by any compliant
-loader.
+javascript modules that can be loaded by asynchronous loaders. It defines 
+a simple API that developers can use to write their javascript modules so 
+that they may be loaded by any AMD-compliant loader.
+
+[CommonJS AMD Proposal](http://wiki.commonjs.org/wiki/Modules/AsynchronousDefinition)
+
+The AMD proposal follows the [CommonJS Modules](http://wiki.commonjs.org/wiki/Modules/1.1)
+proposal as much as possible.  Because of the way browsers load and
+evaluate scripts, AMD can't follow it completely without causing significant
+processing overhead.  Instead, AMD allows us to place a lightweight wrapper
+around javascript modules to help work around the shortcomings.
+
+Ultimately, both proposals (AMD and Modules 1.1) are in preparation for an
+official [javascript modules](http://wiki.ecmascript.org/doku.php?id=harmony:modules)
+specification and eventual implementation in browsers.
+
+If you don't want to wait for official javascript modules, then don't.  The future 
+is now.  AMD works now -- and it's awesome.
 
 AMD's API focuses on two globally-available functions: require() and define().
 require() specifies a list of dependent modules or resources that must be
