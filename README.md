@@ -17,17 +17,16 @@ What is curl.js?
 curl.js is a small, but very fast AMD-compliant asynchronous loader.
 Current size: 4.5KB (2.1KB gzipped) using Google's Closure Compiler.
 
-If you'd like to use curl.js for non-AMD modules, you'll want to  use the
+If you'd like to use curl.js for non-AMD modules (ordinary javascript files), you'll want to  use the
 version with the js! plugin built in.  You may also want to build-in the
 domReady module.  The combined curl+js+domReady loader is still only
 6.1KB (2.7KB gzipped).
 
-What the heck is cujo?  cujo.js is a web app dvelopment platform.  
-See the bottom of this file for more info.
+What the heck is cujo?  cujo.js is a web app dvelopment platform.  See the bottom of this file for more info.
 
 What's new?
 ----------
-* The API has changed a bit. The .ready() and .domReady() methods are gone,
+* The API has changed a bit since 0.2. The .ready() and .domReady() methods are gone,
   replaced by the domReady module.  See the "API at a glance" section.
 * The domReady module now returns a promise. This makes the API a bit cleaner.
 * The js! plugin has been moved out into it's own file and now supports
@@ -42,12 +41,15 @@ If you're already familiar with CommonJS AMD loaders, skip down to the section
 Features at a glance:
 =====================
 
-* Loads CommonJS AMD-formatted javascript modules
-* Loads non-AMD javascript files, too (via embedded plugin)
-* Loads CSS files and text files (via plugins)
+* Loads CommonJS AMD-formatted javascript modules in parallel (fast!)
+* Loads non-AMD javascript files in parallel, too (fast! via js! plugin)
+* Loads CSS files and text files in parallel (fast! via plugins)
 * Waits for dependencies (js, css, text, etc) before executing javascript
-* Waits for domReady --OR-- waits for all dependencies and domReady
+* Waits for domReady, if/when desired
+* Allows for virtually limitless combinations of files and dependencies
 * Tested with Chrome, FF3+, Safari 3.2+, IE6-8, Opera 9.5+
+
+Oh, did we mention?  It's fast!
 
 ----------------------------------------
 
@@ -62,7 +64,7 @@ API at a glance
 Loads dependencies and the executes callback.
 
 * ['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
-* callback: Function to receive modules or resources
+* callback: Function to receive modules or resources. This is where you'd typically start up your app.
 
 ---------
 	curl(['dep1', 'dep2', 'dep3' /* etc */])
