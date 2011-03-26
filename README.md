@@ -62,7 +62,7 @@ Loads dependencies and the executes callback.
 * ['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
 * callback: Function to receive modules or resources
 
-
+---------
 	curl(['dep1', 'dep2', 'dep3' /* etc */])
 		.then(callback, errorback);
 	require(['dep1', 'dep2', 'dep3' /* etc */])
@@ -74,7 +74,7 @@ Promises-based API for executing callbacks.
 * callback: Function to receive modules or resources
 * errorback: Function to call if an exception occurred while loading
 
-
+---------
 	curl(config, ['dep1', 'dep2', 'dep3' /* etc */], callback);
 	require(config, ['dep1', 'dep2', 'dep3' /* etc */], callback);
 
@@ -84,7 +84,7 @@ Specify configuration options, load dependencies, and execute callback.
 * ['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
 * callback: Function to receive modules or resources
 
-
+---------
 	curl(['domReady', 'dep2', 'dep3' /* etc */])
 		.then(
 			callback,
@@ -100,7 +100,7 @@ all dependencies have loaded.
 * callback: No parameters except the domReady object
 * errorback: Function to call if an exception occurred while loading
 
-
+---------
 	curl(['domReady', 'js!nonAMD.js', 'js!another.js!wait']), function (domReady) {
 		/* do something cool here */
 	});
@@ -109,7 +109,7 @@ Executes the function when the non-AMD javascript files are loaded and
 the dom is ready. The another.js file will wait for the nonAMD.js file
 before executing.
 
-
+---------
 	curl(['js!nonAMD.js'])
 		.next(['dep1', 'dep2', 'dep3'], function (dep1, dep2, dep3) {
 			// do something before the dom is ready
@@ -126,6 +126,7 @@ before executing.
 
 Executes callbacks is stages using `.next(deps, callback)`.
 
+---------
 	define(['dep1', 'dep2', 'dep3' /* etc */], definition);
 	define(['dep1', 'dep2', 'dep3' /* etc */], module);
 	define(['dep1', 'dep2', 'dep3' /* etc */], promise);
