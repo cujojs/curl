@@ -58,8 +58,8 @@ API at a glance
 	require(['dep1', 'dep2', 'dep3' /* etc */], callback);
 
 Loads dependencies and the executes callback.
-['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
-callback: Function to receive modules or resources
+* ['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
+* callback: Function to receive modules or resources
 
 
 	curl(['dep1', 'dep2', 'dep3' /* etc */])
@@ -68,18 +68,18 @@ callback: Function to receive modules or resources
 		.then(callback, errorback);
 
 Promises-based API for executing callbacks.
-['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
-callback: Function to receive modules or resources
-errorback: Function to call if an exception occurred while loading
+* ['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
+* callback: Function to receive modules or resources
+* errorback: Function to call if an exception occurred while loading
 
 
 	curl(config, ['dep1', 'dep2', 'dep3' /* etc */], callback);
 	require(config, ['dep1', 'dep2', 'dep3' /* etc */], callback);
 
 Specify configuration options, load dependencies, and execute callback.
-config: Object containing curl configuration options (paths, etc.)
-['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
-callback: Function to receive modules or resources
+* config: Object containing curl configuration options (paths, etc.)
+* ['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
+* callback: Function to receive modules or resources
 
 
 	curl(['domReady', 'dep2', 'dep3' /* etc */])
@@ -93,8 +93,8 @@ callback: Function to receive modules or resources
 
 Executes the callback when the dom is ready for manipulation AND
 all dependencies have loaded.
-callback: No parameters except the domReady object
-errorback: Function to call if an exception occurred while loading
+* callback: No parameters except the domReady object
+* errorback: Function to call if an exception occurred while loading
 
 
 	curl(['domReady', 'js!nonAMD.js', 'js!another.js!wait']), function (domReady) {
@@ -122,7 +122,6 @@ before executing.
 
 Executes callbacks is stages using `.next(deps, callback)`.
 
-
 	define(['dep1', 'dep2', 'dep3' /* etc */], definition);
 	define(['dep1', 'dep2', 'dep3' /* etc */], module);
 	define(['dep1', 'dep2', 'dep3' /* etc */], promise);
@@ -135,12 +134,12 @@ Executes callbacks is stages using `.next(deps, callback)`.
 	define(name, promise);
 
 Defines a module per the CommonJS AMD proposed specification.
-['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
-definition: Function called to define the module
-module: Any javascript object, function, constructor, or primitive
-promise: Object compatible with CommonJS Promises/A. Useful for further
+* ['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
+* definition: Function called to define the module
+* module: Any javascript object, function, constructor, or primitive
+* promise: Object compatible with CommonJS Promises/A. Useful for further
 deferring resolution of the module.
-name: String used to name a module (not necessary nor recommended)
+* name: String used to name a module (not necessary nor recommended)
 
 ----------------------------------------
 
