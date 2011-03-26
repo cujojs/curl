@@ -8,7 +8,6 @@ TODO:
 * i18n plugin
 * finish core extensions (debug, commonjs, etc)
 * commonjs extension: Modules 1.1 and packages
-* start using markdown for this README
 
 ----------------------------------------
 
@@ -22,6 +21,9 @@ If you'd like to use curl.js for non-AMD modules, you'll want to  use the
 version with the js! plugin built in.  You may also want to build-in the
 domReady module.  The combined curl+js+domReady loader is still only
 6.1KB (2.7KB gzipped).
+
+What the heck is cujo?  cujo.js is a web app dvelopment platform.  
+See the bottom of this file for more info.
 
 What's new?
 ----------
@@ -536,6 +538,23 @@ Assembler. cram will be ready by mid 2011, so use another build tool or a
 custom shell script in the mean time.
 
 ----------------------------------------
+
+What is cujo?
+=====================
+
+cujo.js is a web app development platform.  It employs MVC, IOC, AMD
+and lots of other TLAs. :)  curl.js is one of the many micro-libs we're pulling
+out of cujo.js.  Our goal is to make the advanced concepts in cujo.js more
+palatable by breaking them down into easier-to-grok chunks.  Other cujo.js
+libs include:
+
+[canhaz](https://github.com/briancavalier/canhaz): a project and code bootstrapping tool that will save you tons of typing.
+[wire](https://github.com/briancavalier/wire): an application bootstrap, configuration, and assembly tool based on the principles of Inversion of Control, and Dependency Injection.
+[cssx](https://github.com/unscriptable/cssx): library for extending css in older browsers
+[cram](https://github.com/unscriptable/cram): a [forthcoming] javascript compressor, concatenator, and optimizer meant to be used with curl.js
+
+Kudos
+=================
 
 Many thanks to Bryan Forbes (@bryanforbes) for helping to clean up my code and
 for making cujo's domReady much more robust.
