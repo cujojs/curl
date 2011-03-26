@@ -127,6 +127,19 @@ before executing.
 Executes callbacks is stages using `.next(deps, callback)`.
 
 ---------
+
+	curl = {
+		baseUrl: '/path/to/my/js',
+		paths: {
+			curl: 'curl/src/curl',
+			cssx: 'cssx/src/cssx'
+			my: '../../my-lib/'
+		}
+	};
+
+If called before the `<script>` that loads curl.js, configures curl.js.
+
+---------
 	define(['dep1', 'dep2', 'dep3' /* etc */], definition);
 	define(['dep1', 'dep2', 'dep3' /* etc */], module);
 	define(['dep1', 'dep2', 'dep3' /* etc */], promise);
@@ -227,6 +240,8 @@ other types of files) in parallel whenever possible.
 curl.js has lots of company. Other async loaders include LABjs, Steal.js,
 yepnope.js, $script.js, the Backdraft loader (bdLoad), and RequireJS.
 
+[(a more complete list)](https://spreadsheets.google.com/a/e-numera.com/ccc?key=0Aqln2akPWiMIdERkY3J2OXdOUVJDTkNSQ2ZsV3hoWVE&hl=en#gid=2)
+
 ----------------------------------------
 
 What is AMD?
@@ -293,13 +308,9 @@ and in the right order.
 What makes curl different from other AMD loaders?
 =================================================
 
-curl.js is much smaller than other loaders. Less than 1/2 the size of the
+curl.js is much smaller than other AMD loaders. Less than 1/2 the size of the
 others in the list above. It's able to achieve this via a Promises-based
-design. (Promises are another CommonJS proposed standard.) curl also requires 
-the use of AMD-compliant javascript files, rather than provide backwards
-compatibility with non-AMD files. This eliminated dozens of lines of code.
-
-curl.js will load non-AMD modules with a forthcoming plugin.
+design. (Promises are another [CommonJS proposed standard](http://wiki.commonjs.org/wiki/Promises).)
 
 curl.js communicates with it's plugins via Promises, rather than a simple
 callback function. This allows proactive error handling, rather than detecting
@@ -379,12 +390,53 @@ cssx! -- loads and automatically shims css files for older browsers
 
 ----------------------------------------
 
-----------------------------------------
-
 How are modules loaded?
 =======================
 
-TODO: overview, baseUrl, paths
+curl.js uses `<script>` element injection rather than XHR.  This allows curl.js to
+load cross-domain scripts as well as local scripts.  
+
+To find scripts and other resources, curl uses module names.  A module name looks just like a file
+path, but typically without the file extension.  If a module requires a plugin in
+order to load correctly, it will have a prefix delimited by a "!" and will also often
+have a file extension when a plugin may load different types of files.
+
+Some examples of module names:
+
+* dojo/store/JsonRest
+* my/lib/string/format
+* js!my/lib/js/plain-old-js.js
+* css!my/styles/reset.css
+* http://some-cdn/uber/module
+
+By default, curl.js will look in the same folder as the current document's location.
+For instance, if your web page is located at `http://my-domain/apps/myApp.html`,
+curl.js will look for the JsonRest module at `http://my-domain/apps/dojo/store/JsonRest.js`.
+
+You can tell curl.js to find modules in other locations by specifying a baseUrl or 
+individual paths for each of your libraries.  For example, if you specify a baseUrl of
+`/resources/` and the following paths:
+
+	paths: {
+		dojo: "third-party/dojo",
+		css: "third-party/cssx/css",
+		my: "my-cool-app-v1.3",
+		"my/lib/js": "old-js-libs"
+	}
+
+Then the modules listed above will be sought in the following locations:
+
+* /resources/third-party/dojo/store/JsonRest.js
+* /resources/my-cool-app-v1.3/lib/string/format.js
+* /resources/old-js-libs/plain-old-js.js
+* /resources/my-cool-app-v1.3/styles/reset.css
+* http://some-cdn/uber/module.js
+
+Note: you will need to create a path to curl's plugins and other modules if the curl
+folder isn't directly under the same folder as your web page. curl.js uses the same
+mechanism to find its own modules.
+
+TODO: explain the pluginPath configuration parameter.
 
 ----------------------------------------
 
@@ -446,9 +498,12 @@ a plugin using options:
 How do I use curl.js?
 =====================
 
-TODO: step-by-step instructions
-
-(take a look at the test files for some example code)
+1. Optional: Learn about AMD-formatted javascript modules if you don't already know how.
+2. Clone or download curl to your local machine or server.
+3. Figure out the baseUrl and paths configuration that makes sense for your project.
+4. Check out the "API at a glance" section above to figure out which loading methodology you want to use.
+5. Study the "Very Simple Example" and some of the test files.
+6. Try it on your own files.
 
 ----------------------------------------
 
@@ -477,7 +532,7 @@ into a compiler (also called a shrinker or compressor).
 
 We're writing curl to be compatible with RequireJS's build tool, but there's
 also another cujo project in the pipeline: cram. Cram is the Cujo Resource
-AsseMbler. cram will be ready by mid 2011, so use another build tool or a
+Assembler. cram will be ready by mid 2011, so use another build tool or a
 custom shell script in the mean time.
 
 ----------------------------------------
