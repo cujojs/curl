@@ -58,6 +58,7 @@ API at a glance
 	require(['dep1', 'dep2', 'dep3' /* etc */], callback);
 
 Loads dependencies and the executes callback.
+
 * ['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
 * callback: Function to receive modules or resources
 
@@ -68,6 +69,7 @@ Loads dependencies and the executes callback.
 		.then(callback, errorback);
 
 Promises-based API for executing callbacks.
+
 * ['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
 * callback: Function to receive modules or resources
 * errorback: Function to call if an exception occurred while loading
@@ -77,6 +79,7 @@ Promises-based API for executing callbacks.
 	require(config, ['dep1', 'dep2', 'dep3' /* etc */], callback);
 
 Specify configuration options, load dependencies, and execute callback.
+
 * config: Object containing curl configuration options (paths, etc.)
 * ['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
 * callback: Function to receive modules or resources
@@ -93,6 +96,7 @@ Specify configuration options, load dependencies, and execute callback.
 
 Executes the callback when the dom is ready for manipulation AND
 all dependencies have loaded.
+
 * callback: No parameters except the domReady object
 * errorback: Function to call if an exception occurred while loading
 
@@ -134,6 +138,7 @@ Executes callbacks is stages using `.next(deps, callback)`.
 	define(name, promise);
 
 Defines a module per the CommonJS AMD proposed specification.
+
 * ['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
 * definition: Function called to define the module
 * module: Any javascript object, function, constructor, or primitive
