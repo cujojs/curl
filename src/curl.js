@@ -7,15 +7,6 @@
  *
  */
 
-/*
-	config resolution:
-	if (window.curl is an object) {
-		use curl as config object
-	else if (window.require is an object) {
-		use require as the config
-	declare window.require
-
- */
 (function (global, doc, userCfg) {
 
 	/*
@@ -74,6 +65,33 @@
 		return toString.call(obj).indexOf('[object ' + type) == 0;
 	}
 
+	function extractCfg (cfg) {
+
+		baseUrl = cfg['baseUrl'] || '';
+
+		// fix all paths
+		forin(cfg['paths'], function (path, p) {
+			paths[p] = removeEndSlash(path);
+			if (p.charAt(p.length - 1) == '/') {
+				paths[removeEndSlash(p)] = paths[p];
+				delete paths[p];
+			}
+		});
+
+		if (!('curl' in paths)) {
+			// find path to curl. search backwards since we're likely the most recent
+			var scripts, i, match;
+			scripts = doc.getElementsByTagName('script');
+			for (i = scripts.length - 1; i >= 0 && !match ; i--) {
+				match = scripts[i].src.match(findCurlRe);
+			}
+			paths['curl'] = match[1];
+		}
+
+		pluginPath = cfg['pluginPath'] || joinPath(paths['curl'], 'plugin');
+
+	}
+
 	function F () {}
 	function beget (ancestor) {
 		F.prototype = ancestor;
@@ -94,12 +112,12 @@
 		};
 		// using bracket property notation to closure won't clobber name
 		ctx.require['toUrl'] = function (n) {
-			return resolvePath(normalizeName(n, ctx), config.baseUrl);
+			return resolvePath(normalizeName(n, ctx), baseUrl);
 		};
 		ctx.exports = {};
 		ctx.module = {
-			id: normalizeName(name, ctx),
-			uri: ctx.require.toUrl(name)
+			'id': normalizeName(name, ctx),
+			'uri': ctx.require.toUrl(name)
 		};
 		return ctx;
 	}
@@ -309,7 +327,7 @@
 
 		var def = cache[name] = new ResourceDef(name, ctx);
 		// TODO: should this be using ctx.toUrl()??????
-		def.url = resolvePath(name, config.baseUrl) + '.js';
+		def.url = resolvePath(name, baseUrl) + '.js';
 
 		loadScript(def,
 
@@ -354,8 +372,8 @@
 		prefix = resolvePath(prefix, '');
 		var slashPos = prefix.indexOf('/');
 		if (slashPos < 0 && prefix == prev) {
-			fullName = joinPath(config.pluginPath, fullName);
-			prefix = joinPath(config.pluginPath, prefix);
+			fullName = joinPath(pluginPath, fullName);
+			prefix = joinPath(pluginPath, prefix);
 		}
 		// the spec is unclear, but we're using the full name (prefix + name) to id resources
 		var def = cache[fullName] = new ResourceDef(name, ctx);
@@ -372,7 +390,7 @@
 		// go get plugin
 		ctx.require([prefix], function (plugin) {
 			// load the resource!
-			plugin.load(name, begetCtx(ctx, name).require, loaded, ctx);
+			plugin.load(name, begetCtx(ctx, name).require, loaded, userCfg);
 
 		});
 
@@ -508,19 +526,15 @@
 		var len = arguments.length,
 			args;
 
+		// extract config, if it's specified
 		if (len === 3) {
-			// local configuration
-			forin(arguments[0], function (value, p) {
-				config[p] = value;
-			});
+			extractCfg(arguments[0]);
 		}
 
 		var ctx = begetCtx(null, '');
-		// extract config, if it's there
 		args = fixArgs(len === 3 ? aslice.call(arguments, 1) : arguments, true);
 
 		// check if we should return a promise
-		// TODO: move commonjs behavior out to an extension (if !isString(args.deps) require() returns a resource)
 		if (!isType(args.deps, 'String')) {
 			var callback = args.res,
 				promise = args.res = new Promise(),
@@ -529,7 +543,7 @@
 			// using bracket property notation so closure won't clobber name
 			api['then'] = function (resolved, rejected) {
 				promise.then(
-					function (deps) { resolved.apply(null, deps); },
+					function (deps) { if (resolved) resolved.apply(null, deps); },
 					function (ex) { if (rejected) rejected(ex); else throw ex; }
 				);
 				return api;
@@ -539,8 +553,10 @@
 				var origPromise = promise;
 				promise = new Promise();
 				origPromise.then(
+					// get dependencies and then resolve the previous promise
 					function () { ctx.require(deps, promise, ctx); }
 				);
+				// execute this callback after dependencies
 				if (cb) {
 					promise.then(cb);
 				}
@@ -589,28 +605,7 @@
 		// and we should go into "conflict mode"
 	}
 
-	baseUrl = userCfg['baseUrl'] || '';
-
-	// fix all paths
-	forin(userCfg['paths'], function (path, p) {
-		paths[p] = removeEndSlash(path);
-		if (p.charAt(p.length - 1) == '/') {
-			paths[removeEndSlash(p)] = paths[p];
-			delete paths[p];
-		}
-	});
-
-	if (!('curl' in paths)) {
-		// find path to curl. search backwards since we're likely the most recent
-		var scripts, i, match;
-		scripts = doc.getElementsByTagName('script');
-		for (i = scripts.length - 1; i >= 0 && !match ; i--) {
-			match = scripts[i].src.match(findCurlRe);
-		}
-		paths['curl'] = match[1];
-	}
-
-	pluginPath = userCfg['pluginPath'] || joinPath(paths['curl'], 'plugin');
+	extractCfg(userCfg);
 
 	// only declare global.curl if the user isn't using global.require
 	if (!('require' in global)) {
