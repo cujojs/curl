@@ -406,15 +406,12 @@
 			else {
 				var name, /*parts, */delPos, prefix, suffixes, resName;
 				// check for plugin prefix
-				//parts = depName.split('!');
 				delPos = depName.indexOf('!');
 				//if (parts.length > 1) {
 				if (delPos >= 0) {
 					// hm, this normalizeName allows plugins to be relative to
 					// the parent module. is this a feature?
-					//prefix = normalizeName(parts[0], ctx);
 					prefix = normalizeName(depName.substr(0, delPos), ctx);
-					//resName = parts[1];
 					resName = depName.substr(delPos + 1);
 					name = prefix + '!' + resName;
 				}
@@ -453,8 +450,9 @@
 
 	function getCurrentDefName () {
 		// Note: Opera lies about which scripts are "interactive", so we
-		// just have to test for it. Opera provides a true test, not a sniff
-		// thankfully.
+		// just have to test for it. Opera provides a true browser test, not
+		// a UA sniff thankfully.
+		// TODO: find a way to remove this browser test
 		var def;
 		if (!isType(global.opera, 'Opera')) {
 			for (var d in activeScripts) {
@@ -522,7 +520,6 @@
 		if (!isType(args.deps, 'String')) {
 			var callback = args.res,
 				promise = args.res = new Promise(),
-				waitingForDomReady,
 				api = {};
 			// return the dependencies as arguments, not an array
 			// using bracket property notation so closure won't clobber name
@@ -538,9 +535,7 @@
 				var origPromise = promise;
 				promise = new Promise();
 				origPromise.then(
-					function () {
-						ctx.require(deps, promise, ctx);
-					}
+					function () { ctx.require(deps, promise, ctx); }
 				);
 				if (cb) {
 					promise.then(cb);
@@ -583,43 +578,6 @@
 
 	}
 
-//	function _extend (/* arguments */) {
-//		/*
-//			curl.extend('debug', 'js', 'commonjs', 'domReady')
-//				.require(['js!myApp.js', 'css!locale.css', 'domReady'])
-//				.then(function (myApp, localeSheet) {
-//					// do stuff
-//				});
-//			The js extension defines a js! plugin that uses internal curl
-//			functions.  The domReady extension overrides the fetchResDef
-//			function and watches for requests to a module named domReady.
-//			Steps:
-//			v DON'T make curl functions overridable (object or eval)
-//			v Finish the extend and require api functions
-//			v expose some useful functions
-//			- Move js! and _domReady into extensions
-//			- Test
-//		 */
-//		var extensions, exposed;
-//
-//		exposed = {
-//			'loadScript': loadScript,
-//			'loadDef': fetchResDef,
-//			'loadPlugin': fetchPluginDef
-//		};
-//
-//		function extend () {
-//			var extension, i = 0;
-//			while ((extension = arguments[i++])) {
-//				extension.extend(exposed);
-//			}
-//		}
-//
-//		// get args whether in _extend(arg1, arg2) or _extend([arg1, arg2]) syntax
-//		extensions = [].concat([].slice.call(arguments, 0));
-//		return _curl(extensions, extend);
-//	}
-
 	// grab any global configuration info
 	var userCfg = global['require'] || global['curl'];
 
@@ -651,7 +609,7 @@
 	if (!('curl' in paths)) {
 		// find path to curl. search backwards since we're likely the most recent
 		var scripts, i, match;
-		scripts = doc.getElementsByTagName('script')
+		scripts = doc.getElementsByTagName('script');
 		for (i = scripts.length - 1; i >= 0 && !match ; i--) {
 			match = scripts[i].src.match(findCurlRe);
 		}
@@ -666,7 +624,6 @@
 	global['require'] = global['curl'] = _curl['require'] = _curl;
 	global['define'] = _curl['define'] = _define;
 	_curl['version'] = version;
-//	_curl['extend'] = _extend;
 
 	// this is to comply with the AMD CommonJS proposal:
 	_define.amd = {};
