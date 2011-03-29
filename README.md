@@ -1,4 +1,4 @@
-curl (CUjo Resource Loader)
+curl (Cujo Resource Loader)
 =====================
 
 version 0.3.1
@@ -8,7 +8,6 @@ TODO:
 * i18n plugin
 * finish core extensions (debug, commonjs, etc)
 * commonjs extension: Modules 1.1 and packages
-* start using markdown for this README
 
 ----------------------------------------
 
@@ -18,14 +17,16 @@ What is curl.js?
 curl.js is a small, but very fast AMD-compliant asynchronous loader.
 Current size: 4.5KB (2.1KB gzipped) using Google's Closure Compiler.
 
-If you'd like to use curl.js for non-AMD modules, you'll want to  use the
+If you'd like to use curl.js for non-AMD modules (ordinary javascript files), you'll want to  use the
 version with the js! plugin built in.  You may also want to build-in the
 domReady module.  The combined curl+js+domReady loader is still only
 6.1KB (2.7KB gzipped).
 
+What the heck is cujo?  cujo.js is a web app dvelopment platform.  See the bottom of this file for more info.
+
 What's new?
 ----------
-* The API has changed a bit. The .ready() and .domReady() methods are gone,
+* The API has changed a bit since 0.2. The .ready() and .domReady() methods are gone,
   replaced by the domReady module.  See the "API at a glance" section.
 * The domReady module now returns a promise. This makes the API a bit cleaner.
 * The js! plugin has been moved out into it's own file and now supports
@@ -40,12 +41,15 @@ If you're already familiar with CommonJS AMD loaders, skip down to the section
 Features at a glance:
 =====================
 
-* Loads CommonJS AMD-formatted javascript modules
-* Loads non-AMD javascript files, too (via embedded plugin)
-* Loads CSS files and text files (via plugins)
+* Loads CommonJS AMD-formatted javascript modules in parallel (fast!)
+* Loads non-AMD javascript files in parallel, too (fast! via js! plugin)
+* Loads CSS files and text files in parallel (fast! via plugins)
 * Waits for dependencies (js, css, text, etc) before executing javascript
-* Waits for domReady --OR-- waits for all dependencies and domReady
+* Waits for domReady, if/when desired
+* Allows for virtually limitless combinations of files and dependencies
 * Tested with Chrome, FF3+, Safari 3.2+, IE6-8, Opera 9.5+
+
+Oh, did we mention?  It's fast!
 
 ----------------------------------------
 
@@ -58,45 +62,49 @@ API at a glance
 	require(['dep1', 'dep2', 'dep3' /* etc */], callback);
 
 Loads dependencies and the executes callback.
-['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
-callback: Function to receive modules or resources
 
+* ['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
+* callback: Function to receive modules or resources. This is where you'd typically start up your app.
 
+---------
 	curl(['dep1', 'dep2', 'dep3' /* etc */])
 		.then(callback, errorback);
 	require(['dep1', 'dep2', 'dep3' /* etc */])
 		.then(callback, errorback);
 
 Promises-based API for executing callbacks.
-['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
-callback: Function to receive modules or resources
-errorback: Function to call if an exception occurred while loading
 
+* ['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
+* callback: Function to receive modules or resources
+* errorback: Function to call if an exception occurred while loading
 
+---------
 	curl(config, ['dep1', 'dep2', 'dep3' /* etc */], callback);
 	require(config, ['dep1', 'dep2', 'dep3' /* etc */], callback);
 
 Specify configuration options, load dependencies, and execute callback.
-config: Object containing curl configuration options (paths, etc.)
-['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
-callback: Function to receive modules or resources
 
+* config: Object containing curl configuration options (paths, etc.)
+* ['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
+* callback: Function to receive modules or resources
 
+---------
 	curl(['domReady', 'dep2', 'dep3' /* etc */])
 		.then(
 			callback,
 			errorback
 		);
-	curl(['dep1', 'dep2', domReady' /* etc */], function (dep1, dep2) {
+	curl(['dep1', 'dep2', 'domReady' /* etc */], function (dep1, dep2) {
 		// do something here
 	});
 
 Executes the callback when the dom is ready for manipulation AND
 all dependencies have loaded.
-callback: No parameters except the domReady object
-errorback: Function to call if an exception occurred while loading
 
+* callback: No parameters except the domReady object
+* errorback: Function to call if an exception occurred while loading
 
+---------
 	curl(['domReady', 'js!nonAMD.js', 'js!another.js!wait']), function (domReady) {
 		/* do something cool here */
 	});
@@ -105,7 +113,7 @@ Executes the function when the non-AMD javascript files are loaded and
 the dom is ready. The another.js file will wait for the nonAMD.js file
 before executing.
 
-
+---------
 	curl(['js!nonAMD.js'])
 		.next(['dep1', 'dep2', 'dep3'], function (dep1, dep2, dep3) {
 			// do something before the dom is ready
@@ -122,7 +130,20 @@ before executing.
 
 Executes callbacks is stages using `.next(deps, callback)`.
 
+---------
 
+	curl = {
+		baseUrl: '/path/to/my/js',
+		paths: {
+			curl: 'curl/src/curl',
+			cssx: 'cssx/src/cssx'
+			my: '../../my-lib/'
+		}
+	};
+
+If called before the `<script>` that loads curl.js, configures curl.js.
+
+---------
 	define(['dep1', 'dep2', 'dep3' /* etc */], definition);
 	define(['dep1', 'dep2', 'dep3' /* etc */], module);
 	define(['dep1', 'dep2', 'dep3' /* etc */], promise);
@@ -135,12 +156,13 @@ Executes callbacks is stages using `.next(deps, callback)`.
 	define(name, promise);
 
 Defines a module per the CommonJS AMD proposed specification.
-['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
-definition: Function called to define the module
-module: Any javascript object, function, constructor, or primitive
-promise: Object compatible with CommonJS Promises/A. Useful for further
+
+* ['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
+* definition: Function called to define the module
+* module: Any javascript object, function, constructor, or primitive
+* promise: Object compatible with CommonJS Promises/A. Useful for further
 deferring resolution of the module.
-name: String used to name a module (not necessary nor recommended)
+* name: String used to name a module (not necessary nor recommended)
 
 ----------------------------------------
 
@@ -222,15 +244,32 @@ other types of files) in parallel whenever possible.
 curl.js has lots of company. Other async loaders include LABjs, Steal.js,
 yepnope.js, $script.js, the Backdraft loader (bdLoad), and RequireJS.
 
+[(a more complete list)](https://spreadsheets.google.com/a/e-numera.com/ccc?key=0Aqln2akPWiMIdERkY3J2OXdOUVJDTkNSQ2ZsV3hoWVE&hl=en#gid=2)
+
 ----------------------------------------
 
 What is AMD?
 ============
 
 Asynchronous Module Definition is the CommonJS proposed standard for
-asynchronous loaders. It defines a simple API that developers can use to
-write their javascript modules so that they may be loaded by any compliant
-loader.
+javascript modules that can be loaded by asynchronous loaders. It defines 
+a simple API that developers can use to write their javascript modules so 
+that they may be loaded by any AMD-compliant loader.
+
+[CommonJS AMD Proposal](http://wiki.commonjs.org/wiki/Modules/AsynchronousDefinition)
+
+The AMD proposal follows the [CommonJS Modules](http://wiki.commonjs.org/wiki/Modules/1.1)
+proposal as much as possible.  Because of the way browsers load and
+evaluate scripts, AMD can't follow it completely without causing significant
+processing overhead.  Instead, AMD allows us to place a lightweight wrapper
+around javascript modules to help work around the shortcomings.
+
+Ultimately, both proposals (AMD and Modules 1.1) are in preparation for an
+official [javascript modules](http://wiki.ecmascript.org/doku.php?id=harmony:modules)
+specification and eventual implementation in browsers.
+
+If you don't want to wait for official javascript modules, then don't.  The future 
+is now.  AMD works now -- and it's awesome.
 
 AMD's API focuses on two globally-available functions: require() and define().
 require() specifies a list of dependent modules or resources that must be
@@ -273,13 +312,9 @@ and in the right order.
 What makes curl different from other AMD loaders?
 =================================================
 
-curl.js is much smaller than other loaders. Less than 1/2 the size of the
+curl.js is much smaller than other AMD loaders. Less than 1/2 the size of the
 others in the list above. It's able to achieve this via a Promises-based
-design. (Promises are another CommonJS proposed standard.) curl also requires 
-the use of AMD-compliant javascript files, rather than provide backwards
-compatibility with non-AMD files. This eliminated dozens of lines of code.
-
-curl.js will load non-AMD modules with a forthcoming plugin.
+design. (Promises are another [CommonJS proposed standard](http://wiki.commonjs.org/wiki/Promises).)
 
 curl.js communicates with it's plugins via Promises, rather than a simple
 callback function. This allows proactive error handling, rather than detecting
@@ -303,7 +338,7 @@ write code like this:
 		}
 	);
 
-(When using CommonJS sync syntax {{{var res = require('resName');}}}, a promise
+(When using CommonJS sync syntax `var res = require('resName');`, a promise
 isn't returned since the resource is returned synchronously. duh)
 
 ----------------------------------------
@@ -359,12 +394,53 @@ cssx! -- loads and automatically shims css files for older browsers
 
 ----------------------------------------
 
-----------------------------------------
-
 How are modules loaded?
 =======================
 
-TODO: overview, baseUrl, paths
+curl.js uses `<script>` element injection rather than XHR.  This allows curl.js to
+load cross-domain scripts as well as local scripts.  
+
+To find scripts and other resources, curl uses module names.  A module name looks just like a file
+path, but typically without the file extension.  If a module requires a plugin in
+order to load correctly, it will have a prefix delimited by a "!" and will also often
+have a file extension when a plugin may load different types of files.
+
+Some examples of module names:
+
+* dojo/store/JsonRest
+* my/lib/string/format
+* js!my/lib/js/plain-old-js.js
+* css!my/styles/reset.css
+* http://some-cdn/uber/module
+
+By default, curl.js will look in the same folder as the current document's location.
+For instance, if your web page is located at `http://my-domain/apps/myApp.html`,
+curl.js will look for the JsonRest module at `http://my-domain/apps/dojo/store/JsonRest.js`.
+
+You can tell curl.js to find modules in other locations by specifying a baseUrl or 
+individual paths for each of your libraries.  For example, if you specify a baseUrl of
+`/resources/` and the following paths:
+
+	paths: {
+		dojo: "third-party/dojo",
+		css: "third-party/cssx/css",
+		my: "my-cool-app-v1.3",
+		"my/lib/js": "old-js-libs"
+	}
+
+Then the modules listed above will be sought in the following locations:
+
+* /resources/third-party/dojo/store/JsonRest.js
+* /resources/my-cool-app-v1.3/lib/string/format.js
+* /resources/old-js-libs/plain-old-js.js
+* /resources/my-cool-app-v1.3/styles/reset.css
+* http://some-cdn/uber/module.js
+
+Note: you will need to create a path to curl's plugins and other modules if the curl
+folder isn't directly under the same folder as your web page. curl.js uses the same
+mechanism to find its own modules.
+
+TODO: explain the pluginPath configuration parameter.
 
 ----------------------------------------
 
@@ -426,9 +502,12 @@ a plugin using options:
 How do I use curl.js?
 =====================
 
-TODO: step-by-step instructions
-
-(take a look at the test files for some example code)
+1. Optional: Learn about AMD-formatted javascript modules if you don't already know how.
+2. Clone or download curl to your local machine or server.
+3. Figure out the baseUrl and paths configuration that makes sense for your project.
+4. Check out the "API at a glance" section above to figure out which loading methodology you want to use.
+5. Study the "Very Simple Example" and some of the test files.
+6. Try it on your own files.
 
 ----------------------------------------
 
@@ -457,10 +536,27 @@ into a compiler (also called a shrinker or compressor).
 
 We're writing curl to be compatible with RequireJS's build tool, but there's
 also another cujo project in the pipeline: cram. Cram is the Cujo Resource
-AsseMbler. cram will be ready by mid 2011, so use another build tool or a
+Assembler. cram will be ready by mid 2011, so use another build tool or a
 custom shell script in the mean time.
 
 ----------------------------------------
+
+What is cujo?
+=====================
+
+cujo.js is a web app development platform.  It employs MVC, IOC, AMD
+and lots of other TLAs. :)  curl.js is one of the many micro-libs we're pulling
+out of cujo.js.  Our goal is to make the advanced concepts in cujo.js more
+palatable by breaking them down into easier-to-grok chunks.  Other cujo.js
+libs include:
+
+[canhaz](https://github.com/briancavalier/canhaz): a project and code bootstrapping tool that will save you tons of typing.
+[wire](https://github.com/briancavalier/wire): an application bootstrap, configuration, and assembly tool based on the principles of Inversion of Control, and Dependency Injection.
+[cssx](https://github.com/unscriptable/cssx): library for extending css in older browsers
+[cram](https://github.com/unscriptable/cram): a [forthcoming] javascript compressor, concatenator, and optimizer meant to be used with curl.js
+
+Kudos
+=================
 
 Many thanks to Bryan Forbes (@bryanforbes) for helping to clean up my code and
 for making cujo's domReady much more robust.
