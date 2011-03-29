@@ -28,11 +28,11 @@
 
 	var
 		version = '0.3.1',
+		head = doc.head || doc.getElementsByTagName('head')[0],
 		// local cache of resource definitions (lightweight promises)
 		cache = {},
 		// default configuration
 		config = {
-			doc: doc,
 			baseUrl: null, // auto-detect
 			pluginPath: null, // prepended to naked plugin references
 			paths: {}
@@ -43,10 +43,9 @@
 		// be the "interactive" script. too bad IE doesn't send a readystatechange
 		// event to tell us exactly which one.
 		activeScripts = {},
-		// this is always handy :)
+		// these are always handy :)
 		op = Object.prototype,
 		toString = op.toString,
-		// and this
 		undef,
 		aslice = [].slice,
 		// RegExp's used later, "cached" here
@@ -79,21 +78,24 @@
 	}
 
 	function begetCtx (oldCtx, name) {
-		var ctx = beget(oldCtx || { doc: config.doc, baseUrl: config.baseUrl, require: _require });
+		var ctx = beget(oldCtx || {});
 		if (name) {
 			var pos = name.lastIndexOf('/');
 			ctx.baseName = name.substr(0, pos + 1);
 		}
+		// CommonJS Modules 1.1.1 compliance
 		ctx.require = function (deps, callback) {
 			return _require(deps, callback, ctx);
 		};
 		// using bracket property notation to closure won't clobber name
-		ctx.require['toUrl'] = function (name) {
-			return resolvePath(normalizeName(name, ctx), ctx.baseUrl);
+		ctx.require['toUrl'] = function (n) {
+			return resolvePath(normalizeName(n, ctx), config.baseUrl);
 		};
-		if (ctx.doc && !ctx.doc.head) {
-			ctx.doc.head = ctx.doc.getElementsByTagName('head')[0];
-		}
+		ctx.exports = {};
+		ctx.module = {
+			id: normalizeName(name, ctx),
+			uri: ctx.require.toUrl(name)
+		};
 		return ctx;
 	}
 
@@ -177,16 +179,11 @@
 		return path;
 	}
 
-	function toUrl (name, ext, ctx) {
-		return resolvePath(name, ctx.baseUrl) + (ext ? '.' + ext : '');
-	}
-
 	function loadScript (def, success, failure) {
 		// script processing rules learned from RequireJS
 
 		// insert script
-		var el = def.ctx.doc.createElement('script'),
-			head  = def.ctx.doc.head;
+		var el = doc.createElement('script');
 
 		// initial script processing
 		function process (ev) {
@@ -240,25 +237,35 @@
 		function toFunc (res) {
 			return isType(res, 'Function') ? res : function () { return res; };
 		}
-		var len = args.length,
-			res;
+		var name, deps, res, len = args.length;
 		if (len === 3) {
-			res = { name: args[0], deps: args[1], res: toFunc(args[2]) };
-		}
-		else if (len == 2 && isType(args[0], 'String')) {
-			res = { name: args[0], res: toFunc(args[1]) };
+			name = args[0];
+			deps = args[1];
+			res = toFunc(args[2]);
 		}
 		else if (len == 2) {
-			res = { deps: args[0], res: toFunc(args[1]) };
+			if (isType(args[0], 'String')) {
+				name = args[0];
+			}
+			else {
+				deps = args[0];
+			}
+			res = toFunc(args[1]);
 		}
-		// TODO: document this: if a require(array) is encountered , it assumes the array is a list of dependencies so that we can return a promise, define(array) assumes the array is the resource
-		else if (isType(args[0], 'String') || (isType(args[0], 'Array') && isRequire)) {
-			res = { deps: args[0] };
+		else /*if (len == 1)*/ {
+			// TODO: document this: if a require(array) is encountered , it assumes the array is a list of dependencies so that we can return a promise, define(array) assumes the array is the resource
+			if (isType(args[0], 'String') || (isType(args[0], 'Array') && isRequire)) {
+				deps = args[0];
+			}
+			else {
+				res = toFunc(args[0]);
+			}
 		}
-		else {
-			res = { res: toFunc(args[0]) };
-		}
-		return res;
+		return {
+			name: name,
+			deps: deps,
+			res: res
+		};
 	}
 
 	function resolveResDef (def, args, ctx) {
@@ -274,9 +281,12 @@
 		// get the dependencies and then resolve/reject
 		// even if there are no dependencies, we're still taking
 		// this path to simplify the code
-		getDeps(args.deps, begetCtx(ctx, def.name),
+		var childCtx = begetCtx(ctx, def.name);
+		getDeps(args.deps, childCtx,
 			function (deps) {
-				var res = args.res.apply(null, deps);
+				// CommonJS Modules 1.1 says `this` === exports
+				// anything returned overrides exports?
+				var res = args.res.apply(childCtx.exports, deps) || childCtx.exports;
 				if (res && isType(res['then'], 'Function')) {
 					// oooooh lookee! we got a promise!
 					// chain it
@@ -294,7 +304,8 @@
 	function fetchResDef (name, ctx) {
 
 		var def = cache[name] = new ResourceDef(name, ctx);
-		def.url = toUrl(name, 'js', ctx);
+		// TODO: should this be using ctx.toUrl()??????
+		def.url = resolvePath(name, config.baseUrl) + '.js';
 
 		loadScript(def,
 
@@ -312,7 +323,7 @@
 					}
 					else if (args.ex) {
 						// the resNet resource was already rejected, but it didn't know
-						// its name, so reject this def with better information
+						// its name, so reject this def now with better information
 						def.reject(new Error(args.ex.replace('${url}', def.url)));
 					}
 					else {
@@ -382,6 +393,14 @@
 		for (var i = 0; i < len && !completed; i++) (function (index, depName) {
 			if (depName == 'require') {
 				deps[index] = ctx.require;
+				count--;
+			}
+			else if (depName == 'exports') {
+				deps[index] = ctx.exports;
+				count--;
+			}
+			else if (depName == 'module') {
+				deps[index] = ctx.module;
 				count--;
 			}
 			else {
