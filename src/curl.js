@@ -7,9 +7,16 @@
  *
  */
 
-// TODO: code documentation!!!
+/*
+	config resolution:
+	if (window.curl is an object) {
+		use curl as config object
+	else if (window.require is an object) {
+		use require as the config
+	declare window.require
 
-(function (global, doc) {
+ */
+(function (global, doc, userCfg) {
 
 	/*
 	 * Overall operation:
@@ -29,14 +36,12 @@
 	var
 		version = '0.3.1',
 		head = doc.head || doc.getElementsByTagName('head')[0],
+		// configuration information
+		baseUrl,
+		pluginPath,
+		paths = {},
 		// local cache of resource definitions (lightweight promises)
 		cache = {},
-		// default configuration
-		config = {
-			baseUrl: null, // auto-detect
-			pluginPath: null, // prepended to naked plugin references
-			paths: {}
-		},
 		// net to catch anonymous define calls' arguments (non-IE browsers)
 		argsNet,
 		// this is the list of scripts that IE is loading. one of these will
@@ -53,7 +58,7 @@
 		absUrlRe = /^\/|^[^:]*:\/\//,
 		normalizeRe = /^\.\//,
 		findCurlRe = /(.*\/curl)\..*js$/,
-		readyStates = { loaded: 1, interactive: 1, complete: 1 },
+		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
 		// reused strings
 		errorSuffix = '. Syntax error or name mismatch.';
 
@@ -160,8 +165,7 @@
 
 	function resolvePath (name, baseUrl) {
 		// takes a resource name (w/o ext!) and resolves it to a url
-		var paths = config.paths,
-			part = '',
+		var part = '',
 			prefix = '',
 			path = paths[name];
 		pathRe.lastIndex = 0; // literal regexes are cached globally, so always reset this
@@ -345,7 +349,7 @@
 
 	function fetchPluginDef (fullName, prefix, name, ctx) {
 
-		// prepend plugin folder path, if it's missing and path isn't in config.paths
+		// prepend plugin folder path, if it's missing and path isn't in paths
 		var prev = prefix;
 		prefix = resolvePath(prefix, '');
 		var slashPos = prefix.indexOf('/');
@@ -578,34 +582,24 @@
 
 	}
 
-	// grab any global configuration info
-	var userCfg = global['require'] || global['curl'];
+	/***** grab any global configuration info *****/
 
-	// exit if it's already been defined
 	if (isType(userCfg, 'Function')) {
-		return;
+		// TODO: if userCfg is a function, require() or curl() was already defined
+		// and we should go into "conflict mode"
 	}
 
-	// store global config
-	forin(userCfg, function (value, p) {
-		config[p] = value;
-	});
-
-	// if we don't have a baseUrl (null, undefined, or '')
-	// use the document's path as the baseUrl
-	if (config.baseUrl == null) {
-		config.baseUrl = '';
-	}
+	baseUrl = userCfg['baseUrl'] || '';
 
 	// fix all paths
-	var paths = {};
-	forin(config.paths, function (path, p) {
+	forin(userCfg['paths'], function (path, p) {
 		paths[p] = removeEndSlash(path);
 		if (p.charAt(p.length - 1) == '/') {
 			paths[removeEndSlash(p)] = paths[p];
 			delete paths[p];
 		}
 	});
+
 	if (!('curl' in paths)) {
 		// find path to curl. search backwards since we're likely the most recent
 		var scripts, i, match;
@@ -615,20 +609,29 @@
 		}
 		paths['curl'] = match[1];
 	}
-	config.paths = paths;
-	if (config.pluginPath == null) {
-		config.pluginPath = joinPath(paths['curl'], 'plugin');
+
+	pluginPath = userCfg['pluginPath'] || joinPath(paths['curl'], 'plugin');
+
+	// only declare global.curl if the user isn't using global.require
+	if (!('require' in global)) {
+		global['curl'] = _curl;
 	}
 
+	// define public API
 	// using bracket property notation so closure won't clobber name
-	global['require'] = global['curl'] = _curl['require'] = _curl;
+	global['require']= _curl['require'] = _curl;
 	global['define'] = _curl['define'] = _define;
 	_curl['version'] = version;
 
 	// this is to comply with the AMD CommonJS proposal:
-	_define.amd = {};
+	_define['amd'] = {};
 
-}(this, document));
+}(
+	this,
+	document,
+	// grab configuration
+	window['curl'] || window['require']
+));
 
 // ==ClosureCompiler==
 // @output_file_name curl.min.js
