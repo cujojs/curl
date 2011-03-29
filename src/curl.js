@@ -57,7 +57,7 @@
 		pathRe = /(?:\/|^)[^\/$]*/g, // /(?:\/|^).*(?:\/|$)/g,
 		absUrlRe = /^\/|^[^:]*:\/\//,
 		normalizeRe = /^\.\//,
-		findCurlRe = /(.*\/curl)\..*js$/,
+		findCurlRe = /(.*\/curl)\.js$/,
 		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
 		// reused strings
 		errorSuffix = '. Syntax error or name mismatch.';
