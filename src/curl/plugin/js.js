@@ -18,7 +18,7 @@
 
 	var queue = [],
 		inFlightCount = 0,
-		readyStates = { loaded: 1, interactive: 1, complete: 1 },
+		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
 		head = doc.head || doc.getElementsByTagName('head')[0];
 
 	// TODO: find a way to reuse the loadScript from curl.js
@@ -42,7 +42,9 @@
 		function fail (e) {
 			// some browsers send an event, others send a string,
 			// but none of them send anything useful, so just say we failed:
-			failure(new Error('Script error: ' + def.url));
+			if (failure) {
+				failure(new Error('Script error: ' + def.url));
+			}
 		}
 
 		// set type first since setting other properties could
@@ -52,7 +54,7 @@
 		el.onload = el.onreadystatechange = process;
 		el.onerror = fail;
 		el.charset = def.charset || 'utf-8';
-		el.async = 'async' in def ? def.async : true; // for Firefox
+		el.async = 'async' in def ? def['async'] : true; // for Firefox
 		el.src = def.url;
 
 		// use insertBefore to keep IE from throwing Operation Aborted (thx Bryan Forbes!)
@@ -74,33 +76,32 @@
 					inFlightCount++;
 					fetch.apply(null, next);
 				}
-				promise.resolve(el);
+				promise['resolve'](el);
 			},
 			function (ex) {
 				inFlightCount--;
-				promise.reject(ex);
+				promise['reject'](ex);
 			}
 		);
 
 	}
 
 	define({
-		'load': function (name, require, callback, ctx) {
+		'load': function (name, require, callback, config) {
 
 			var wait, prefetch, def, promise;
 
 			// TODO: start using async=false
 			wait = name.indexOf('!wait') >= 0;
 			name = wait ? name.substr(0, name.indexOf('!')) : name;
-			prefetch = 'jsPrefetch' in ctx ? ctx.jsPrefetch : true;
+			prefetch = 'jsPrefetch' in config ? config['jsPrefetch'] : true;
 			def = {
 				name: name,
-				url: require.toUrl(name),
-				ctx: ctx
+				url: require['toUrl'](name)
 			};
-			promise = callback.resolve ? callback : {
-				resolve: function (o) { callback(o); },
-				reject: function (ex) { throw ex; }
+			promise = callback['resolve'] ? callback : {
+				'resolve': function (o) { callback(o); },
+				'reject': function (ex) { throw ex; }
 			};
 
 			// if this script has to wait for another
@@ -110,14 +111,12 @@
 				// if we're prefetching
 				if (prefetch) {
 					// go get the file under an unknown mime type
-					var mimetype = def.mimetype;
 					def.mimetype = 'text/cache';
 					loadScript(def,
 						// remove the fake script when loaded
-						function (el) { el.parentNode.removeChild(el); },
-						function () {}
+						function (el) { el.parentNode.removeChild(el); }
 					);
-					def.mimetype = mimetype;
+					def.mimetype = '';
 				}
 			}
 			// otherwise, just go get it
@@ -130,3 +129,8 @@
 	});
 
 }(this, document));
+
+// ==ClosureCompiler==
+// @output_file_name js.js
+// @compilation_level ADVANCED_OPTIMIZATIONS
+// ==/ClosureCompiler==

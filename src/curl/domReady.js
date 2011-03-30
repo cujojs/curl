@@ -49,6 +49,11 @@
 		}
 	}
 
+	function poller () {
+		checkDOMReady();
+		pollerTO = setTimeout(poller, 30);
+	}
+
 	// select the correct event listener function. all of our supported
 	// browser will use one of these
 	addEvent = ('addEventListener' in global) ?
@@ -60,11 +65,6 @@
 			node.attachEvent('on' + event, checkDOMReady);
 			return function () { node.detachEvent(event, checkDOMReady); };
 		};
-
-	function poller () {
-		checkDOMReady();
-		pollerTO = setTimeout(poller, 30);
-	}
 
 	if (doc[readyState] == "complete") {
 		ready();
@@ -93,3 +93,8 @@
 	});
 
 }(this, document));
+
+// ==ClosureCompiler==
+// @output_file_name domReady.js
+// @compilation_level ADVANCED_OPTIMIZATIONS
+// ==/ClosureCompiler==

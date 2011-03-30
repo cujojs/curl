@@ -72,9 +72,9 @@
 
 		if (!('curl' in paths)) {
 			// find path to curl. search backwards since we're likely the most recent
-			var scripts, i, match;
+			var scripts, match;
 			scripts = doc.getElementsByTagName('script');
-			for (i = scripts.length - 1; i >= 0 && !match ; i--) {
+			for (var i = scripts.length - 1; i >= 0 && !match ; i--) {
 				match = scripts[i].src.match(findCurlRe);
 			}
 			paths['curl'] = match[1];
@@ -84,20 +84,9 @@
 
 	}
 
-	function F () {}
-	function beget (ancestor) {
-		F.prototype = ancestor;
-		var o = new F();
-		delete F.prototype;
-		return o;
-	}
-
-	function begetCtx (oldCtx, name) {
-		var ctx = beget(oldCtx || {});
-		if (name) {
-			var pos = name.lastIndexOf('/');
-			ctx.baseName = name.substr(0, pos + 1);
-		}
+	function begetCtx (name) {
+		var ctx = {};
+		ctx.baseName = name.substr(0, name.lastIndexOf('/') + 1);
 		// CommonJS Modules 1.1.1 compliance
 		ctx.require = function (deps, callback) {
 			return _require(deps, callback, ctx);
@@ -295,7 +284,7 @@
 		// get the dependencies and then resolve/reject
 		// even if there are no dependencies, we're still taking
 		// this path to simplify the code
-		var childCtx = begetCtx(ctx, def.name);
+		var childCtx = begetCtx(def.name);
 		getDeps(args.deps, childCtx,
 			function (deps) {
 				// CommonJS Modules 1.1 says `this` === exports
@@ -382,7 +371,7 @@
 		// go get plugin
 		ctx.require([prefix], function (plugin) {
 			// load the resource!
-			plugin.load(name, begetCtx(ctx, name).require, loaded, userCfg);
+			plugin.load(name, begetCtx(name).require, loaded, userCfg);
 
 		});
 
@@ -523,7 +512,7 @@
 			extractCfg(arguments[0]);
 		}
 
-		var ctx = begetCtx(null, '');
+		var ctx = begetCtx('');
 		args = fixArgs(len === 3 ? aslice.call(arguments, 1) : arguments, true);
 
 		// check if we should return a promise
@@ -582,7 +571,7 @@
 			// if it's a secondary define(), grab the current def's context
 			var def = cache[name];
 			if (!def) {
-				def = cache[name] = new ResourceDef(name, begetCtx(null, name));
+				def = cache[name] = new ResourceDef(name, begetCtx(name));
 			}
 			def.useNet = false;
 			resolveResDef(def, args, def.ctx);
@@ -621,6 +610,6 @@
 ));
 
 // ==ClosureCompiler==
-// @output_file_name curl.min.js
+// @output_file_name curl.js
 // @compilation_level ADVANCED_OPTIMIZATIONS
 // ==/ClosureCompiler==
