@@ -26,7 +26,7 @@
 
 	var
 		version = '0.3.2',
-		head = doc.head || doc.getElementsByTagName('head')[0],
+		head = doc['head'] || doc.getElementsByTagName('head')[0],
 		// configuration information
 		baseUrl,
 		pluginPath,
@@ -208,7 +208,7 @@
 
 		// set type first since setting other properties could
 		// prevent us from setting this later
-		el.type = def.mimetype || 'text/javascript';
+		el.type = 'text/javascript';
 		// using dom0 event handlers instead of wordy w3c/ms
 		el.onload = el.onreadystatechange = process;
 		el.onerror = fail;
