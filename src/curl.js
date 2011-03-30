@@ -581,21 +581,25 @@
 
 	/***** grab any global configuration info *****/
 
-	if (isType(userCfg, 'Function')) {
-		// TODO: if userCfg is a function, require() or curl() was already defined
-		// and we should go into "conflict mode"
+	// if userCfg is a function, assume require() exists already
+	// go into "conflict mode"
+	var conflict = isType(userCfg, 'Function');
+	if (!conflict) {
+		extractCfg(userCfg);
 	}
 
-	extractCfg(userCfg);
+	/***** define public API *****/
 
-	// only declare global.curl if the user isn't using global.require
-	if (!('require' in global)) {
-		global['curl'] = _curl;
+	// allow curl / require to be renamed
+	if (userCfg['apiName']) {
+		global[userCfg['apiName']] = _curl;
+	}
+	else {
+		global['require'] = global['curl'] = _curl;
 	}
 
-	// define public API
 	// using bracket property notation so closure won't clobber name
-	global['require']= _curl['require'] = _curl;
+	_curl['require'] = _curl;
 	global['define'] = _curl['define'] = _define;
 	_curl['version'] = version;
 
@@ -606,7 +610,7 @@
 	this,
 	document,
 	// grab configuration
-	window['curl'] || window['require']
+	this['curl'] || this['require']
 ));
 
 // ==ClosureCompiler==
