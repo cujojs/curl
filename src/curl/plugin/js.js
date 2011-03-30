@@ -13,11 +13,15 @@
  *
  * Specify the !wait suffix to make curl wait for all other js files before evaluating.
  *
+ * Async=false rules learned from @getify's LABjs!
+ * http://wiki.whatwg.org/wiki/Dynamic_Script_Execution_Order
+ *
  */
 (function (global, doc) {
 
 	var queue = [],
 		inFlightCount = 0,
+		supportsAsyncFalse = doc.createElement('script').async === true,
 		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
 		head = doc.head || doc.getElementsByTagName('head')[0];
 
@@ -54,7 +58,7 @@
 		el.onload = el.onreadystatechange = process;
 		el.onerror = fail;
 		el.charset = def.charset || 'utf-8';
-		el.async = 'async' in def ? def['async'] : true; // for Firefox
+		el.async = def.sync || true;
 		el.src = def.url;
 
 		// use insertBefore to keep IE from throwing Operation Aborted (thx Bryan Forbes!)
@@ -106,17 +110,23 @@
 
 			// if this script has to wait for another
 			if (wait && inFlightCount > 0) {
-				// push before fetch in case IE has file cached
-				queue.push([def, promise]);
-				// if we're prefetching
-				if (prefetch) {
-					// go get the file under an unknown mime type
-					def.mimetype = 'text/cache';
-					loadScript(def,
-						// remove the fake script when loaded
-						function (el) { el.parentNode.removeChild(el); }
-					);
-					def.mimetype = '';
+				if (supportsAsyncFalse) {
+					// specify that we want to wait before executing
+					def.sync = true;
+				}
+				else {
+					// push before fetch in case IE has file cached
+					queue.push([def, promise]);
+					// if we're prefetching
+					if (prefetch) {
+						// go get the file under an unknown mime type
+						def.mimetype = 'text/cache';
+						loadScript(def,
+							// remove the fake script when loaded
+							function (el) { el.parentNode.removeChild(el); }
+						);
+						def.mimetype = '';
+					}
 				}
 			}
 			// otherwise, just go get it
