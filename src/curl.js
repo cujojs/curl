@@ -40,8 +40,7 @@
 		// event to tell us exactly which one.
 		activeScripts = {},
 		// these are always handy :)
-		op = Object.prototype,
-		toString = op.toString,
+		toString = ({}).toString,
 		undef,
 		aslice = [].slice,
 		// RegExp's used later, "cached" here
@@ -51,15 +50,7 @@
 		findCurlRe = /(.*\/curl)\.js$/,
 		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
 		// reused strings
-		errorSuffix = '. Syntax error or name mismatch.';
-
-	function forin (obj, lambda) {
-		for (var p in obj) {
-			if (!(p in op)) {
-				lambda(obj[p], p, obj);
-			}
-		}
-	}
+		errorSuffix = '. Syntax error or name mismatch.' ;
 
 	function isType (obj, type) {
 		return toString.call(obj).indexOf('[object ' + type) == 0;
@@ -70,13 +61,14 @@
 		baseUrl = cfg['baseUrl'] || '';
 
 		// fix all paths
-		forin(cfg['paths'], function (path, p) {
-			paths[p] = removeEndSlash(path);
+		var cfgPaths = cfg['paths'];
+		for (var p in cfgPaths) {
+			paths[p] = removeEndSlash(cfgPaths[p]);
 			if (p.charAt(p.length - 1) == '/') {
 				paths[removeEndSlash(p)] = paths[p];
 				delete paths[p];
 			}
-		});
+		}
 
 		if (!('curl' in paths)) {
 			// find path to curl. search backwards since we're likely the most recent
@@ -111,13 +103,13 @@
 			return _require(deps, callback, ctx);
 		};
 		// using bracket property notation to closure won't clobber name
-		ctx.require['toUrl'] = function (n) {
+		ctx.require['toUrl'] = function toUrl (n) {
 			return resolvePath(normalizeName(n, ctx), baseUrl);
 		};
 		ctx.exports = {};
 		ctx.module = {
 			'id': normalizeName(name, ctx),
-			'uri': ctx.require.toUrl(name)
+			'uri': toUrl(name)
 		};
 		return ctx;
 	}
