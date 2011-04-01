@@ -5,9 +5,11 @@ version 0.3.1
 
 TODO:
 
-* i18n plugin
-* finish core extensions (debug, commonjs, etc)
-* commonjs extension: Modules 1.1 and packages
+* CommonJS Modules 1.1 (testing now!)
+* i18n plugin (by 2011-04-11)
+* CommonJs Packages
+* async=false in the js! plugin
+* More tests!
 
 ----------------------------------------
 
@@ -18,9 +20,8 @@ curl.js is a small, but very fast AMD-compliant asynchronous loader.
 Current size: 4.5KB (2.1KB gzipped) using Google's Closure Compiler.
 
 If you'd like to use curl.js for non-AMD modules (ordinary javascript files), you'll want to  use the
-version with the js! plugin built in.  You may also want to build-in the
-domReady module.  The combined curl+js+domReady loader is still only
-6.1KB (2.7KB gzipped).
+version with the js! plugin built in.  You may also want to build-in the domReady module.  The 
+combined curl+js+domReady loader is still only 6.1KB (2.7KB gzipped).
 
 What the heck is cujo?  cujo.js is a web app dvelopment platform.  See the bottom of this file for more info.
 
@@ -56,7 +57,7 @@ Oh, did we mention?  It's fast!
 API at a glance
 ===============
 
-**"curl" and "require" are synonyms. You may use them interchangeably.**
+**Note: "curl" and "require" are synonyms. You may use them interchangeably.**
 
 	curl(['dep1', 'dep2', 'dep3' /* etc */], callback);
 	require(['dep1', 'dep2', 'dep3' /* etc */], callback);
@@ -134,14 +135,25 @@ Executes callbacks is stages using `.next(deps, callback)`.
 
 	curl = {
 		baseUrl: '/path/to/my/js',
+		pluginPath: 'for/some/reason/plugins/r/here',
 		paths: {
 			curl: 'curl/src/curl',
 			cssx: 'cssx/src/cssx'
 			my: '../../my-lib/'
-		}
+		},
+		apiName: 'someOtherName'
 	};
 
-If called before the `<script>` that loads curl.js, configures curl.js.
+If called before the `<script>` that loads curl.js, configures curl.js.  All of the 
+configuration parameters are optional. curl.js tries to do something sensible
+in their absence. :)
+
+* baseUrl: the root folder to find all modules, default is the document's folder
+* paths: a mapping of module paths to relative paths (from baseUrl)
+* pluginPath: the place to find plugins when they are specified without a path
+(e.g. "css!myCssFile" vs. "cssx/css!myCssFile") and there is no paths
+mapping that applies.
+* apiName: an alternate name to `curl` and `require` for curl.js's global variable
 
 ---------
 	define(['dep1', 'dep2', 'dep3' /* etc */], definition);
