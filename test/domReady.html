@@ -6,6 +6,8 @@
 
 	<script src="../src/curl.js" type="text/javascript"></script>
 	<script>
+
+		// mock console for IE
 		if (!window.console) console = {};
 		if (!('log' in console)) {
 			console._msg = [];
@@ -19,21 +21,25 @@
 			};
 		}
 
+		// tester to see if the dom is really ready
 		var handle;
 		function isDomReady () {
-			return !!(document.body && document.getElementById('a') && document.body.appendChild(document.createElement('span')));
+			return document.readyState in { 'loaded': 1, 'interactive': 1, 'complete': 1 };
 		}
 		function poller () {
 			var isReady = isDomReady();
-			console.log('it is ready?', isReady);
+			console.log('it is ready?', isReady, document.readyState, new Date().getMilliseconds());
 			if (!isReady) setTimeout(poller, 10);
 		}
-		console.log('dom should not be ready: false ==', isDomReady());
+		console.log('dom should not be ready if false ==', isDomReady(), new Date().getMilliseconds());
 		handle = setTimeout(poller, 10);
+
+		// go
 		curl(['curl/domReady'], function(domReady){
 			clearInterval(handle);
-			console.log('DOM Ready!', isDomReady());
+			console.log('DOM Ready!', isDomReady(), new Date().getMilliseconds());
 		});
+		
 	</script>
 
 	<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/dojo/1.6/dojo/resources/dojo.css">

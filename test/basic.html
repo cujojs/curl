@@ -1,9 +1,18 @@
 <!DOCTYPE HTML>
 <html>
 <head>
-<title>curl loading test for plain old javascript</title>
+<title>main curl test file</title>
 
 <script>
+
+	require = {
+		debug: true,
+		paths: {
+			//'testStuff': 'stuff',
+			cssx: 'cssx/',
+			curl: '../src/curl/'
+		}
+	};
 
 	// mock console for IE
 	if (!window.console) console = {};
@@ -11,7 +20,7 @@
 		console._msg = [];
 		console.log = function (msg) {
 			var _msg = this._msg;
-			_msg.push(msg && msg.join ? msg.join(' ') : msg);
+			_msg.push([].join.call(arguments, ' '));
 			clearTimeout(this._timeout);
 			this._timeout = setTimeout(function () {
 				alert(_msg.join('\n'));
@@ -19,39 +28,31 @@
 		};
 	}
 
-	require = {
-		debug: true,
-		paths: {
-			css: 'cssx/css',
-			text: '../src/curl/plugin/text'
-		},
-		jsPrefetch: true
-	};
-
 </script>
+<!--<script src="require.js" type="text/javascript"></script>-->
 <script src="../src/curl.js" type="text/javascript"></script>
 <!--<script src="../bin/curl.min.js" type="text/javascript"></script>-->
+<!--<script src="../bin/curl.js.domReady.min.js" type="text/javascript"></script>-->
 
 
 <script type="text/javascript">
 
+	var start = new Date();
 	require(
 		[
 			'stuff/three',
-			'css!stuff/base',
-			'text!stuff/template.html',
-			'js!stuff/plain_old.js',
-			'js!stuff/plain_old_2.js!wait',
-			'curl/domReady'
+			'cssx/css!stuff/base',
+			//'require/i18n!stuff/nls/strings',
+			'text!stuff/template.html'
 		]
 	).then(
-		function (three, link) {
-			console.log('********* loaded:', three, document.body);
+		function (three, link, /*strings,*/ template) {
+			console.log('total time:', new Date() - start);
 			if (document.body) {
 				document.body.appendChild(document.createTextNode('A module with dependencies loaded successfully if 3 == ' + three + '.'));
 				document.body.appendChild(document.createElement('br'));
-				document.body.appendChild(document.createTextNode('If the following line says something then the plain js files loaded in the right order:'));
-				document.body.appendChild(document.createElement('div')).innerHTML = testDomain.foo.bar + ' ' + testDomain.sauce;
+				document.body.appendChild(document.createTextNode('There should be a success message below if the text file loaded:'));
+				document.body.appendChild(document.createElement('div')).innerHTML = template;
 			}
 		}
 	);
