@@ -1,11 +1,12 @@
 curl (Cujo Resource Loader)
 =====================
 
-version 0.3.2
+version 0.3.3
 
 What's New?
 
 * CommonJS Modules 1.1
+* !noexec suffix for js! plugin (load, but don't execute)
 
 TODO:
 
