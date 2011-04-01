@@ -1,15 +1,17 @@
 curl (Cujo Resource Loader)
 =====================
 
-version 0.3.1
+version 0.3.2
+
+What's New?
+
+* CommonJS Modules 1.1
 
 TODO:
 
-* CommonJS Modules 1.1 (testing now!)
 * i18n plugin (by 2011-04-11)
 * CommonJs Packages
 * async=false in the js! plugin
-* More tests!
 
 ----------------------------------------
 
@@ -43,6 +45,7 @@ Features at a glance:
 =====================
 
 * Loads CommonJS AMD-formatted javascript modules in parallel (fast!)
+* Loads CommonJS Modules (v1.1 when wrapped in a `define()`) (fast!)
 * Loads non-AMD javascript files in parallel, too (fast! via js! plugin)
 * Loads CSS files and text files in parallel (fast! via plugins)
 * Waits for dependencies (js, css, text, etc) before executing javascript
@@ -129,7 +132,7 @@ before executing.
 			}
 		);
 
-Executes callbacks is stages using `.next(deps, callback)`.
+Executes callbacks in stages using `.next(deps, callback)`.
 
 ---------
 
@@ -156,6 +159,7 @@ mapping that applies.
 * apiName: an alternate name to `curl` and `require` for curl.js's global variable
 
 ---------
+
 	define(['dep1', 'dep2', 'dep3' /* etc */], definition);
 	define(['dep1', 'dep2', 'dep3' /* etc */], module);
 	define(['dep1', 'dep2', 'dep3' /* etc */], promise);
@@ -169,7 +173,9 @@ mapping that applies.
 
 Defines a module per the CommonJS AMD proposed specification.
 
-* ['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
+* ['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files.
+Dependencies may be named 'require', 'exports', or 'module' and will behave
+as defined in the CommonJS Modules 1.1 proposal.
 * definition: Function called to define the module
 * module: Any javascript object, function, constructor, or primitive
 * promise: Object compatible with CommonJS Promises/A. Useful for further
