@@ -23,7 +23,7 @@
 		inFlightCount = 0,
 		supportsAsyncFalse = doc.createElement('script').async === true,
 		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
-		head = doc.head || doc.getElementsByTagName('head')[0];
+		head = doc['head'] || doc.getElementsByTagName('head')[0];
 
 	// TODO: find a way to reuse the loadScript from curl.js
 	function loadScript (def, success, failure) {
