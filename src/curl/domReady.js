@@ -27,7 +27,7 @@
 		i = 0,
 		// IE needs this cuz it won't stop setTimeout if it's already queued up
 		completed = false,
-		addEvent, remover, removers, pollerTO;
+		addEvent, remover, removers = [], pollerTO;
 
 	function ready () {
 		completed = true;
@@ -43,7 +43,7 @@
 		}
 	}
 
-	function checkDOMReady () {
+	function checkDOMReady (e) {
 		if (!completed && readyStates[doc[readyState]]) {
 			ready();
 		}
@@ -51,7 +51,9 @@
 
 	function poller () {
 		checkDOMReady();
-		pollerTO = setTimeout(poller, 30);
+		if (!completed) {
+			pollerTO = setTimeout(poller, 30);
+		}
 	}
 
 	// select the correct event listener function. all of our supported
