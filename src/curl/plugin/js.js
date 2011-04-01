@@ -93,12 +93,13 @@
 	define({
 		'load': function (name, require, callback, config) {
 
-			var wait, prefetch, def, promise;
+			var wait, noexec, prefetch, def, promise;
 
 			// TODO: start using async=false
 			wait = name.indexOf('!wait') >= 0;
-			name = wait ? name.substr(0, name.indexOf('!')) : name;
+			noexec = name.indexOf('!noexec') >= 0;
 			prefetch = 'jsPrefetch' in config ? config['jsPrefetch'] : true;
+			name = wait || noexec ? name.substr(0, name.indexOf('!')) : name;
 			def = {
 				name: name,
 				url: require['toUrl'](name)
@@ -109,14 +110,19 @@
 			};
 
 			// if this script has to wait for another
-			if (wait && inFlightCount > 0) {
-				if (supportsAsyncFalse) {
+			// or if we're loading, but not executing it
+			if (noexec || wait && inFlightCount > 0) {
+				if (supportsAsyncFalse && !noexec) {
 					// specify that we want to wait before executing
 					def.sync = true;
 				}
 				else {
-					// push before fetch in case IE has file cached
-					queue.push([def, promise]);
+					// push onto the stack of scripts that will be fetched
+					// from cache unless we're not executing it. do this
+					// before fetch in case IE has file cached.
+					if (!noexec) {
+						queue.push([def, promise]);
+					}
 					// if we're prefetching
 					if (prefetch) {
 						// go get the file under an unknown mime type
