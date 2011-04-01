@@ -92,9 +92,10 @@
 			return _require(deps, callback, ctx);
 		};
 		// using bracket property notation to closure won't clobber name
-		ctx.require['toUrl'] = function toUrl (n) {
+		function toUrl (n) {
 			return resolvePath(normalizeName(n, ctx), baseUrl);
-		};
+		}
+		ctx.require['toUrl'] = toUrl;
 		ctx.exports = {};
 		ctx.module = {
 			'id': normalizeName(name, ctx),
@@ -446,7 +447,7 @@
 
 		// were there none to fetch and did we not already complete the promise?
 		if (count == 0 && !completed) {
-			success([]);
+			success(deps);
 		}
 
 	}
@@ -610,7 +611,7 @@
 	this,
 	document,
 	// grab configuration
-	this['curl'] || this['require']
+	this['curl'] || this['require'] || {}
 ));
 
 // ==ClosureCompiler==
