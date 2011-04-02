@@ -238,10 +238,13 @@
 		// (array, object|function) ax|af
 		// (string) s
 		// TODO: check invalid argument combos here?
+		var name, deps, res, isDefFunc, len = args.length;
+
 		function toFunc (res) {
-			return isType(res, 'Function') ? res : function () { return res; };
+			isDefFunc = isType(res, 'Function'); // intentional side-effect
+			return isDefFunc ? res : function () { return res; };
 		}
-		var name, deps, res, len = args.length;
+
 		if (len === 3) {
 			name = args[0];
 			deps = args[1];
@@ -265,6 +268,13 @@
 				res = toFunc(args[0]);
 			}
 		}
+
+		// mimic RequireJS's assumption that a definition function with zero
+		// dependencies is a wrapped CommonJS module
+		if (!isRequire && deps && deps.length == 0 && isDefFunc) {
+			deps = ['require', 'exports', 'module'];
+		}
+
 		return {
 			name: name,
 			deps: deps,
@@ -286,9 +296,10 @@
 		// even if there are no dependencies, we're still taking
 		// this path to simplify the code
 		var childCtx = begetCtx(def.name);
+
 		getDeps(args.deps, childCtx,
 			function (deps) {
-				// CommonJS Modules 1.1 says `this` === exports
+				// node.js assumes `this` === exports
 				// anything returned overrides exports?
 				var res = args.res.apply(childCtx.exports, deps) || childCtx.exports;
 				if (res && isType(res['then'], 'Function')) {
@@ -390,8 +401,7 @@
 		var deps = [],
 			count = names ? names.length : 0,
 			len = count,
-			completed = false,
-			depName;
+			completed = false;
 
 		// obtain each dependency
 		for (var i = 0; i < len && !completed; i++) (function (index, depName) {
