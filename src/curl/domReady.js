@@ -6,11 +6,9 @@
  * 		http://www.opensource.org/licenses/mit-license.php
  *
  * usage:
- *  require(['ModuleA', 'domReady'], function (ModuleA, domReady) {
- * 		domReady(function () {
- * 			var a = new ModuleA();
- * 			document.body.appendChild(a.domNode);
- * 		});
+ *  require(['ModuleA'], function (ModuleA, domReady) {
+ * 		var a = new ModuleA();
+ * 		document.body.appendChild(a.domNode);
  * 	});
  *
  * HT to Bryan Forbes: http://www.reigndropsfall.net/
