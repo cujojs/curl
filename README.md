@@ -10,9 +10,9 @@ What's New?
 
 TODO:
 
-* i18n plugin (by 2011-04-11)
-* CommonJs Packages
-* async=false in the js! plugin
+* i18n plugin (eta: 2011-04-11)
+* CommonJs Packages 1.1 (in progress)
+* async=false in the js! plugin (it's there, but has a bug that will be fixed next release)
 
 ----------------------------------------
 
