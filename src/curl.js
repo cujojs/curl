@@ -48,12 +48,47 @@
 		absUrlRe = /^\/|^[^:]*:\/\//,
 		normalizeRe = /^\.\//,
 		findCurlRe = /(.*\/curl)\.js$/,
+		isDescriptorRx = /\.(js|json)$/,
+		// script ready states that signify it's loaded
 		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
 		// reused strings
-		errorSuffix = '. Syntax error or name mismatch.' ;
+		errorSuffix = '. Syntax error or name mismatch.',
+		// the defaults for a typical package descriptor
+		typicalDescriptor = {
+			'main': 'main.js',
+			'directories': {
+				'lib': './lib'
+			}
+		};
 
 	function isType (obj, type) {
 		return toString.call(obj).indexOf('[object ' + type) == 0;
+	}
+
+	function normalizePkgDescriptor (descriptor) {
+		var folders, isPathToDescriptor;
+
+		// check for string shortcuts
+		if (isType(descriptor, 'String')) {
+			isPathToDescriptor = isDescriptorRx.test(descriptor);
+			folders = descriptor.split('/');
+			descriptor = {
+				'name': folders[folders.length - (isPathToDescriptor ? 2 : 1)]
+			};
+			if (isPathToDescriptor) {
+				// TODO: we need to go fetch it!
+				descriptor._descriptorUrl = def;
+			}
+		}
+
+		// fill in defaults
+		// we need to do it this way to account for google closure
+		descriptor.name = descriptor['name'];
+		descriptor.main = descriptor['main'] || typicalDescriptor['main'];
+		descriptor.directories = descriptor['directories'] || typicalDescriptor['directories'];
+		descriptor.directories.lib = descriptor.directories['lib'] || typicalDescriptor['directories']['lib'];
+
+		return descriptor;
 	}
 
 	function extractCfg (cfg) {
@@ -61,13 +96,16 @@
 		baseUrl = cfg['baseUrl'] || '';
 
 		// fix all paths
-		var cfgPaths = cfg['paths'];
+		var pStrip, cfgPaths = cfg['paths'];
 		for (var p in cfgPaths) {
-			paths[p] = removeEndSlash(cfgPaths[p]);
-			if (p.charAt(p.length - 1) == '/') {
-				paths[removeEndSlash(p)] = paths[p];
-				delete paths[p];
-			}
+			pStrip = removeEndSlash(p);
+			paths[pStrip] = removeEndSlash(cfgPaths[p]);
+		}
+
+		var cfgPackages = cfg['packages'];
+		for (var p in cfgPackages) {
+			pStrip = removeEndSlash(p);
+			paths[pStrip] = normalizePkgDescriptor(removeEndSlash(cfgPackages[p]));
 		}
 
 		if (!('curl' in paths)) {
@@ -91,7 +129,7 @@
 		ctx.require = function (deps, callback) {
 			return _require(deps, callback, ctx);
 		};
-		// using bracket property notation to closure won't clobber name
+		// using bracket property notation so closure won't clobber name
 		function toUrl (n) {
 			return resolvePath(normalizeName(n, ctx), baseUrl);
 		}
@@ -109,6 +147,7 @@
 		this._rejects = [];
 	}
 
+	// TODO: add resolution chaining to see if it simplifies the rest of the code
 	Promise.prototype = {
 
 		then: function (resolved, rejected) {
@@ -138,18 +177,23 @@
 
 	};
 
-	function ResourceDef (name, ctx) {
+	function ResourceDef (name) {
 		Promise.call(this);
 		this.name = name;
-		this.ctx = ctx;
 	}
 
 	ResourceDef.prototype = new Promise();
-	ResourceDef.prototype._complete = function (which, arg) {
-		Promise.prototype._complete.call(this, which, arg);
-		delete this.ctx;
-		delete this.url;
-	};
+//	ResourceDef.prototype._complete = function (which, arg) {
+//		Promise.prototype._complete.call(this, which, arg);
+//		delete this.url;
+//	};
+
+	function PackageDef (pkg) {
+		Promise.call(this);
+		this.pkg = pkg;
+	}
+
+	PackageDef.prototype = new Promise();
 
 	function endsWithSlash (str) {
 		return str.charAt(str.length - 1) == '/';
@@ -165,22 +209,61 @@
 
 	function resolvePath (name, baseUrl) {
 		// takes a resource name (w/o ext!) and resolves it to a url
-		var part = '',
-			prefix = '',
-			path = paths[name];
-		pathRe.lastIndex = 0; // literal regexes are cached globally, so always reset this
-		// pull off a folder in the path
+		// if we can't resolve the resource name becaus eit's part of a
+		// package for which we haven't fetched the descriptor, then
+		// return a promise.
+		var part = '', match = '', result;
+
+		// pull off a folder in the name
 		// does it match an entry in paths?
-		//		if so, grab it as a prefix and go back
-		// using part != prefix to detect if the regex is stuck
-		while ((part += pathRe.exec(name)) && paths[part] && part != prefix) {
-			prefix = part;
+		//		if so, grab it as a match and repeat with another path appended
+		// using part != match to detect if the regex is stuck
+		while ((part += pathRe.exec(name)) && paths[part] && part != match) {
+			match = part;
 		}
-		path = (paths[prefix] || '') + name.substr(prefix.length);
-		// prepend baseUrl if we didn't find an absolute url
-		if (!absUrlRe.test(path)) path = joinPath(baseUrl, path);
-		// append name
-		return path;
+
+		// literal regexes are cached globally, so always reset this
+		pathRe.lastIndex = 0;
+
+		result = paths[match] || '';
+
+		// TODO: lots to reuse here!
+		if (result._descriptorUrl) {
+			// TODO: fetch descriptor
+			var promise = new Promise();
+			loadScript(result._descriptorUrl,
+				function (descriptor) {
+					// store new descriptor for future use
+					var pkg = paths[match] = normalizePkgDescriptor(descriptor);
+					var libFolder = pkg.directories.lib,
+						libPath = name.substr(match.length);
+					// append main module if the package name was specified
+					if (!libPath) libPath = pkg.main;
+					var path = joinPath(libFolder, libPath);
+					// prepend baseUrl if we didn't find an absolute url
+					if (baseUrl && !absUrlRe.test(path)) path = joinPath(baseUrl, path);
+					promise.resolve(path);
+				},
+				promise.reject
+			);
+			result = promise;
+		}
+		else if (result.name) {
+			var libFolder = result.directories.lib,
+				libPath = name.substr(match.length);
+			// append main module if the package name was specified
+			if (!libPath) libPath = result.main;
+			result = result + joinPath(libFolder, libPath);
+			// prepend baseUrl if we didn't find an absolute url
+			if (baseUrl && !absUrlRe.test(result)) result = joinPath(baseUrl, result);
+		}
+		else {
+			result += name.substr(match.length);
+			// prepend baseUrl if we didn't find an absolute url
+			if (baseUrl && !absUrlRe.test(result)) result = joinPath(baseUrl, result);
+		}
+
+		return result;
 	}
 
 	function loadScript (def, success, failure) {
@@ -214,6 +297,7 @@
 		el.onload = el.onreadystatechange = process;
 		el.onerror = fail;
 		el.charset = def.charset || 'utf-8';
+		// TODO: just use el.async = true; since we're not reusing this for the js! plugin any more
 		el.async = 'async' in def ? def.async : true; // for Firefox
 		el.src = def.url;
 
@@ -316,11 +400,11 @@
 
 	}
 
-	function fetchResDef (name, ctx) {
+	function fetchResDef (def, ctx) {
 
-		var def = cache[name] = new ResourceDef(name, ctx);
-		// TODO: should this be using ctx.toUrl()??????
-		def.url = resolvePath(name, baseUrl) + '.js';
+//		var def = cache[name] = new ResourceDef(name);
+//		// TODO: should this be using ctx.toUrl()??????
+//		def.url = resolvePath(name, baseUrl) + '.js';
 
 		loadScript(def,
 
@@ -348,6 +432,7 @@
 
 			},
 
+			// TODO: just use def.reject
 			function (ex) {
 				def.reject(ex);
 			}
@@ -358,42 +443,117 @@
 
 	}
 
-	function fetchPluginDef (fullName, prefix, name, ctx) {
-
-		// prepend plugin folder path, if it's missing and path isn't in paths
-		var prev = prefix;
-		prefix = resolvePath(prefix, '');
-		var slashPos = prefix.indexOf('/');
-		if (slashPos < 0 && prefix == prev) {
-			fullName = joinPath(pluginPath, fullName);
-			prefix = joinPath(pluginPath, prefix);
-		}
-		// the spec is unclear, but we're using the full name (prefix + name) to id resources
-		var def = cache[fullName] = new ResourceDef(name, ctx);
-
-		// curl's plugins prefer to receive the back-side of a promise,
-		// but to be compatible with commonjs's specification, we have to
-		// piggy-back on the callback function parameter:
-		var loaded = function (res) { def.resolve(res); };
-		// using bracket property notation so closure won't clobber name
-		loaded['resolve'] = loaded;
-		loaded['reject'] = function (ex) { def.reject(ex); };
-		loaded['then'] = function (resolved, rejected) { def.then(resolved, rejected); };
-
-		// go get plugin
-		ctx.require([prefix], function (plugin) {
-			// load the resource!
-			plugin.load(name, begetCtx(name).require, loaded, userCfg);
-
-		});
-
-		return def;
-
-	}
+//	function fetchPluginDef (fullName, prefix, name, ctx) {
+//
+//		// prepend plugin folder path, if it's missing and path isn't in paths
+//		var prev = prefix;
+//		prefix = resolvePath(prefix, null); // null means don't append baseUrl
+//		var slashPos = prefix.indexOf('/');
+//		if (slashPos < 0 && prefix == prev) {
+//			fullName = joinPath(pluginPath, fullName);
+//			prefix = joinPath(pluginPath, prefix);
+//		}
+//		// the spec is unclear, but we're using the full name (prefix + name) to id resources
+//		var def = cache[fullName] = new ResourceDef(name);
+//
+//		// curl's plugins prefer to receive the back-side of a promise,
+//		// but to be compatible with commonjs's specification, we have to
+//		// piggy-back on the callback function parameter:
+//		var loaded = function (res) { def.resolve(res); };
+//		// using bracket property notation so closure won't clobber name
+//		loaded['resolve'] = loaded;
+//		loaded['reject'] = function (ex) { def.reject(ex); };
+//		loaded['then'] = function (resolved, rejected) { def.then(resolved, rejected); };
+//
+//		// go get plugin
+//		ctx.require([prefix], function (plugin) {
+//			// load the resource!
+//			plugin.load(name, begetCtx(name).require, loaded, userCfg);
+//
+//		});
+//
+//		return def;
+//
+//	}
 
 	function normalizeName (name, ctx) {
 		// if name starts with . then use parent's name as a base
 		return name.replace(normalizeRe, ctx.baseName);
+	}
+
+	function toPromise (promiseOrValue) {
+		if (!isType(promiseOrValue.then, 'Function')) {
+			var promise = new Promise()
+			promise.resolve(promiseOrValue)
+			return promise;
+		}
+		else {
+			return promiseOrValue;
+		}
+	}
+
+	function fetchDep (depName, ctx) {
+		var name, delPos, prefix, resName;
+
+		// check for plugin prefix
+		delPos = depName.indexOf('!');
+		if (delPos >= 0) {
+
+			// hm, this normalizeName allows plugins to be relative to
+			// the parent module. is this a feature?
+			prefix = normalizeName(depName.substr(0, delPos), ctx);
+			resName = depName.substr(delPos + 1);
+			name = prefix + '!' + resName;
+
+			var prev = prefix;
+			// null means don't append baseUrl
+			toPromise(resolvePath(prefix, null)).then(function (prefix) {
+				// prepend plugin folder path, if it's missing and path isn't in paths
+				var slashPos = prefix.indexOf('/');
+				if (slashPos < 0 && prefix == prev) {
+					name = joinPath(pluginPath, name);
+					prefix = joinPath(pluginPath, prefix);
+				}
+
+				// the spec is unclear, so we're using the full name (prefix + name) to id resources
+				var def = cache[name] = new ResourceDef(name),
+					pluginDef = cache[prefix] = new ResourceDef(prefix);
+
+				fetchResDef(pluginDef, ctx).then(
+					function (plugin) {
+						// curl's plugins prefer to receive the back-side of a promise,
+						// but to be compatible with commonjs's specification, we have to
+						// piggy-back on the callback function parameter:
+						var loaded = def.resolve;
+						// using bracket property notation so closure won't clobber name
+						loaded['resolve'] = loaded;
+						loaded['reject'] = def.reject;
+						// this isn't necessary for plugins and isn't recommended by CommonJS:
+						//loaded['then'] = def.then;
+						// load the resource!
+						plugin.load(name, ctx.require, loaded, userCfg);
+					},
+					def.reject
+				);
+			});
+
+		}
+		else {
+			resName = name = normalizeName(depName, ctx);
+
+			var def = cache[resName] = new ResourceDef(resName);
+			// TODO: should this be using ctx.toUrl()??????
+			toPromise(resolvePath(resName, baseUrl)).then(
+				function (path) {
+					def.url = path + '.js';
+					fetchResDef(def, ctx);
+				},
+				def.reject
+			);
+
+		}
+
+		return def;
 	}
 
 	function getDeps (names, ctx, success, failure) {
@@ -418,28 +578,8 @@
 				count--;
 			}
 			else {
-				var name, /*parts, */delPos, prefix, suffixes, resName;
-				// check for plugin prefix
-				delPos = depName.indexOf('!');
-				//if (parts.length > 1) {
-				if (delPos >= 0) {
-					// hm, this normalizeName allows plugins to be relative to
-					// the parent module. is this a feature?
-					prefix = normalizeName(depName.substr(0, delPos), ctx);
-					resName = depName.substr(delPos + 1);
-					name = prefix + '!' + resName;
-				}
-				else {
-					resName = name = normalizeName(depName, ctx);
-				}
-				// get resource definition
-				var def = cache[name] ||
-						(prefix ?
-							fetchPluginDef(name, prefix, resName, ctx) :
-							fetchResDef(resName, ctx)
-						);
 				// hook into promise callbacks
-				def.then(
+				fetchDep(depName, ctx).then(
 					function (dep) {
 						deps[index] = dep; // got it!
 						if (--count == 0) {
@@ -582,10 +722,10 @@
 			// if it's a secondary define(), grab the current def's context
 			var def = cache[name];
 			if (!def) {
-				def = cache[name] = new ResourceDef(name, begetCtx(name));
+				def = cache[name] = new ResourceDef(name);
 			}
 			def.useNet = false;
-			resolveResDef(def, args, def.ctx);
+			resolveResDef(def, args, begetCtx(name));
 		}
 
 	}
