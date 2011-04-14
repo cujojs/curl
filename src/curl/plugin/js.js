@@ -58,7 +58,7 @@
 		el.onload = el.onreadystatechange = process;
 		el.onerror = fail;
 		el.charset = def.charset || 'utf-8';
-		el.async = def.sync || true;
+		el.async = def.async;
 		el.src = def.url;
 
 		// use insertBefore to keep IE from throwing Operation Aborted (thx Bryan Forbes!)
@@ -102,7 +102,8 @@
 			name = wait || noexec ? name.substr(0, name.indexOf('!')) : name;
 			def = {
 				name: name,
-				url: require['toUrl'](name)
+				url: require['toUrl'](name),
+				async: true
 			};
 			promise = callback['resolve'] ? callback : {
 				'resolve': function (o) { callback(o); },
@@ -114,7 +115,7 @@
 			if (noexec || wait && inFlightCount > 0) {
 				if (supportsAsyncFalse && !noexec) {
 					// specify that we want to wait before executing
-					def.sync = true;
+					def.async = false;
 				}
 				else {
 					// push onto the stack of scripts that will be fetched
