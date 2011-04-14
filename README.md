@@ -10,8 +10,8 @@ What's New?
 
 TODO:
 
-* i18n plugin (eta: 2011-04-11)
-* CommonJs Packages 1.1 (in progress)
+* i18n plugin (eta: 2011-04-21)
+* CommonJs Packages 1.1 (being tested in dev branch)
 * async=false in the js! plugin (it's there, but has a bug that will be fixed next release)
 * Notes about using JSONP (it works for objects, arrays, functions, numbers (but not strings)! use ?callback=define)
 
