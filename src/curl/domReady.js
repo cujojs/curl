@@ -87,6 +87,7 @@
 			if (completed) cb(); else callbacks.push(cb);
 		}
 		domReady['then'] = domReady;
+		domReady['amd'] = true;
 
 		return domReady;
 
