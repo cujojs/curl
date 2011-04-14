@@ -430,7 +430,7 @@
 		// curl's plugins prefer to receive the back-side of a promise,
 		// but to be compatible with commonjs's specification, we have to
 		// piggy-back on the callback function parameter:
-		var loaded = function (val) { def.resolve(); };
+		var loaded = function (val) { def.resolve(val); };
 		// using bracket property notation so closure won't clobber name
 		loaded['resolve'] = loaded;
 		loaded['reject'] = function (ex) { def.reject(ex); };
