@@ -203,7 +203,7 @@
 		// if we can't resolve the resource name because it's part of a
 		// package for which we haven't fetched the descriptor, then
 		// return a promise.
-		var part = '', match = '', pathInfo;
+		var part = '', match = '', pathInfo, path;
 
 		// pull off a folder in the name
 		// does it match an entry in paths?
@@ -221,21 +221,19 @@
 		if (pathInfo.name) {
 			var libFolder = pathInfo.lib,
 				// append main module if only the package name was specified
-				libPath = name.substr(match.length + 1) || pathInfo.main,
-				path = joinPath(libFolder, libPath);
-			// prepend baseUrl if we didn't find an absolute url
-			if (baseUrl && !absUrlRe.test(path)) {
-				path = joinPath(baseUrl, path);
-			}
-			pathInfo.path = path;
+				libPath = name.substr(match.length + 1) || pathInfo.main;
+			path = joinPath(libFolder, libPath);
 		}
 		else {
-			var path = pathInfo;
+			path = pathInfo;
+			pathInfo = {};
 			path += name.substr(match.length);
-			// prepend baseUrl if we didn't find an absolute url
-			if (baseUrl && !absUrlRe.test(path)) path = joinPath(baseUrl, path);
-			pathInfo = { path: path };
 		}
+
+		if (baseUrl && !absUrlRe.test(path)) {
+			path = joinPath(baseUrl, path);
+		}
+		pathInfo.path = path;
 
 		return pathInfo;
 	}
@@ -272,7 +270,7 @@
 		el.onerror = fail;
 		el.charset = def.charset || 'utf-8';
 		// TODO: just use el.async = true; since we're not reusing this for the js! plugin any more
-		el.async = 'async' in def ? def.async : true; // for Firefox
+		el.async = true;
 		el.src = def.url;
 
 		// loading will start when the script is inserted into the dom.
@@ -426,18 +424,6 @@
 		return name.replace(normalizeRe, ctx.baseName);
 	}
 
-	function resolvePluginDef (def, plugin, ctx) {
-		// curl's plugins prefer to receive the back-side of a promise,
-		// but to be compatible with commonjs's specification, we have to
-		// piggy-back on the callback function parameter:
-		var loaded = function (val) { def.resolve(val); };
-		// using bracket property notation so closure won't clobber name
-		loaded['resolve'] = loaded;
-		loaded['reject'] = function (ex) { def.reject(ex); };
-		// load the resource!
-		plugin.load(def.name, ctx.require, loaded, userCfg);
-	}
-
 	function fetchDep (depName, ctx) {
 		var name, delPos, prefix, resName;
 
@@ -474,8 +460,15 @@
 				}
 				pluginDef.then(
 					function (plugin) {
-
-						resolvePluginDef(def, plugin, ctx);
+						// curl's plugins prefer to receive the back-side of a promise,
+						// but to be compatible with commonjs's specification, we have to
+						// piggy-back on the callback function parameter:
+						var loaded = function (val) { def.resolve(val); };
+						// using bracket property notation so closure won't clobber name
+						loaded['resolve'] = loaded;
+						loaded['reject'] = function (ex) { def.reject(ex); };
+						// load the resource!
+						plugin.load(def.name, ctx.require, loaded, userCfg);
 					},
 					function (ex) { def.reject(ex); }
 				);
