@@ -1,7 +1,7 @@
 curl (Cujo Resource Loader)
 =====================
 
-version 0.3.3
+version 0.4
 
 What's New?
 
