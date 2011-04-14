@@ -474,7 +474,7 @@
 				}
 				pluginDef.then(
 					function (plugin) {
-console.log(def);
+
 						resolvePluginDef(def, plugin, ctx);
 					},
 					function (ex) { def.reject(ex); }
