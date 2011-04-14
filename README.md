@@ -10,8 +10,8 @@ What's New?
 
 TODO:
 
-* i18n plugin (eta: 2011-04-11)
-* CommonJs Packages 1.1 (in progress)
+* i18n plugin (eta: 2011-04-21)
+* CommonJs Packages 1.1 (being tested in dev branch)
 * async=false in the js! plugin (it's there, but has a bug that will be fixed next release)
 * Notes about using JSONP (it works for objects, arrays, functions, numbers (but not strings)! use ?callback=define)
 
@@ -27,7 +27,7 @@ If you'd like to use curl.js for non-AMD modules (ordinary javascript files), yo
 version with the js! plugin built in.  You may also want to build-in the domReady module.  The 
 combined curl+js+domReady loader is still only 6.1KB (2.7KB gzipped).
 
-What the heck is cujo?  cujo.js is a web app dvelopment platform.  See the bottom of this file for more info.
+What the heck is cujo?  cujo.js is a web app development platform.  See the bottom of this file for more info.
 
 What's new?
 ----------
@@ -586,5 +586,5 @@ Kudos also to James Burke (@jrburke) who instigated the CommonJS AMD proposal
 and paved the way to create AMD-style loaders.
 More about James: <http://tagneto.blogspot.com/>
 
-Shout out to Kris Zyp (@kriszyp) for excellent ideas and feedback and Kyle
+Shout out to Kris Zyp (@kriszyp) for excellent ideas and feedback and to Kyle
 Simpson (@getify) who is inarguably the godfather of javascript loading.
