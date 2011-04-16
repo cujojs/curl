@@ -6,12 +6,12 @@
  * 		http://www.opensource.org/licenses/mit-license.php
  *
  * usage:
- *  require(['ModuleA', 'js!myNonAMDFile.js', 'js!anotherFile.js!wait], function (ModuleA) {
+ *  require(['ModuleA', 'js!myNonAMDFile.js!order', 'js!anotherFile.js!order], function (ModuleA) {
  * 		var a = new ModuleA();
  * 		document.body.appendChild(a.domNode);
  * 	});
  *
- * Specify the !wait suffix to make curl wait for all other js files before evaluating.
+ * Specify the !order suffix for files that must be evaluated in order.
  *
  * Async=false rules learned from @getify's LABjs!
  * http://wiki.whatwg.org/wiki/Dynamic_Script_Execution_Order
@@ -93,17 +93,17 @@
 	define({
 		'load': function (name, require, callback, config) {
 
-			var wait, noexec, prefetch, def, promise;
+			var order, noexec, prefetch, def, promise;
 
-			// TODO: start using async=false
-			wait = name.indexOf('!wait') >= 0;
+			order = name.indexOf('!order') >= 0;
 			noexec = name.indexOf('!noexec') >= 0;
 			prefetch = 'jsPrefetch' in config ? config['jsPrefetch'] : true;
-			name = wait || noexec ? name.substr(0, name.indexOf('!')) : name;
+			name = order || noexec ? name.substr(0, name.indexOf('!')) : name;
 			def = {
 				name: name,
 				url: require['toUrl'](name),
-				async: true
+				async: true,
+				order: order
 			};
 			promise = callback['resolve'] ? callback : {
 				'resolve': function (o) { callback(o); },
@@ -112,10 +112,12 @@
 
 			// if this script has to wait for another
 			// or if we're loading, but not executing it
-			if (noexec || wait && inFlightCount > 0) {
+			if (noexec || (order && inFlightCount > 0)) {
 				if (supportsAsyncFalse && !noexec) {
 					// specify that we want to wait before executing
 					def.async = false;
+					inFlightCount++;
+					fetch(def, promise);
 				}
 				else {
 					// push onto the stack of scripts that will be fetched
