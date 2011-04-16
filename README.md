@@ -1,19 +1,24 @@
 curl (Cujo Resource Loader)
 =====================
 
-version 0.3.3
+version 0.4
 
 What's New?
 
 * CommonJS Modules 1.1
+* CommonJS Packages 1.1
+* dojo 1.6 support (relies on non-standard RequireJS features)
+* node.js support (when wrapped in a define())
 * !noexec suffix for js! plugin (load, but don't execute)
+* !wait suffix was renamed to !order (and semantics were changed)
+* async=false
 
 TODO:
 
-* i18n plugin (eta: 2011-04-21)
-* CommonJs Packages 1.1 (being tested in dev branch)
-* async=false in the js! plugin (it's there, but has a bug that will be fixed next release)
-* Notes about using JSONP (it works for objects, arrays, functions, numbers (but not strings)! use ?callback=define)
+* finish i18n plugin (eta: 2011-04-21)
+* Notes about using JSONP (it works for objects, arrays, functions, numbers
+  (but not strings)! use ?callback=define)
+* require(dep) as an RValue
 
 ----------------------------------------
 
@@ -21,25 +26,26 @@ What is curl.js?
 ================
 
 curl.js is a small, but very fast AMD-compliant asynchronous loader.
-Current size: 4.5KB (2.1KB gzipped) using Google's Closure Compiler.
+Current size: 4.3KB (2.1KB gzipped) using Google's Closure Compiler.
 
-If you'd like to use curl.js for non-AMD modules (ordinary javascript files), you'll want to  use the
-version with the js! plugin built in.  You may also want to build-in the domReady module.  The 
-combined curl+js+domReady loader is still only 6.1KB (2.7KB gzipped).
+If you'd like to use curl.js for non-AMD modules (ordinary javascript files),
+you'll want to  use the version with the js! plugin built in.  You may also
+want to build-in the domReady module.  The combined curl+js+domReady loader
+is still only 6.0KB (2.7KB gzipped).
 
-What the heck is cujo?  cujo.js is a web app dvelopment platform.  See the bottom of this file for more info.
+What the heck is "cujo"?  cujo.js is a web app development platform.
+See the bottom of this file for more info.
 
 What's new?
 ----------
-* The API has changed a bit since 0.2. The .ready() and .domReady() methods are gone,
-  replaced by the domReady module.  See the "API at a glance" section.
+* CommonJS Modules 1.1 and Packages 1.1 are supported!
+* dojo 1.6 is supported!
+* The API has changed a bit since 0.2. The .ready() and .domReady() methods are
+  gone, replaced by the domReady module.  See the "API at a glance" section.
 * The domReady module now returns a promise. This makes the API a bit cleaner.
 * The js! plugin has been moved out into it's own file and now supports
-  the !wait suffix which will load, but not execute, the file until
-  all previous non-AMD files are executed.
-
-If you're already familiar with CommonJS AMD loaders, skip down to the section
-"**How do I use curl.js?**"
+  the !order suffix which will load, but not execute, the non-AMD javascript
+  until all previous files that specified !order are executed.
 
 ----------------------------------------
 
@@ -48,6 +54,7 @@ Features at a glance:
 
 * Loads CommonJS AMD-formatted javascript modules in parallel (fast!)
 * Loads CommonJS Modules (v1.1 when wrapped in a `define()`) (fast!)
+* Loads CommonJS Packages (v1.1 modules wrapped in a `define()`) (fast!)
 * Loads non-AMD javascript files in parallel, too (fast! via js! plugin)
 * Loads CSS files and text files in parallel (fast! via plugins)
 * Waits for dependencies (js, css, text, etc) before executing javascript
@@ -70,7 +77,8 @@ API at a glance
 Loads dependencies and the executes callback.
 
 * ['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
-* callback: Function to receive modules or resources. This is where you'd typically start up your app.
+* callback: Function to receive modules or resources. This is where you'd
+  typically start up your app.
 
 ---------
 	curl(['dep1', 'dep2', 'dep3' /* etc */])
@@ -111,7 +119,7 @@ all dependencies have loaded.
 * errorback: Function to call if an exception occurred while loading
 
 ---------
-	curl(['domReady', 'js!nonAMD.js', 'js!another.js!wait']), function (domReady) {
+	curl(['domReady', 'js!nonAMD.js!order', 'js!another.js!order']), function (domReady) {
 		/* do something cool here */
 	});
 
@@ -149,8 +157,8 @@ Executes callbacks in stages using `.next(deps, callback)`.
 		apiName: 'someOtherName'
 	};
 
-If called before the `<script>` that loads curl.js, configures curl.js.  All of the 
-configuration parameters are optional. curl.js tries to do something sensible
+If called before the `<script>` that loads curl.js, configures curl.js.  All of
+the configuration parameters are optional. curl.js tries to do something sensible
 in their absence. :)
 
 * baseUrl: the root folder to find all modules, default is the document's folder
@@ -158,7 +166,8 @@ in their absence. :)
 * pluginPath: the place to find plugins when they are specified without a path
 (e.g. "css!myCssFile" vs. "cssx/css!myCssFile") and there is no paths
 mapping that applies.
-* apiName: an alternate name to `curl` and `require` for curl.js's global variable
+* apiName: an alternate name to `curl` and `require` for curl.js's global
+  variable
 
 ---------
 
@@ -264,7 +273,7 @@ other types of files) in parallel whenever possible.
 curl.js has lots of company. Other async loaders include LABjs, Steal.js,
 yepnope.js, $script.js, the Backdraft loader (bdLoad), and RequireJS.
 
-[(a more complete list)](https://spreadsheets.google.com/a/e-numera.com/ccc?key=0Aqln2akPWiMIdERkY3J2OXdOUVJDTkNSQ2ZsV3hoWVE&hl=en#gid=2)
+[(a more complete list)](https://spreadsheets.google.com/ccc?key=0Aqln2akPWiMIdERkY3J2OXdOUVJDTkNSQ2ZsV3hoWVE&hl=en#gid=2)
 
 ----------------------------------------
 
@@ -373,8 +382,8 @@ like this:
 
 	require(
 		[
-			'js!plainOldJsFile1.js',
-			'js!anotherPlainOldJsFile.js!wait'
+			'js!plainOldJsFile1.js!order',
+			'js!anotherPlainOldJsFile.js!order'
 		]
 	).then(
 		function () {
@@ -385,8 +394,8 @@ like this:
 		}
 	);
 
-The !wait suffix instructs curl.js to wait for previous scripts to execute
-before executing. It downloads in parallel with the previous scripts, though,
+The !order suffix instructs curl.js to wait for previous scripts to execute
+before executing. It downloads in parallel with the previous scripts,
 unless you specify jsPrefetch:false in the config.  Be sure to have proper
 cache headers set if you plan to use jsPrefetch:true or scripts will get
 downloaded twice.
@@ -420,10 +429,11 @@ How are modules loaded?
 curl.js uses `<script>` element injection rather than XHR.  This allows curl.js to
 load cross-domain scripts as well as local scripts.  
 
-To find scripts and other resources, curl uses module names.  A module name looks just like a file
-path, but typically without the file extension.  If a module requires a plugin in
-order to load correctly, it will have a prefix delimited by a "!" and will also often
-have a file extension when a plugin may load different types of files.
+To find scripts and other resources, curl uses module names.  A module name
+looks just like a file path, but typically without the file extension.  If a
+module requires a plugin in order to load correctly, it will have a prefix
+delimited by a "!" and will also often have a file extension when a plugin
+may load different types of files.
 
 Some examples of module names:
 
@@ -456,9 +466,9 @@ Then the modules listed above will be sought in the following locations:
 * /resources/my-cool-app-v1.3/styles/reset.css
 * http://some-cdn/uber/module.js
 
-Note: you will need to create a path to curl's plugins and other modules if the curl
-folder isn't directly under the same folder as your web page. curl.js uses the same
-mechanism to find its own modules.
+Note: you will need to create a path to curl's plugins and other modules if the
+curl folder isn't directly under the same folder as your web page. curl.js uses
+the same mechanism to find its own modules.
 
 TODO: explain the pluginPath configuration parameter.
 
@@ -586,5 +596,5 @@ Kudos also to James Burke (@jrburke) who instigated the CommonJS AMD proposal
 and paved the way to create AMD-style loaders.
 More about James: <http://tagneto.blogspot.com/>
 
-Shout out to Kris Zyp (@kriszyp) for excellent ideas and feedback and Kyle
+Shout out to Kris Zyp (@kriszyp) for excellent ideas and feedback and to Kyle
 Simpson (@getify) who is inarguably the godfather of javascript loading.

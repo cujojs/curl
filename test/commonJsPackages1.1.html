@@ -1,7 +1,7 @@
 <!DOCTYPE HTML>
 <html>
 <head>
-<title>CommonJS Modules 1.1 loading test</title>
+<title>CommonJS Packages 1.1 loading test</title>
 
 <script>
 
@@ -22,6 +22,12 @@
 	require = {
 		paths: {
 			curl: '../src/curl'
+		},
+		packages: {
+			'commonjs-test': {
+				main: 'main',
+				lib: 'commonjs'
+			}
 		}
 	};
 
@@ -35,9 +41,9 @@
 	require(
 		[
 			// test modules:
-			'commonjs/exports',
-			'commonjs/this',
-			'commonjs/module',
+			'commonjs-test/exports',
+			'commonjs-test/this',
+			'commonjs-test/module',
 			'curl/domReady'
 		]
 	).then(
