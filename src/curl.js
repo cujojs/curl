@@ -337,14 +337,6 @@
 
 	function resolveResDef (def, args, ctx) {
 
-//		function success (res) {
-//			def.resolve(res);
-//		}
-//
-//		function failure (ex) {
-//			def.reject(ex);
-//		}
-
 		var childCtx = begetCtx(def.name);
 
 		// get the dependencies and then resolve/reject
@@ -395,8 +387,6 @@
 
 			},
 
-			// TODO: just use def.reject
-//			function (ex) { def.reject(ex); }
 			def.reject
 
 		);
@@ -445,16 +435,13 @@
 						// curl's plugins prefer to receive the back-side of a promise,
 						// but to be compatible with commonjs's specification, we have to
 						// piggy-back on the callback function parameter:
-//						var loaded = function (val) { def.resolve(val); };
 						var loaded = def.resolve;
 						// using bracket property notation so closure won't clobber name
 						loaded['resolve'] = loaded;
-//						loaded['reject'] = function (ex) { def.reject(ex); };
 						loaded['reject'] = def.reject;
 						// load the resource!
 						plugin.load(def.name, ctx.require, loaded, userCfg);
 					},
-//					function (ex) { def.reject(ex); }
 					def.reject
 				);
 			}
