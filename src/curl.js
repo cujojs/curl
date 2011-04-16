@@ -139,56 +139,52 @@
 		return ctx;
 	}
 
-	function Promise () {
-		this._resolves = [];
-		this._rejects = [];
-	}
-
 	// TODO: add resolution chaining to see if it simplifies the rest of the code
-	// TODO: use a closure instead of a prototype to prevent the need for context everywhere
-	Promise.prototype = {
+	function Promise () {
 
-		then: function (resolved, rejected) {
+		var thens = [];
+
+		function then (resolved, rejected) {
 			// capture calls to callbacks
-			resolved && this._resolves.push(resolved);
-			rejected && this._rejects.push(rejected);
-			return this;
-		},
-
-		resolve: function (val) { this._complete(this._resolves, val); },
-
-		reject: function (ex) { this._complete(this._rejects, ex); },
-
-		_complete: function (which, arg) {
-			// switch over to sync then()
-			this.then = which === this._resolves ?
-				function (resolve, reject) { resolve(arg); return this; } :
-				function (resolve, reject) { reject(arg); return this; };
-			// disallow multiple calls to resolve or reject
-			this.resolve = this.reject =
-				function () { throw new Error('Promise already completed.'); };
-			// complete all callbacks
-			var cb, i = 0;
-			while ((cb = which[i++])) { cb(arg); }
-			delete this._resolves;
-			delete this._rejects;
+			thens.push([resolved, rejected]);
 		}
 
-	};
+		function resolve (val) { complete(true, val); }
+
+		function reject (ex) { complete(false, ex); }
+
+		function complete (success, arg) {
+			// switch over to sync then()
+			then = success ?
+				function (resolve, reject) { resolve && resolve(arg); } :
+				function (resolve, reject) { reject && reject(arg); };
+			// disallow multiple calls to resolve or reject
+			resolve = reject =
+				function () { throw new Error('Promise already completed.'); };
+			// complete all callbacks
+			var aThen, cb, i = 0;
+			while ((aThen = thens[i++])) {
+				cb = aThen[success ? 0 : 1];
+				if (cb) cb(arg);
+			}
+		}
+
+		return {
+			then: function (resolved, rejected) {
+				then(resolved, rejected);
+				return this;
+			},
+			resolve: function (val) { resolve(val); },
+			reject: function (ex) { reject(ex); }
+		}
+
+	}
 
 	function ResourceDef (name) {
-		Promise.call(this);
-		this.name = name;
+		var promise = Promise();
+		promise.name = name;
+		return promise;
 	}
-
-	ResourceDef.prototype = new Promise();
-
-	function PackageDef (pkg) {
-		Promise.call(this);
-		this.pkg = pkg;
-	}
-
-	PackageDef.prototype = new Promise();
 
 	function endsWithSlash (str) {
 		return str.charAt(str.length - 1) == '/';
@@ -341,13 +337,13 @@
 
 	function resolveResDef (def, args, ctx) {
 
-		function success (res) {
-			def.resolve(res);
-		}
-
-		function failure (ex) {
-			def.reject(ex);
-		}
+//		function success (res) {
+//			def.resolve(res);
+//		}
+//
+//		function failure (ex) {
+//			def.reject(ex);
+//		}
 
 		var childCtx = begetCtx(def.name);
 
@@ -360,13 +356,13 @@
 				if (res && res['amd'] && isType(res['then'], 'Function')) {
 					// oooooh lookee! we got a promise!
 					// chain it
-					res['then'](success, failure);
+					res['then'](def.resolve, def.reject);
 				}
 				else {
-					success(res);
+					def.resolve(res);
 				}
 			},
-			failure
+			def.reject
 		);
 
 	}
@@ -400,9 +396,8 @@
 			},
 
 			// TODO: just use def.reject
-			function (ex) {
-				def.reject(ex);
-			}
+//			function (ex) { def.reject(ex); }
+			def.reject
 
 		);
 
@@ -450,14 +445,17 @@
 						// curl's plugins prefer to receive the back-side of a promise,
 						// but to be compatible with commonjs's specification, we have to
 						// piggy-back on the callback function parameter:
-						var loaded = function (val) { def.resolve(val); };
+//						var loaded = function (val) { def.resolve(val); };
+						var loaded = def.resolve;
 						// using bracket property notation so closure won't clobber name
 						loaded['resolve'] = loaded;
-						loaded['reject'] = function (ex) { def.reject(ex); };
+//						loaded['reject'] = function (ex) { def.reject(ex); };
+						loaded['reject'] = def.reject;
 						// load the resource!
 						plugin.load(def.name, ctx.require, loaded, userCfg);
 					},
-					function (ex) { def.reject(ex); }
+//					function (ex) { def.reject(ex); }
+					def.reject
 				);
 			}
 
