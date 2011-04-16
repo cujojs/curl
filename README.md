@@ -17,7 +17,7 @@ TODO:
 
 * finish i18n plugin (eta: 2011-04-21)
 * Notes about using JSONP (it works for objects, arrays, functions, numbers
-  (but not strings)! use ?callback=define)
+  and strings! use ?callback=define)
 * require(dep) as an RValue
 
 ----------------------------------------
