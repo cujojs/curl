@@ -47,8 +47,6 @@
 		pathRe = /(?:\/|^)[^\/$]*/g, // /(?:\/|^).*(?:\/|$)/g,
 		absUrlRe = /^\/|^[^:]*:\/\//,
 		normalizeRe = /^\.\//,
-		findCurlRe = /(.*\/curl)\.js$/,
-		removeProtocolAndHostRe = /^[^:]+:\/\/[^\/]+\//,
 		// script ready states that signify it's loaded
 		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
 		// the defaults for a typical package descriptor
@@ -302,7 +300,6 @@
 		// (array, object|function) ax|af
 		// (string, object|function) sx|sf
 		// (object|function) x|f
-		// TODO: check invalid argument combos here?
 
 		var name, deps, definition, isDefFunc, len = args.length;
 
@@ -323,8 +320,8 @@
 		}
 
 		// mimic RequireJS's assumption that a definition function with zero
-		// dependencies is a wrapped CommonJS module
-		if (!deps && isDefFunc) {
+		// dependencies and non-zero arity is a wrapped CommonJS module
+		if (!deps && isDefFunc && definition.length > 0) {
 			deps = ['require', 'exports', 'module'];
 		}
 
@@ -426,7 +423,8 @@
 				var pluginDef = cache[prefix];
 				if (!pluginDef) {
 					pluginDef = cache[prefix] = new ResourceDef(prefix);
-					pluginDef.url = prefixInfo.path + '.js'; // TODO: deal with possible existing .js extension already?
+					// TODO: deal with possible existing .js extension already?
+					pluginDef.url = prefixInfo.path + '.js';
 					pluginDef.main = prefixInfo.main;
 					fetchResDef(pluginDef, ctx)
 				}
@@ -545,21 +543,21 @@
 
 		// sync require
 		// TODO: move this to a CommonJS extension
-		if (isType(deps, 'String')) {
-			// return resource
-			// TODO: Bryan had it this way: def = normalizeName(cache[deps], ctx.baseName); he may be right!!!
-			var def = normalizeName(cache[deps], ctx.baseName),
-				res;
-			if (def) {
-				// this is a silly, convoluted way to synchronously get a
-				// value out of a resolved promise
-				def.then(function (r) { res = r; });
-			}
-			if (res === undef) {
-				throw new Error('Resource (' + deps + ') is not already resolved.');
-			}
-			return res;
-		}
+		//if (isType(deps, 'String')) {
+		//	// return resource
+		//	// TODO: Bryan had it this way: def = normalizeName(cache[deps], ctx.baseName); he may be right!!!
+		//	var def = normalizeName(cache[deps], ctx.baseName),
+		//		res;
+		//	if (def) {
+		//		// this is a silly, convoluted way to synchronously get a
+		//		// value out of a resolved promise
+		//		def.then(function (r) { res = r; });
+		//	}
+		//	if (res === undef) {
+		//		throw new Error('Resource (' + deps + ') is not already resolved.');
+		//	}
+		//	return res;
+		//}
 
 		// resolve dependencies
 		getDeps(null, deps, ctx,
