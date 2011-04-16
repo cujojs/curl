@@ -35,7 +35,7 @@
 		handle = setTimeout(poller, 10);
 
 		// go
-		curl(['curl/domReady'], function(domReady){
+		curl({ paths: { curl: '../src/curl' } }, ['curl/domReady'], function(domReady){
 			clearInterval(handle);
 			console.log('DOM Ready!', isDomReady(), new Date().getMilliseconds());
 		});

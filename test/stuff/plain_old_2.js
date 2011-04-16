@@ -1,1 +1,2 @@
-testDomain.sauce = 'ketchup';
+testDomain.awesome = {};
+testDomain.awesome.sauce = 'ketchup';

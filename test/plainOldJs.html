@@ -23,8 +23,10 @@
 		debug: true,
 		paths: {
 			css: 'cssx/css',
-			text: '../src/curl/plugin/text'
+			//text: '../src/curl/plugin/text',
+			curl: '../src/curl'
 		},
+		pluginPath: '../src/curl/plugin',
 		jsPrefetch: true
 	};
 
@@ -51,7 +53,7 @@
 				document.body.appendChild(document.createTextNode('A module with dependencies loaded successfully if 3 == ' + three + '.'));
 				document.body.appendChild(document.createElement('br'));
 				document.body.appendChild(document.createTextNode('If the following line says something then the plain js files loaded in the right order:'));
-				document.body.appendChild(document.createElement('div')).innerHTML = testDomain.foo.bar + ' ' + testDomain.sauce;
+				document.body.appendChild(document.createElement('div')).innerHTML = testDomain.foo.bar + ' ' + testDomain.awesome.sauce;
 			}
 		}
 	);
