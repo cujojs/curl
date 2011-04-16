@@ -103,13 +103,15 @@
 
 		pluginPath = cfg['pluginPath'] || pluginPath; //joinPath(paths['curl'], 'plugin');
 
-			}
+	}
+
+	function noop () {}
 
 	function begetCtx (name) {
 
 		function toUrl (n) {
 			return resolvePath(normalizeName(n, baseName), baseUrl).path;
-	}
+		}
 
 		var baseName = name.substr(0, name.lastIndexOf('/')),
 			ctx = {
@@ -122,7 +124,7 @@
 			};
 		// CommonJS Modules 1.1.1 compliance
 		ctx.require = function (deps, callback) {
-			return _require(deps, callback, ctx);
+			return _require(deps, callback || noop, ctx);
 		};
 		// using bracket property notation so closure won't clobber name
 		ctx.require['toUrl'] = toUrl;
@@ -297,59 +299,43 @@
 
 	}
 
-	function fixArgs (args, isRequire) {
+	function fixArgs (args) {
 		// resolve args
 		// valid combinations for define:
 		// (string, array, object|function) sax|saf
 		// (array, object|function) ax|af
 		// (string, object|function) sx|sf
 		// (object|function) x|f
-		// valid combinations for require:
-		// (object, array, object|function) oax|oaf
-		// (array, object|function) ax|af
-		// (string) s
 		// TODO: check invalid argument combos here?
-		var name, deps, res, isDefFunc, len = args.length;
 
-		function toFunc (res) {
-			isDefFunc = isType(res, 'Function'); // intentional side-effect
-			return isDefFunc ? res : function () { return res; };
-		}
+		var name, deps, definition, isDefFunc, len = args.length;
 
-		if (len === 3) {
-			name = args[0];
-			deps = args[1];
-			res = toFunc(args[2]);
-		}
-		else if (len == 2) {
-			if (isType(args[0], 'String')) {
+		definition = args[len - 1];
+		isDefFunc = isType(definition, 'Function');
+
+		if (len == 2) {
+			if (isType(args[0], 'Array')) {
+				deps = args[0];
+			}
+			else {
 				name = args[0];
 			}
-			else {
-				deps = args[0];
-			}
-			res = toFunc(args[1]);
 		}
-		else /*if (len == 1)*/ {
-			// TODO: document this: if a require(array) is encountered , it assumes the array is a list of dependencies so that we can return a promise, define(array) assumes the array is the resource
-			if (isType(args[0], 'String') || (isType(args[0], 'Array') && isRequire)) {
-				deps = args[0];
-			}
-			else {
-				res = toFunc(args[0]);
-			}
+		else if (len == 3) {
+			name = args[0];
+			deps = args[1];
 		}
 
 		// mimic RequireJS's assumption that a definition function with zero
 		// dependencies is a wrapped CommonJS module
-		if (!isRequire && deps && deps.length == 0 && isDefFunc) {
+		if (!deps && isDefFunc) {
 			deps = ['require', 'exports', 'module'];
 		}
 
 		return {
 			name: name,
 			deps: deps || [],
-			res: res
+			res: isDefFunc ? definition : function () { return definition; }
 		};
 	}
 
@@ -581,7 +567,8 @@
 			var def = normalizeName(cache[deps], ctx.baseName),
 				res;
 			if (def) {
-				// this is a silly, convoluted way to get a value out of a resolved promise
+				// this is a silly, convoluted way to synchronously get a
+				// value out of a resolved promise
 				def.then(function (r) { res = r; });
 			}
 			if (res === undef) {
@@ -606,56 +593,59 @@
 
 	function _curl (/* various */) {
 
-		var len = arguments.length,
-			args;
+		var args = aslice.call(arguments), callback, deps, ctx;
 
 		// extract config, if it's specified
-		if (len === 3) {
-			extractCfg(arguments[0]);
+		if (isType(args[0], 'Object')) {
+			extractCfg(args.shift());
 		}
 
-		var ctx = begetCtx('');
-		args = fixArgs(len === 3 ? aslice.call(arguments, 1) : arguments, true);
+		// extract dependencies
+		deps = args[0];
+		callback = args[1];
 
-		// check if we should return a promise
-		if (!isType(args.deps, 'String')) {
-			var callback = args.res,
-				promise = args.res = new Promise(),
-				api = {};
-			// return the dependencies as arguments, not an array
-			// using bracket property notation so closure won't clobber name
-			api['then'] = function (resolved, rejected) {
-				promise.then(
-					function (deps) { if (resolved) resolved.apply(null, deps); },
-					function (ex) { if (rejected) rejected(ex); else throw ex; }
-				);
-				return api;
-			};
-			// promise chaining
-			api['next'] = function (deps, cb) {
-				var origPromise = promise;
-				promise = new Promise();
-				origPromise.then(
-					// get dependencies and then resolve the previous promise
-					function () { ctx.require(deps, promise, ctx); }
-				);
-				// execute this callback after dependencies
-				if (cb) {
-					promise.then(cb);
-				}
-				return api;
-			};
-			if (callback) api.then(callback);
-		}
+		// this should probably be after extractCfg
+		ctx = begetCtx('');
 
-		var result = ctx.require(args.deps, args.res, ctx);
-		return api || result;
+		var promise = new Promise(),
+			api = {};
+
+		// return the dependencies as arguments, not an array
+		// using bracket property notation so closure won't clobber name
+		api['then'] = function (resolved, rejected) {
+			promise.then(
+				function (deps) { if (resolved) resolved.apply(null, deps); },
+				function (ex) { if (rejected) rejected(ex); else throw ex; }
+			);
+			return api;
+		};
+
+		// promise chaining
+		api['next'] = function (deps, cb) {
+			var origPromise = promise;
+			promise = new Promise();
+			origPromise.then(
+				// get dependencies and then resolve the previous promise
+				function () { ctx.require(deps, promise, ctx); }
+			);
+			// execute this callback after dependencies
+			if (cb) {
+				promise.then(cb);
+			}
+			return api;
+		};
+
+		if (callback) api.then(callback);
+
+		ctx.require(deps, promise, ctx);
+		
+		return api;
 
 	}
 
 	function _define (/* various */) {
 
-		var args = fixArgs(arguments, false),
+		var args = fixArgs(arguments),
 			name = args.name;
 
 		if (name == null) {
