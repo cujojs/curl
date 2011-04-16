@@ -29,7 +29,7 @@
 		head = doc['head'] || doc.getElementsByTagName('head')[0],
 		// configuration information
 		baseUrl,
-		pluginPath,
+		pluginPath = 'curl/plugin',
 		paths = {},
 		// local cache of resource definitions (lightweight promises)
 		cache = {},
@@ -48,11 +48,9 @@
 		absUrlRe = /^\/|^[^:]*:\/\//,
 		normalizeRe = /^\.\//,
 		findCurlRe = /(.*\/curl)\.js$/,
-		//isDescriptorRx = /\.(js|json)$/,
+		removeProtocolAndHostRe = /^[^:]+:\/\/[^\/]+\//,
 		// script ready states that signify it's loaded
 		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
-		// reused strings
-		errorSuffix = '. Syntax error or name mismatch.',
 		// the defaults for a typical package descriptor
 		defaultDescriptor = {
 			main: 'main',
@@ -75,11 +73,12 @@
 		}
 
 		// fill in defaults
-		// we need to do it this way to account for google closure
-		main = 'main' in descriptor ? descriptor['main'] : defaultDescriptor.main;
+		// we need to do it with brackets to account for google closure
 		lib = 'lib' in descriptor ? descriptor['lib'] : defaultDescriptor.lib;
+		main = normalizeName('main' in descriptor ? descriptor['main'] : defaultDescriptor.main, lib);
+
 		descriptor.name = descriptor['name'] || name;
-		descriptor.main = joinPath(lib, main);
+		descriptor.main = removeEndSlash(main);
 		descriptor.lib = removeEndSlash(lib);
 
 		return descriptor;
@@ -98,41 +97,43 @@
 
 		var cfgPackages = cfg['packages'];
 		for (var p in cfgPackages) {
-			pStrip = removeEndSlash(p);
+			pStrip = removeEndSlash(cfgPackages[p].name || p);
 			paths[pStrip] = normalizePkgDescriptor(cfgPackages[p], pStrip);
 		}
 
-		if (!('curl' in paths)) {
-			// find path to curl. search backwards since we're likely the most recent
-			var scripts, match;
-			scripts = doc.getElementsByTagName('script');
-			for (var i = scripts.length - 1; i >= 0 && !match ; i--) {
-				match = scripts[i].src.match(findCurlRe);
+		pluginPath = cfg['pluginPath'] || pluginPath; //joinPath(paths['curl'], 'plugin');
+
 			}
-			paths['curl'] = match[1];
-		}
-
-		pluginPath = cfg['pluginPath'] || joinPath(paths['curl'], 'plugin');
-
-	}
 
 	function begetCtx (name) {
-		var ctx = {};
-		ctx.baseName = name.substr(0, name.lastIndexOf('/') + 1);
+
+		function toUrl (n) {
+			return resolvePath(normalizeName(n, baseName), baseUrl).path;
+	}
+
+		var baseName = name.substr(0, name.lastIndexOf('/')),
+			ctx = {
+				baseName: baseName,
+				exports: {},
+				module: {
+					'id': normalizeName(name, baseName),
+					'uri': toUrl(name)
+				}
+			};
 		// CommonJS Modules 1.1.1 compliance
 		ctx.require = function (deps, callback) {
 			return _require(deps, callback, ctx);
 		};
 		// using bracket property notation so closure won't clobber name
-		function toUrl (n) {
-			return resolvePath(normalizeName(n, ctx), baseUrl).path;
-		}
 		ctx.require['toUrl'] = toUrl;
-		ctx.exports = {};
-		ctx.module = {
-			'id': normalizeName(name, ctx),
-			'uri': toUrl(name)
+		
+		// for dojo 1.6 compatibility:
+		// TODO: remove ASAP and use the curl/dojo16Compat module instead
+		ctx.require['ready'] = function (cb) { _curl(['curl/domReady'], cb); };
+		ctx.require['nameToUrl'] = function (name, ext) {
+			return toUrl(name) + (ext || '');
 		};
+
 		return ctx;
 	}
 
@@ -142,6 +143,7 @@
 	}
 
 	// TODO: add resolution chaining to see if it simplifies the rest of the code
+	// TODO: use a closure instead of a prototype to prevent the need for context everywhere
 	Promise.prototype = {
 
 		then: function (resolved, rejected) {
@@ -203,7 +205,7 @@
 		// if we can't resolve the resource name because it's part of a
 		// package for which we haven't fetched the descriptor, then
 		// return a promise.
-		var part = '', match = '', pathInfo, path;
+		var part = '', match = '', pathInfo, main;
 
 		// pull off a folder in the name
 		// does it match an entry in paths?
@@ -219,23 +221,37 @@
 		pathInfo = paths[match] || '';
 
 		if (pathInfo.name) {
-			var libFolder = pathInfo.lib,
+			var path,
+				libFolder = pathInfo.lib,
 				// append main module if only the package name was specified
-				libPath = name.substr(match.length + 1) || pathInfo.main;
-			path = joinPath(libFolder, libPath);
+				libPath = name.substr(match.length + 1);
+			if (libPath) {
+				path = joinPath(libFolder, libPath);
+				// this is confusing. it's the name of the main module, not the
+				// path of the module we need as a dependency!!!!
+				main = pathInfo.name;
+			}
+			else {
+				// do NOT include a main if this is the main module!
+				path = pathInfo.main;
+			}
+			// prepend baseUrl if we didn't find an absolute url
+			if (baseUrl && !absUrlRe.test(path)) {
+				path = joinPath(baseUrl, path);
+			}
 		}
 		else {
 			path = pathInfo;
 			pathInfo = {};
 			path += name.substr(match.length);
+			// prepend baseUrl if we didn't find an absolute url
+			if (baseUrl && !absUrlRe.test(path)) path = joinPath(baseUrl, path);
 		}
 
-		if (baseUrl && !absUrlRe.test(path)) {
-			path = joinPath(baseUrl, path);
-		}
-		pathInfo.path = path;
-
-		return pathInfo;
+		return {
+			path: path,
+			main: main
+		};
 	}
 
 	function loadScript (def, success, failure) {
@@ -259,7 +275,7 @@
 		function fail (e) {
 			// some browsers send an event, others send a string,
 			// but none of them send anything useful, so just say we failed:
-			failure(new Error('Script error: ' + def.url + errorSuffix));
+			failure(new Error('Syntax error or http error: ' + def.url));
 		}
 
 		// set type first since setting other properties could
@@ -269,7 +285,6 @@
 		el.onload = el.onreadystatechange = process;
 		el.onerror = fail;
 		el.charset = def.charset || 'utf-8';
-		// TODO: just use el.async = true; since we're not reusing this for the js! plugin any more
 		el.async = true;
 		el.src = def.url;
 
@@ -348,21 +363,11 @@
 			def.reject(ex);
 		}
 
-		if (def.main) {
-			// be sure to run a package's main module before loading a module within the package
-			// we do this by appending the main module as a dependency
-			args.deps.push(def.main);
-		}
-
 		var childCtx = begetCtx(def.name);
 
 		// get the dependencies and then resolve/reject
-		getDeps(args.deps, childCtx,
+		getDeps(def, args.deps, childCtx,
 			function (deps) {
-				// remove def.main off deps
-				if (def.main) {
-					deps.pop();
-				}
 				// node.js assumes `this` === exports
 				// anything returned overrides exports
 				var res = args.res.apply(childCtx.exports, deps) || childCtx.exports;
@@ -385,16 +390,16 @@
 		loadScript(def,
 
 			function () {
-
 				var args = argsNet;
 				argsNet = undef; // reset it before we get deps
 
 				// if our resource was not explicitly defined with a name (anonymous)
 				// Note: if it did have a name, it will be resolved in the define()
 				if (def.useNet !== false) {
+
 					if (!args) {
 						// uh oh, nothing was added to the resource net
-						def.reject(new Error('define() not found: ' + def.url + errorSuffix));
+						def.reject(new Error('define() not found: ' + def.url));
 					}
 					else if (args.ex) {
 						// the resNet resource was already rejected, but it didn't know
@@ -419,9 +424,9 @@
 
 	}
 
-	function normalizeName (name, ctx) {
+	function normalizeName (name, baseName) {
 		// if name starts with . then use parent's name as a base
-		return name.replace(normalizeRe, ctx.baseName);
+		return name.replace(normalizeRe, baseName + '/');
 	}
 
 	function fetchDep (depName, ctx) {
@@ -431,30 +436,27 @@
 		delPos = depName.indexOf('!');
 		if (delPos >= 0) {
 
-			// hm, this normalizeName allows plugins to be relative to
-			// the parent module. is this a feature?
-			prefix = normalizeName(depName.substr(0, delPos), ctx);
-			resName = depName.substr(delPos + 1);
+			prefix = depName.substr(0, delPos);
+			resName = normalizeName(depName.substr(delPos + 1), ctx.baseName);
 			name = prefix + '!' + resName;
 
-			var prev = prefix;
 			// prepend plugin folder path, if it's missing and path isn't in paths
 			var slashPos = prefix.indexOf('/');
-			if (slashPos < 0 && prefix == prev) {
-				name = joinPath(pluginPath, name);
+			if (slashPos < 0) {
 				prefix = joinPath(pluginPath, prefix);
 			}
 			// null means don't append baseUrl
-			var prefixInfo = resolvePath(prefix, null);
+			var prefixInfo = resolvePath(prefix, baseUrl);
 
 			// the spec is unclear, so we're using the full name (prefix + name) to id resources
 			var def = cache[name];
 			if (!def) {
 				def = cache[name] = new ResourceDef(resName);
+				var pathInfo = resolvePath(resName, baseUrl);
 				var pluginDef = cache[prefix];
 				if (!pluginDef) {
 					pluginDef = cache[prefix] = new ResourceDef(prefix);
-					pluginDef.url = prefixInfo.path + '.js';
+					pluginDef.url = prefixInfo.path + '.js'; // TODO: deal with possible existing .js extension already?
 					pluginDef.main = prefixInfo.main;
 					fetchResDef(pluginDef, ctx)
 				}
@@ -476,7 +478,7 @@
 
 		}
 		else {
-			resName = name = normalizeName(depName, ctx);
+			resName = name = normalizeName(depName, ctx.baseName);
 
 			var def = cache[resName];
 			if (!def) {
@@ -493,16 +495,27 @@
 		return def;
 	}
 
-	function getDeps (names, ctx, success, failure) {
+	function getDeps (def, names, ctx, success, failure) {
 
 		var deps = [],
 			count = names.length,
 			len = count,
-			completed = false;
+			completed = false,
+			needToFetchMain = def && def.main;
+
+		if (needToFetchMain) {
+			// wee need to add a dependency for a package's main module
+			names.push(def.main);
+		}
 
 		// obtain each dependency
 		// Note: IE may have obtained the dependencies sync (stooooopid!) thus the completed flag
 		for (var i = 0; i < len && !completed; i++) (function (index, depName) {
+			if (needToFetchMain && depName == def.main && i < len) {
+				// hey! the main module dependency was already specified (you silly dojo people!)
+				needToFetchMain = false;
+				names.pop();
+			}
 			if (depName == 'require') {
 				deps[index] = ctx.require;
 				count--;
@@ -564,8 +577,8 @@
 		// TODO: move this to a CommonJS extension
 		if (isType(deps, 'String')) {
 			// return resource
-			// TODO: Bryan had it this way: def = normalizeName(cache[deps], ctx); he may be right!!!
-			var def = normalizeName(cache[deps], ctx),
+			// TODO: Bryan had it this way: def = normalizeName(cache[deps], ctx.baseName); he may be right!!!
+			var def = normalizeName(cache[deps], ctx.baseName),
 				res;
 			if (def) {
 				// this is a silly, convoluted way to get a value out of a resolved promise
@@ -578,7 +591,7 @@
 		}
 
 		// resolve dependencies
-		getDeps(deps, ctx,
+		getDeps(null, deps, ctx,
 			function (deps) {
 				// Note: deps are passed to a promise as an array, not as individual arguments
 				callback.resolve ? callback.resolve(deps) : callback.apply(null, deps);

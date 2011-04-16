@@ -72,13 +72,13 @@ define(function () {
 
 	return {
 
-		load: function (resourceName, require, callback, config) {
+		load: function (resourceName, req, callback, config) {
 			// remove suffixes (future)
 			// hook up callbacks
 			var cb = callback.resolve || callback,
 				eb = callback.reject || function () {};
 			// get the text
-			fetchText(resourceName, cb, eb);
+			fetchText(req['toUrl'](resourceName), cb, eb);
 		}
 
 	};
