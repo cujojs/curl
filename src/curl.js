@@ -99,7 +99,7 @@
 			paths[pStrip] = normalizePkgDescriptor(cfgPackages[p], pStrip);
 		}
 
-		pluginPath = cfg['pluginPath'] || pluginPath; //joinPath(paths['curl'], 'plugin');
+		pluginPath = cfg['pluginPath'] || pluginPath;
 
 	}
 
