@@ -427,12 +427,11 @@
 			name = prefix + '!' + resName;
 
 			// prepend plugin folder path, if it's missing and path isn't in paths
-			var slashPos = prefix.indexOf('/');
-			if (slashPos < 0) {
-				prefix = joinPath(pluginPath, prefix);
-			}
-			// null means don't append baseUrl
 			var prefixInfo = resolvePath(prefix, baseUrl);
+			var slashPos = prefixInfo.path.indexOf('/');
+			if (slashPos < 0) {
+				prefixInfo.path = joinPath(pluginPath, prefixInfo.path);
+			}
 
 			// the spec is unclear, so we're using the full name (prefix + name) to id resources
 			var def = cache[name];
