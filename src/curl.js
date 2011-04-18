@@ -676,6 +676,9 @@
 	_curl['require'] = _curl;
 	global['define'] = _curl['define'] = _define;
 	_curl['version'] = version;
+	// unfortunately, we have to expose this one to work around bugs and
+	// "special" features in other implementations 
+	_curl['_require'] = _require;
 
 	// this is to comply with the AMD CommonJS proposal:
 	_define['amd'] = { plugins: true };
