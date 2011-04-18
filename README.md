@@ -19,6 +19,7 @@ TODO:
 * Notes about using JSONP (it works for objects, arrays, functions, numbers
   and strings! use ?callback=define)
 * require(dep) as an RValue
+* CommonJS file structure (lib/ instead of src/)
 
 ----------------------------------------
 
