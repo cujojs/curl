@@ -5,6 +5,9 @@
  * Licensed under the MIT License at:
  * 		http://www.opensource.org/licenses/mit-license.php
  *
+ * Do not use this file! curl.js will work with dojo 1.6 already. I mistakenly
+ * committed this file as a potential external shim so curl.js stays lightweight.
+ * 
  * usage:
  *  require(['curl/dojo16Compat', 'curl/domReady'])
  *  	.next(['dojo/parser'])
