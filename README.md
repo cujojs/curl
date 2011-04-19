@@ -1,14 +1,16 @@
 curl (Cujo Resource Loader)
 =====================
 
-version 0.4
+version 0.4.1
 
 What's New?
 
+* Several fixes to path and package mapping were made in 0.4.1
 * CommonJS Modules 1.1
 * CommonJS Packages 1.1
-* dojo 1.6 support (relies on non-standard RequireJS features)
-* node.js support (when wrapped in a define())
+* dojo 1.6 support (dojo relies on non-standard RequireJS features)
+* node.js support (when module is wrapped in a define())
+* require(dep) as an RValue (needed or dojo and node)
 * !noexec suffix for js! plugin (load, but don't execute)
 * !wait suffix was renamed to !order (and semantics were changed)
 * async=false
@@ -18,7 +20,6 @@ TODO:
 * finish i18n plugin (eta: 2011-04-21)
 * Notes about using JSONP (it works for objects, arrays, functions, numbers
   and strings! use ?callback=define)
-* require(dep) as an RValue
 * CommonJS file structure (lib/ instead of src/)
 
 ----------------------------------------
@@ -27,7 +28,7 @@ What is curl.js?
 ================
 
 curl.js is a small, but very fast AMD-compliant asynchronous loader.
-Current size: 4.3KB (2.1KB gzipped) using Google's Closure Compiler.
+Size: 4.5KB (2.2KB gzipped) using Google's Closure Compiler.
 
 If you'd like to use curl.js for non-AMD modules (ordinary javascript files),
 you'll want to  use the version with the js! plugin built in.  You may also
@@ -36,17 +37,6 @@ is still only 6.0KB (2.7KB gzipped).
 
 What the heck is "cujo"?  cujo.js is a web app development platform.
 See the bottom of this file for more info.
-
-What's new?
-----------
-* CommonJS Modules 1.1 and Packages 1.1 are supported!
-* dojo 1.6 is supported!
-* The API has changed a bit since 0.2. The .ready() and .domReady() methods are
-  gone, replaced by the domReady module.  See the "API at a glance" section.
-* The domReady module now returns a promise. This makes the API a bit cleaner.
-* The js! plugin has been moved out into it's own file and now supports
-  the !order suffix which will load, but not execute, the non-AMD javascript
-  until all previous files that specified !order are executed.
 
 ----------------------------------------
 
@@ -569,6 +559,50 @@ We're writing curl to be compatible with RequireJS's build tool, but there's
 also another cujo project in the pipeline: cram. Cram is the Cujo Resource
 Assembler. cram will be ready by mid 2011, so use another build tool or a
 custom shell script in the mean time.
+
+----------------------------------------
+
+CommonJS Package Support
+========================
+
+cujo.js supports the CommonJS Packages 1.1 specification.  Packages are
+defined in the packages configuration parameter:
+
+	cujo = {
+		baseUrl: 'path/to/js',
+		packages: {
+			'my-package': {
+				path: 'path/to/my-package',
+				main: 'main/main-module-file',
+				lib: 'location/of/other/modules'
+			}
+		}
+	};
+
+The path property describes where to find the package in relation to the
+baseUrl parameter.  The main and lib properties describe where to find modules
+inside the package.  The main property gives the relative path to the pacage's
+main module.  The lib property reflects the path to all other modules in the
+package.
+
+The main module is always executed before any other modules are executed in
+the package.  Essentially, the main module becomes an automatic dependency.
+
+In the example above, the main module of the package can be obtained as follows
+
+	require(['my-package'], callback);
+
+and will be fetched from the following path:
+
+path/to/js/path/to/my-package/main/main-module-file.js
+
+Some other file in the package would be obtained as follows:
+
+	require(['my-package/other-module'], callback);
+
+and will be fetched from the following path:
+
+path/to/js/path/to/my-package/location/of/other/modules/other-module.js
 
 ----------------------------------------
 
