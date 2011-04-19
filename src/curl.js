@@ -60,21 +60,19 @@
 	}
 
 	function normalizePkgDescriptor (descriptor, name) {
-		var lib, main, path;
+		var lib, main;
 
 		// check for string shortcuts
 		if (isType(descriptor, 'String')) {
-			path = removeEndSlash(descriptor);
 			// fill in defaults
 			descriptor = {
-				'path': path,
+				'path': removeEndSlash(descriptor),
 				'main': defaultDescriptor.main,
 				'lib': defaultDescriptor.lib
 			};
 		}
 
 		// we need to do this with brackets to account for google closure
-		descriptor.name = name;
 		descriptor.path = descriptor['path'] || (isNaN(name) ? name : descriptor.name);
 		descriptor.lib = 'lib' in descriptor && removeEndSlash(normalizeName(descriptor['lib'], descriptor.path));
 		descriptor.main = 'main' in descriptor && removeEndSlash(normalizeName(descriptor['main'], descriptor.path));
@@ -92,7 +90,6 @@
 		for (p in cfgPaths) {
 			pStrip = removeEndSlash(p);
 			path = paths[pStrip] = { path: removeEndSlash(cfgPaths[p]) };
-			// add regexp to match in resolvePath and specificity
 			path.specificity = (path.path.match(/\//) || []).length;
 			pathList.push(pStrip);
 		}
@@ -101,7 +98,6 @@
 		for (p in cfgPackages) {
 			pStrip = removeEndSlash(cfgPackages[p]['name'] || p);
 			path = paths[pStrip] = normalizePkgDescriptor(cfgPackages[p], pStrip);
-			// add regexp to match in resolvePath and specificity
 			path.specificity = (path.path.match(/\//) || []).length;
 			pathList.push(pStrip);
 		}
@@ -211,6 +207,7 @@
 	}
 
 	function resolvePath (name, baseUrl) {
+		// TODO: figure out why this gets called so often for the same file
 		// searches through the configured path mappings and packages
 		// if the resulting module is part of a package, also return the main
 		// module so it can be loaded.
@@ -547,7 +544,7 @@
 				def.then(function (r) { res = r; });
 			}
 			if (res === undef) {
-				throw new Error('Resource (' + deps + ') is not already resolved.');
+				throw new Error('Module is not already resolved: '  + deps);
 			}
 			return res;
 		}
@@ -649,7 +646,6 @@
 	/***** grab any global configuration info *****/
 
 	// if userCfg is a function, assume require() exists already
-	// go into "conflict mode"
 	var conflict = isType(userCfg, 'Function');
 	if (!conflict) {
 		extractCfg(userCfg);
