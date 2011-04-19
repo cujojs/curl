@@ -25,7 +25,7 @@
 
 
 	var
-		version = '0.4',
+		version = '0.4.1',
 		head = doc['head'] || doc.getElementsByTagName('head')[0],
 		// configuration information
 		baseUrl,
@@ -44,14 +44,14 @@
 		undef,
 		aslice = [].slice,
 		// RegExp's used later, "cached" here
-		pathRe = /(?:\/|^)[^\/$]*/g, // /(?:\/|^).*(?:\/|$)/g,
 		absUrlRe = /^\/|^[^:]*:\/\//,
-		normalizeRe = /^\.\//,
+		normalizeRe = /^\.(\/|$)/,
+		pathSearchRx,
 		// script ready states that signify it's loaded
 		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
 		// the defaults for a typical package descriptor
 		defaultDescriptor = {
-			main: 'main',
+			main: './lib/main',
 			lib: './lib'
 		};
 
@@ -60,44 +60,58 @@
 	}
 
 	function normalizePkgDescriptor (descriptor, name) {
-		var folders, lib, main;
+		var lib, main, path;
 
 		// check for string shortcuts
 		if (isType(descriptor, 'String')) {
-			folders = removeEndSlash(descriptor.split('/'));
+			path = removeEndSlash(descriptor);
+			// fill in defaults
 			descriptor = {
-				'name': folders[folders.length - 1]
+				'path': path,
+				'main': defaultDescriptor.main,
+				'lib': defaultDescriptor.lib
 			};
 		}
 
-		// fill in defaults
-		// we need to do it with brackets to account for google closure
-		lib = 'lib' in descriptor ? descriptor['lib'] : defaultDescriptor.lib;
-		main = normalizeName('main' in descriptor ? descriptor['main'] : defaultDescriptor.main, lib);
-
-		descriptor.name = descriptor['name'] || name;
-		descriptor.main = removeEndSlash(main);
-		descriptor.lib = removeEndSlash(lib);
+		// we need to do this with brackets to account for google closure
+		descriptor.name = name;
+		descriptor.path = descriptor['path'] || (isNaN(name) ? name : descriptor.name);
+		descriptor.lib = 'lib' in descriptor && removeEndSlash(normalizeName(descriptor['lib'], descriptor.path));
+		descriptor.main = 'main' in descriptor && removeEndSlash(normalizeName(descriptor['main'], descriptor.path));
 
 		return descriptor;
 	}
 
 	function extractCfg (cfg) {
+		var p, pStrip, path, pathList = [];
 
 		baseUrl = cfg['baseUrl'] || '';
 
 		// fix all paths
-		var pStrip, cfgPaths = cfg['paths'];
-		for (var p in cfgPaths) {
+		var cfgPaths = cfg['paths'];
+		for (p in cfgPaths) {
 			pStrip = removeEndSlash(p);
-			paths[pStrip] = removeEndSlash(cfgPaths[p]);
+			path = paths[pStrip] = { path: removeEndSlash(cfgPaths[p]) };
+			// add regexp to match in resolvePath and specificity
+			path.specificity = (path.path.match(/\//) || []).length;
+			pathList.push(pStrip);
 		}
 
 		var cfgPackages = cfg['packages'];
-		for (var p in cfgPackages) {
-			pStrip = removeEndSlash(cfgPackages[p].name || p);
-			paths[pStrip] = normalizePkgDescriptor(cfgPackages[p], pStrip);
+		for (p in cfgPackages) {
+			pStrip = removeEndSlash(cfgPackages[p]['name'] || p);
+			path = paths[pStrip] = normalizePkgDescriptor(cfgPackages[p], pStrip);
+			// add regexp to match in resolvePath and specificity
+			path.specificity = (path.path.match(/\//) || []).length;
+			pathList.push(pStrip);
 		}
+
+		// create path matcher
+		pathSearchRx = new RegExp('^(' +
+			pathList.sort(function (a, b) { return paths[a].specificity < paths[b].specificity; } )
+				.join('|')
+				.replace(/\//g, '\\/') +
+			')(?=\\/|$)');
 
 		pluginPath = cfg['pluginPath'] || pluginPath;
 
@@ -108,7 +122,7 @@
 	function begetCtx (name) {
 
 		function toUrl (n) {
-			return resolvePath(normalizeName(n, baseName), baseUrl).path;
+			return resolvePath(normalizeName(n, baseName), baseUrl).url;
 		}
 
 		var baseName = name.substr(0, name.lastIndexOf('/')),
@@ -197,55 +211,34 @@
 	}
 
 	function resolvePath (name, baseUrl) {
-		// takes a resource name (w/o ext!) and resolves it to a url
-		// if we can't resolve the resource name because it's part of a
-		// package for which we haven't fetched the descriptor, then
-		// return a promise.
-		var part = '', match = '', pathInfo, main;
+		// searches through the configured path mappings and packages
+		// if the resulting module is part of a package, also return the main
+		// module so it can be loaded.
 
-		// pull off a folder in the name
-		// does it match an entry in paths?
-		//		if so, grab it as a match and repeat with another path appended
-		// using part != match to detect if the regex is stuck
-		while ((part += pathRe.exec(name)) && paths[part] && part != match) {
-			match = part;
-		}
+		var pathInfo, main, path;
+		path = name.replace(pathSearchRx, function (match) {
 
-		// literal regexes are cached globally, so always reset this
-		pathRe.lastIndex = 0;
+			pathInfo = paths[match];
 
-		pathInfo = paths[match] || '';
-
-		if (pathInfo.name) {
-			var path,
-				libFolder = pathInfo.lib,
-				// append main module if only the package name was specified
-				libPath = name.substr(match.length + 1);
-			if (libPath) {
-				path = joinPath(libFolder, libPath);
-				// this is confusing. it's the name of the main module, not the
-				// path of the module we need as a dependency!!!!
-				main = pathInfo.name;
+			// if pathInfo.main and match == name, this is a main module
+			if (pathInfo.main && match == name) {
+				return pathInfo.main;
+			}
+			// if pathInfo.lib return pathInfo.lib
+			else if (pathInfo.lib) {
+				main = pathInfo.main;
+				return pathInfo.lib;
 			}
 			else {
-				// do NOT include a main if this is the main module!
-				path = pathInfo.main;
+				return pathInfo.path;
 			}
-			// prepend baseUrl if we didn't find an absolute url
-			if (baseUrl && !absUrlRe.test(path)) {
-				path = joinPath(baseUrl, path);
-			}
-		}
-		else {
-			path = pathInfo;
-			pathInfo = {};
-			path += name.substr(match.length);
-			// prepend baseUrl if we didn't find an absolute url
-			if (baseUrl && !absUrlRe.test(path)) path = joinPath(baseUrl, path);
-		}
+
+		});
 
 		return {
 			path: path,
+			// prepend baseUrl if we didn't find an absolute url
+			url: baseUrl && !absUrlRe.test(path) ? joinPath(baseUrl, path) : path,
 			main: main
 		};
 	}
@@ -413,6 +406,7 @@
 			var slashPos = prefixInfo.path.indexOf('/');
 			if (slashPos < 0) {
 				prefixInfo.path = joinPath(pluginPath, prefixInfo.path);
+				prefixInfo.url = joinPath(baseUrl, prefixInfo.path);
 			}
 
 			// the spec is unclear, so we're using the full name (prefix + name) to id resources
@@ -424,7 +418,7 @@
 				if (!pluginDef) {
 					pluginDef = cache[prefix] = new ResourceDef(prefix);
 					// TODO: deal with possible existing .js extension already?
-					pluginDef.url = prefixInfo.path + '.js';
+					pluginDef.url = prefixInfo.url + '.js';
 					pluginDef.main = prefixInfo.main;
 					fetchResDef(pluginDef, ctx)
 				}
@@ -453,7 +447,7 @@
 				def = cache[resName] = new ResourceDef(resName);
 				// TODO: should this be using ctx.toUrl()??????
 				var pathInfo = resolvePath(resName, baseUrl);
-				def.url = pathInfo.path + '.js';
+				def.url = pathInfo.url + '.js';
 				def.main = pathInfo.main;
 				fetchResDef(def, ctx);
 			}
@@ -541,23 +535,22 @@
 	function _require (deps, callback, ctx) {
 		// Note: callback could be a promise
 
-		// sync require
+		// RValue require
 		// TODO: move this to a CommonJS extension
-		//if (isType(deps, 'String')) {
-		//	// return resource
-		//	// TODO: Bryan had it this way: def = normalizeName(cache[deps], ctx.baseName); he may be right!!!
-		//	var def = normalizeName(cache[deps], ctx.baseName),
-		//		res;
-		//	if (def) {
-		//		// this is a silly, convoluted way to synchronously get a
-		//		// value out of a resolved promise
-		//		def.then(function (r) { res = r; });
-		//	}
-		//	if (res === undef) {
-		//		throw new Error('Resource (' + deps + ') is not already resolved.');
-		//	}
-		//	return res;
-		//}
+		if (isType(deps, 'String')) {
+			// return resource
+			var def = cache[deps],
+				res;
+			if (def) {
+				// this is a silly, convoluted way to synchronously get a
+				// value out of a resolved promise
+				def.then(function (r) { res = r; });
+			}
+			if (res === undef) {
+				throw new Error('Resource (' + deps + ') is not already resolved.');
+			}
+			return res;
+		}
 
 		// resolve dependencies
 		getDeps(null, deps, ctx,
@@ -590,37 +583,37 @@
 		ctx = begetCtx('');
 
 		var promise = new Promise(),
-			api = {};
+				api = {};
 
-		// return the dependencies as arguments, not an array
-		// using bracket property notation so closure won't clobber name
-		api['then'] = function (resolved, rejected) {
-			promise.then(
-				function (deps) { if (resolved) resolved.apply(null, deps); },
-				function (ex) { if (rejected) rejected(ex); else throw ex; }
-			);
-			return api;
-		};
+			// return the dependencies as arguments, not an array
+			// using bracket property notation so closure won't clobber name
+			api['then'] = function (resolved, rejected) {
+				promise.then(
+					function (deps) { if (resolved) resolved.apply(null, deps); },
+					function (ex) { if (rejected) rejected(ex); else throw ex; }
+				);
+				return api;
+			};
 
-		// promise chaining
-		api['next'] = function (deps, cb) {
-			var origPromise = promise;
-			promise = new Promise();
-			origPromise.then(
-				// get dependencies and then resolve the previous promise
-				function () { ctx.require(deps, promise, ctx); }
-			);
-			// execute this callback after dependencies
-			if (cb) {
-				promise.then(cb);
-			}
-			return api;
-		};
+			// promise chaining
+			api['next'] = function (deps, cb) {
+				var origPromise = promise;
+				promise = new Promise();
+				origPromise.then(
+					// get dependencies and then resolve the previous promise
+					function () { ctx.require(deps, promise, ctx); }
+				);
+				// execute this callback after dependencies
+				if (cb) {
+					promise.then(cb);
+				}
+				return api;
+			};
 
-		if (callback) api.then(callback);
+			if (callback) api.then(callback);
 
 		ctx.require(deps, promise, ctx);
-		
+
 		return api;
 
 	}
