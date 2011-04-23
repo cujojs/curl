@@ -21,8 +21,12 @@ The following files can be concatenated into curl.js:
 * ../src/curl/plugin/i18n.js (the i18n! plugin)
 * ../src/curl/domReady.js (the domReady module)
 * ../src/curl/dojo16Compat.js (the dojo 1.6 compatibility shim / module)
-* Any other non-anonymous AMD module (cannot be anonymous!)
+* Any named AMD module (does not support anonymous modules, yet!)
 * Any non-AMD javascript file
+
+For example, to make a version of curl with the js! and text! plugins built-in:
+
+	./make.sh destination/curl.js ../src/curl.js ../src/curl/plugin/js.js ../src/curl/plugin/text.js
 
 Note: you will need a fairly recent version of `curl` (the unix utility, not
 curl.js) to run `make.sh`.  Version 7.18 or later is fine.
