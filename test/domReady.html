@@ -24,7 +24,7 @@
 		// tester to see if the dom is really ready
 		var handle;
 		function isDomReady () {
-			return document.readyState in { 'loaded': 1, 'interactive': 1, 'complete': 1 };
+			return document.readyState in { 'loaded': 1, 'complete': 1 };
 		}
 		function poller () {
 			var isReady = isDomReady();
