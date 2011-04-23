@@ -1,10 +1,11 @@
 curl (Cujo Resource Loader)
 =====================
 
-version 0.4.1
+version 0.4.2
 
 What's New?
 
+* Fixed the compiled version in 0.4.2 (dist/ folder)
 * Several fixes to path and package mapping were made in 0.4.1
 * CommonJS Modules 1.1
 * CommonJS Packages 1.1
@@ -20,7 +21,7 @@ TODO:
 * finish i18n plugin (eta: 2011-04-21)
 * Notes about using JSONP (it works for objects, arrays, functions, numbers
   and strings! use ?callback=define)
-* CommonJS file structure (lib/ instead of src/)
+* use CommonJS file structure (lib/ instead of src/)
 
 ----------------------------------------
 
