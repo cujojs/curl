@@ -22,7 +22,8 @@
 	var queue = [],
 		supportsAsyncFalse = doc.createElement('script').async == true,
 		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
-		head = doc['head'] || doc.getElementsByTagName('head')[0];
+		head = doc['head'] || doc.getElementsByTagName('head')[0],
+		waitForOrderedScript;
 
 	// TODO: find a way to reuse the loadScript from curl.js
 	function loadScript (def, success, failure) {
@@ -71,6 +72,7 @@
 			function (el) {
 				// if there's another queued script
 				var next = queue.shift();
+				waitForOrderedScript = queue.length > 0;
 				if (next) {
 					// go get it (from cache hopefully)
 					fetch.apply(null, next);
@@ -84,7 +86,7 @@
 
 	}
 
-	define(/*=='curl/plugin/js',==*/ {
+	define(/*=='js',==*/ {
 		'load': function (name, require, callback, config) {
 
 			var order, noexec, prefetch, def, promise;
@@ -106,14 +108,14 @@
 
 			// if this script has to wait for another
 			// or if we're loading, but not executing it
-			if (noexec || (order && !supportsAsyncFalse && queue.length > 0)) {
+			if (noexec || (order && !supportsAsyncFalse && waitForOrderedScript)) {
 				// push onto the stack of scripts that will be fetched
 				// from cache unless we're not executing it. do this
 				// before fetch in case IE has file cached.
 				if (!noexec) {
 					queue.push([def, promise]);
 				}
-				// if we're just prefetching (not executing)
+				// if we're prefetching
 				if (prefetch) {
 					// go get the file under an unknown mime type
 					def.mimetype = 'text/cache';
@@ -126,6 +128,7 @@
 			}
 			// otherwise, just go get it
 			else {
+				waitForOrderedScript = waitForOrderedScript || order;
 				fetch(def, promise);
 			}
 

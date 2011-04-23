@@ -1,10 +1,11 @@
 curl (Cujo Resource Loader)
 =====================
 
-version 0.4.2
+version 0.4.3
 
 What's New?
 
+* Fixed !order option for js! plugin in non-Firefox browsers (0.4.3)
 * Fixed the compiled version in 0.4.2 (dist/ folder)
 * Several fixes to path and package mapping were made in 0.4.1
 * CommonJS Modules 1.1
