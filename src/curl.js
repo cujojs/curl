@@ -2,7 +2,7 @@
  * curl (cujo resource loader)
  *
  * (c) copyright 2011, unscriptable.com / John Hann
- * Licnsed under the MIT License at:
+ * Licensed under the MIT License at:
  * 		http://www.opensource.org/licenses/mit-license.php
  *
  */
@@ -607,7 +607,7 @@
 				return api;
 			};
 
-			if (callback) api.then(callback);
+			if (callback) api['then'](callback);
 
 		ctx.require(deps, promise, ctx);
 
@@ -678,8 +678,3 @@
 	// grab configuration
 	this['curl'] || this['require'] || {}
 ));
-
-// ==ClosureCompiler==
-// @output_file_name curl.js
-// @compilation_level ADVANCED_OPTIMIZATIONS
-// ==/ClosureCompiler==
