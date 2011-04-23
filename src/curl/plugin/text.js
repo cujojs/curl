@@ -7,28 +7,7 @@
  * 
  */
 
-define(function () {
-
-//	function isXDomain (url, doc) {
-//		// using rules at https://developer.mozilla.org/En/Same_origin_policy_for_JavaScript
-//		// Note: file:/// urls are not handled by this function!
-//		// See also: http://en.wikipedia.org/wiki/Same_origin_policy
-//		if (!/:\/\/|^\/\//.test(url)) {
-//			// relative urls are always same domain, duh
-//			return false;
-//		}
-//		else {
-//			// same domain means same protocol, same host, same port
-//			// exception: document.domain can override host (see link above)
-//			var loc = doc.location,
-//				parts = url.match(/([^:]+:)\/\/([^:\/]+)(?::([^\/]+)\/)?/);
-//			return (
-//				loc.protocol !== parts[1] ||
-//				(doc.domain !== parts[2] && loc.host !== parts[2]) ||
-//				loc.port !== (parts[3] || '')
-//			);
-//		}
-//	}
+define(/*=='text',==*/ function () {
 
 	var progIds = ['Msxml2.XMLHTTP', 'Microsoft.XMLHTTP', 'Msxml2.XMLHTTP.4.0'];
 

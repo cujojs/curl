@@ -5,7 +5,7 @@
  *
  */
 
-define(function () {
+define(/*=='i18n',==*/ function () {
 
 	
 

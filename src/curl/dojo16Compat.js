@@ -19,7 +19,7 @@
 (function (global, doc) {
 
 	// satisfy loader:
-	define({});
+	define(/*=='curl/dojo16Compat',==*/ {});
 
 	var curl = global.curl || global.require;
 
