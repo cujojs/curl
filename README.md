@@ -20,7 +20,9 @@ What's New?
 TODO:
 
 * finish i18n plugin (eta: 2011-04-21)
-* Notes about using JSONP (it works for objects, arrays, functions, numbers
+* move the dojo 1.6 shim code into it's own module (dojo16Compat.js)
+  (in progress)
+* notes about using JSONP (it works for objects, arrays, functions, numbers
   and strings! use ?callback=define)
 * use CommonJS file structure (lib/ instead of src/)
 
@@ -197,7 +199,7 @@ Very Simple Example
 		curl = {
 			paths: {
 				cssx: 'cssx/src/cssx/',
-				stuff: 'path/to/stuff/folder/
+				stuff: 'my/stuff/
 			}
 		};
 
@@ -235,6 +237,27 @@ Very Simple Example
 		);
 
 	</script>
+
+The file structure for this example would look as follows:
+
+	js/
+		curl/
+			plugin/
+				i18n.js
+				text.js
+			domReady.js
+		cssx/
+			src/
+				cssx/
+					css.js
+		my/
+			stuff/
+				nls/
+					strings.js
+				base.css
+				template.html
+				three.js
+		curl.js
 
 ----------------------------------------
 
