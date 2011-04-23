@@ -84,7 +84,7 @@
 
 	}
 
-	define({
+	define(/*=='curl/plugin/js',==*/ {
 		'load': function (name, require, callback, config) {
 
 			var order, noexec, prefetch, def, promise;
@@ -133,8 +133,3 @@
 	});
 
 }(this, document));
-
-// ==ClosureCompiler==
-// @output_file_name js.js
-// @compilation_level ADVANCED_OPTIMIZATIONS
-// ==/ClosureCompiler==

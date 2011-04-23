@@ -19,7 +19,7 @@
 	var
 		readyState = 'readyState',
 		// keep these quoted so closure compiler doesn't squash them
-		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
+		readyStates = { 'loaded': 1, /*'interactive': 1,*/ 'complete': 1 },
 		callbacks = [],
 		fixReadyState = typeof doc[readyState] != "string",
 		i = 0,
@@ -32,7 +32,7 @@
 		clearTimeout(pollerTO);
 		while (remover = removers[i++]) remover();
 		if (fixReadyState) {
-			doc[readyState] = "interactive";
+			doc[readyState] = "complete";
 		}
 		// callback all queued callbacks
 		var cb;
@@ -80,7 +80,7 @@
 		pollerTO = setTimeout(poller, 30);
 	}
 
-	define(function () {
+	define(/*=='curl/domReady',==*/ function () {
 
 		// this is simply a callback, but make it look like a promise
 		function domReady (cb) {
@@ -94,8 +94,3 @@
 	});
 
 }(this, document));
-
-// ==ClosureCompiler==
-// @output_file_name domReady.js
-// @compilation_level ADVANCED_OPTIMIZATIONS
-// ==/ClosureCompiler==
