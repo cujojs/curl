@@ -383,8 +383,8 @@ write code like this:
 		}
 	);
 
-(When using CommonJS sync syntax `var res = require('resName');`, a promise
-isn't returned since the resource is returned synchronously. duh)
+(When using `require` as a dependency, it does not return a promise.
+This is so that 100% CommonJS compliance is assured inside modules.)
 
 ----------------------------------------
 
@@ -411,10 +411,11 @@ like this:
 	);
 
 The !order suffix instructs curl.js to wait for previous scripts to execute
-before executing. It downloads in parallel with the previous scripts,
+before executing the current script. All scripts download in parallel, though,
 unless you specify jsPrefetch:false in the config.  Be sure to have proper
 cache headers set if you plan to use jsPrefetch:true or scripts will get
-downloaded twice.
+downloaded twice in browsers that don't support async=false (only Firefox 4
+supports it so far).
 
 ----------------------------------------
 
@@ -431,7 +432,7 @@ text! -- loads text files
 You can also load css files by using the AMD plugin at the following repo:
 <https://github.com/unscriptable/cssx/blob/master/src/cssx/css.js>
 
-The following plugins are planned:
+The following plugins are in progress:
 
 i18n! -- loads text strings and other locale-specific constants
 
