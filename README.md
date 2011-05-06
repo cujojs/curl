@@ -261,6 +261,36 @@ The file structure for this example would look as follows:
 
 ----------------------------------------
 
+Diagnosing errors
+===============================
+
+curl.js throws five errors.  The first four are likely problems with your code, the latter is likely a problem within curl.js itself.  If you think you've discovered a bug in curl.js, please report it at [https://github.com/unscriptable/curl/issues/](https://github.com/unscriptable/curl/issues/).
+
+"Syntax error or http error: http://some/file.js" or
+"define() not found in http://some/file.js"
+----------
+
+These errors are thrown when curl.js is unable to find a define() call to match the module that was requested.  Specifically, curl.js looks for either an anonymous define() -- a define without the initial name parameter and the preferred way to specify a module -- or a named module which has the same name as the one requested by the previous call to require() or define().
+
+Check that you have exactly one anonymous define() in your module file (or are certain that there's a named define() that matches the requested module.  If you've verified this, it's likely you've got a syntax error in your module file.  Check your browser's console.  (Note: Firefox sometimes only logs syntax errors to it's internal console even if Firebug is running.  Be sure to check both.)
+
+"Multiple anonymous defines found in http://some/file.js"
+----------
+
+It's impossible for curl.js to figure out which anonymous define() you want to match up with a request for your module file.  You should almost always be packaging exactly one module per file.  It's the job of a compiler/optimizer to combine modules into a single file (at which time, it will name them).  If you have an edge case which forces you to combine multiple modules into one file, then you, too, will have to name them.  
+
+"Module is not already resolved: some/module"
+----------
+
+This can occur if you use the `var module = require("some/module");` version of the require() function and you haven't ensured that the module is pre-loaded.  curl.js will not synchronously load a module.  Therefore, you have to ensure that it is already loaded.  The best way to do this is to add the module to the list of dependencies in the define() call:
+
+    define(['require', 'exports', 'module', 'some/module'], function (require, exports, module) {
+        var module = require("some/module"); 
+        // do something with module
+    });
+
+----------------------------------------
+
 What is an asynchronous loader?
 ===============================
 
