@@ -288,6 +288,13 @@ This can occur if you use the `var module = require("some/module");` version of 
         // do something with module
     });
 
+"Promise already completed."
+----------
+
+(curl.js should never throw this exception.  In our tests, we haven't seen this exception since before version 0.4.)
+
+If you see this exception, it's an internal error of some sort.  However, it could have been initiated by your code.  Before throwing up your hands, first scroll up in your browser's error console(s) to see if it was caused by one of the other errors above and proceed to fix your code.  Please tell us if you see this error and -- as with any bug report -- provide a simple use case that can reproduce the bug so we can fix it.
+
 ----------------------------------------
 
 What is an asynchronous loader?
