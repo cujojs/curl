@@ -266,8 +266,7 @@ Diagnosing errors
 
 curl.js throws five errors.  The first four are likely problems with your code, the latter is likely a problem within curl.js itself.  If you think you've discovered a bug in curl.js, please report it at [https://github.com/unscriptable/curl/issues/](https://github.com/unscriptable/curl/issues/).
 
-"Syntax error or http error: http://some/file.js" or
-"define() not found in http://some/file.js"
+"Syntax error or http error: http://some/file.js" or "define() not found in http://some/file.js"
 ----------
 
 These errors are thrown when curl.js is unable to find a define() call to match the module that was requested.  Specifically, curl.js looks for either an anonymous define() -- a define without the initial name parameter and the preferred way to specify a module -- or a named module which has the same name as the one requested by the previous call to require() or define().
