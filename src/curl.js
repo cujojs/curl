@@ -212,7 +212,7 @@
 		// if the resulting module is part of a package, also return the main
 		// module so it can be loaded.
 
-		var pathInfo, main, path;
+		var pathInfo, path;
 		path = name.replace(pathSearchRx, function (match) {
 
 			pathInfo = paths[match];
@@ -223,7 +223,6 @@
 			}
 			// if pathInfo.lib return pathInfo.lib
 			else if (pathInfo.lib) {
-				main = pathInfo.main;
 				return pathInfo.lib;
 			}
 			else {
@@ -235,8 +234,7 @@
 		return {
 			path: path,
 			// prepend baseUrl if we didn't find an absolute url
-			url: baseUrl && !absUrlRe.test(path) ? joinPath(baseUrl, path) : path,
-			main: main
+			url: baseUrl && !absUrlRe.test(path) ? joinPath(baseUrl, path) : path
 		};
 	}
 
@@ -416,7 +414,6 @@
 					pluginDef = cache[prefix] = new ResourceDef(prefix);
 					// TODO: deal with possible existing .js extension already?
 					pluginDef.url = prefixInfo.url + '.js';
-					pluginDef.main = prefixInfo.main;
 					fetchResDef(pluginDef, ctx)
 				}
 				pluginDef.then(
@@ -445,7 +442,6 @@
 				// TODO: should this be using ctx.toUrl()??????
 				var pathInfo = resolvePath(resName, baseUrl);
 				def.url = pathInfo.url + '.js';
-				def.main = pathInfo.main;
 				fetchResDef(def, ctx);
 			}
 
@@ -459,22 +455,11 @@
 		var deps = [],
 			count = names.length,
 			len = count,
-			completed = false,
-			needToFetchMain = def && def.main;
-
-		if (needToFetchMain) {
-			// wee need to add a dependency for a package's main module
-			names.push(def.main);
-		}
+			completed = false;
 
 		// obtain each dependency
 		// Note: IE may have obtained the dependencies sync (stooooopid!) thus the completed flag
 		for (var i = 0; i < len && !completed; i++) (function (index, depName) {
-			if (needToFetchMain && depName == def.main && i < len) {
-				// hey! the main module dependency was already specified (you silly dojo people!)
-				needToFetchMain = false;
-				names.pop();
-			}
 			if (depName == 'require') {
 				deps[index] = ctx.require;
 				count--;
