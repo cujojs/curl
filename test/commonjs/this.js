@@ -1,3 +1,3 @@
-define(function () {
-	this.testMessage = 'it works';
+define(['./folder/messages'], function (messages) {
+	this.testMessage = messages.itWorks;
 });
