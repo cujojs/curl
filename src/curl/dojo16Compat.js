@@ -19,26 +19,31 @@
 (function (global, doc) {
 
 	// satisfy loader:
-	define(/*=='curl/dojo16Compat',==*/ {});
+	define(/*=='curl/dojo16Compat',==*/ function () {
 
-	var curl = global.curl || global.require;
+		var curl = global.curl || global.require;
 
-	function duckPunchRequire (req) {
-		if (!req['ready']){
-			req['ready'] = function (cb) {
-				// reference global require
-				require(['curl/domReady'], cb);
-			};
+		function duckPunchRequire (req) {
+			if (!req['ready']){
+				req['ready'] = function (cb) {
+					curl(['domReady!'], cb);
+				};
+			}
+			if (!req['nameToUrl']) {
+				req['nameToUrl'] = function (name, ext) {
+					// map non-standard nameToUrl to toUrl
+					return req['toUrl'](name) + (ext || '');
+				};
+			}
+			return req;
 		}
-		if (!req['nameToUrl']) {
-			req['nameToUrl'] = function (name, ext) {
-				// map non-standard nameToUrl to toUrl
-				return req['toUrl'](name) + (ext || '');
-			};
-		}
-		return req;
-	}
 
-	duckPunchRequire(curl['_require']);
+		// reference global curl to get at private _require
+		duckPunchRequire(curl['_require']);
+
+		return true;
+
+	});
+
 
 }(this, document));
