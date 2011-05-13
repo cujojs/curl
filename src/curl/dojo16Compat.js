@@ -38,7 +38,8 @@
 			return req;
 		}
 
-		// reference global curl to get at private _require
+		// modify global curl and private _require
+		duckPunchRequire(curl);
 		duckPunchRequire(curl['_require']);
 
 		return true;
