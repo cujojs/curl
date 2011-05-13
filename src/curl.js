@@ -137,13 +137,6 @@
 		// using bracket property notation so closure won't clobber name
 		ctx.require['toUrl'] = toUrl;
 		
-		// for dojo 1.6 compatibility:
-		// TODO: remove ASAP and use the curl/dojo16Compat module instead
-		ctx.require['ready'] = function (cb) { _curl(['curl/domReady'], cb); };
-		ctx.require['nameToUrl'] = function (name, ext) {
-			return toUrl(name) + (ext || '');
-		};
-
 		return ctx;
 	}
 
