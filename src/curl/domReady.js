@@ -11,7 +11,8 @@
  * 		document.body.appendChild(a.domNode);
  * 	});
  *
- * HT to Bryan Forbes: http://www.reigndropsfall.net/
+ * HT to Bryan Forbes who wrote the initial domReady code:
+ * http://www.reigndropsfall.net/
  *
  */
 (function (global, doc) {
@@ -22,7 +23,6 @@
 		readyStates = { 'loaded': 1, /*'interactive': 1,*/ 'complete': 1 },
 		callbacks = [],
 		fixReadyState = typeof doc[readyState] != "string",
-		i = 0,
 		// IE needs this cuz it won't stop setTimeout if it's already queued up
 		completed = false,
 		addEvent, remover, removers = [], pollerTO;
@@ -30,7 +30,7 @@
 	function ready () {
 		completed = true;
 		clearTimeout(pollerTO);
-		while (remover = removers[i++]) remover();
+		while (remover = removers.pop()) remover();
 		if (fixReadyState) {
 			doc[readyState] = "complete";
 		}

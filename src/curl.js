@@ -323,14 +323,7 @@
 				// node.js assumes `this` === exports
 				// anything returned overrides exports
 				var res = args.res.apply(childCtx.exports, deps) || childCtx.exports;
-				if (res && res['amd'] && isType(res['then'], 'Function')) {
-					// oooooh lookee! we got a promise!
-					// chain it
-					res['then'](def.resolve, def.reject);
-				}
-				else {
-					def.resolve(res);
-				}
+				def.resolve(res);
 			},
 			def.reject
 		);
