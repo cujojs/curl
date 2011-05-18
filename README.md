@@ -1,10 +1,13 @@
 curl (Cujo Resource Loader)
 =====================
 
-version 0.4.3
+version 0.4.4
 
 What's New?
 
+* `require` is no longer an lias for `curl` unless you set the
+  apiName:'require' config param
+* dojo 1.6 support was moved to a separate module and/or built curl.js
 * Fixed !order option for js! plugin in non-Firefox browsers (0.4.3)
 * Fixed the compiled version in 0.4.2 (dist/ folder)
 * Several fixes to path and package mapping were made in 0.4.1
@@ -32,7 +35,7 @@ What is curl.js?
 ================
 
 curl.js is a small, but very fast AMD-compliant asynchronous loader.
-Size: 4.5KB (2.2KB gzipped) using Google's Closure Compiler.
+Size: 4.2KB (2.1KB gzipped) using Google's Closure Compiler.
 
 If you'd like to use curl.js for non-AMD modules (ordinary javascript files),
 you'll want to  use the version with the js! plugin built in.  You may also
@@ -64,10 +67,8 @@ Oh, did we mention?  It's fast!
 API at a glance
 ===============
 
-**Note: "curl" and "require" are synonyms. You may use them interchangeably.**
 
 	curl(['dep1', 'dep2', 'dep3' /* etc */], callback);
-	require(['dep1', 'dep2', 'dep3' /* etc */], callback);
 
 Loads dependencies and the executes callback.
 
@@ -78,8 +79,6 @@ Loads dependencies and the executes callback.
 ---------
 	curl(['dep1', 'dep2', 'dep3' /* etc */])
 		.then(callback, errorback);
-	require(['dep1', 'dep2', 'dep3' /* etc */])
-		.then(callback, errorback);
 
 Promises-based API for executing callbacks.
 
@@ -89,7 +88,6 @@ Promises-based API for executing callbacks.
 
 ---------
 	curl(config, ['dep1', 'dep2', 'dep3' /* etc */], callback);
-	require(config, ['dep1', 'dep2', 'dep3' /* etc */], callback);
 
 Specify configuration options, load dependencies, and execute callback.
 
@@ -323,16 +321,18 @@ that is executed asynchronously, i.e. it runs later, not in the current
 "thread".  Specifically, it executes when all of the dependencies are loaded
 and ready.  
 
-Actually, the proposal says that the require() function could have a different 
-name -- or could even be implemented differently.  To keep with convention -- 
-and to better integrate with non-AMD CommonJS modules -- we're using
-require(), but curl() is also an alias to require().
+Actually, the proposal says that the public require() function could have a
+different name -- or could even be implemented differently.  To keep confusion to
+a minimum curl.js uses `curl()` for the public API.  You may rename this API
+back to `require()` by supplying the `apiName` config param (apiName: "require").
 
-It's more important that the define() method be consistent.  This is the method
+It's only important that the define() method be consistent.  This is the method
 that tells the loader what modules have been loaded by a script. define() also
 specifies a list of dependencies and a callback function that defines and/or
 creates the resource when the dependencies are ready.  Optionally, define()
 also takes a name parameter, but this is mainly for build tools and optimizers.
+
+Inside the `define()`, the `require()` method acts like other AMD loaders.
 
 AMD's API also helps code reuse by providing compatibility with CommonJS
 server modules. AMD-compliant loaders support the same require() syntax and
@@ -366,10 +366,10 @@ callback function. This allows proactive error handling, rather than detecting
 problems via a timeout, which can be tricky to set correctly. curl does this in
 a backwards-compatible way so AMD-compliant plugins will still work in curl.
 
-curl.js will also return a promise from require() calls. This allows you to
+curl.js will also return a promise from curl() calls. This allows you to
 write code like this:
 
-	require(
+	curl(
 		[
 			'myApp/moduleA',
 			'myApp/moduleB'
@@ -383,9 +383,6 @@ write code like this:
 		}
 	);
 
-(When using CommonJS sync syntax `var res = require('resName');`, a promise
-isn't returned since the resource is returned synchronously. duh)
-
 ----------------------------------------
 
 Can curl.js work with non-AMD javascript files?
@@ -396,7 +393,7 @@ Yes, but why would you?  Once you start using AMD, you'll never go back! :)
 You may use non-AMD javascript files by specifying the js! plugin prefix
 like this:
 
-	require(
+	curl(
 		[
 			'js!plainOldJsFile1.js!order',
 			'js!anotherPlainOldJsFile.js!order'
@@ -548,10 +545,13 @@ a plugin using options:
 How do I use curl.js?
 =====================
 
-1. Optional: Learn about AMD-formatted javascript modules if you don't already know how.
+1. Optional: Learn about AMD-formatted javascript modules if you don't already
+   know how.
 2. Clone or download curl to your local machine or server.
-3. Figure out the baseUrl and paths configuration that makes sense for your project.
-4. Check out the "API at a glance" section above to figure out which loading methodology you want to use.
+3. Figure out the baseUrl and paths configuration that makes sense for your
+   project.
+4. Check out the "API at a glance" section above to figure out which loading
+   methodology you want to use.
 5. Study the "Very Simple Example" and some of the test files.
 6. Try it on your own files.
 
@@ -574,8 +574,9 @@ Closure compiler.
 
 The build tool is used to concatenate several modules (and/or resources)
 into just a few files. It does this by following the dependency chain
-specified in the define() and require() calls. You can specify which top-level
-modules or resources are in each file and the build tool finds the rest.
+specified in the curl(), define(), and require() calls. You can specify which
+top-level modules or resources are in each file and the build tool finds the
+rest.
 
 After the build tool creates the concatenated files, the files can be passed
 into a compiler (also called a shrinker or compressor).
@@ -615,7 +616,7 @@ the package.  Essentially, the main module becomes an automatic dependency.
 
 In the example above, the main module of the package can be obtained as follows
 
-	require(['my-package'], callback);
+	curl(['my-package'], callback);
 
 and will be fetched from the following path:
 
@@ -623,7 +624,7 @@ path/to/js/path/to/my-package/main/main-module-file.js
 
 Some other file in the package would be obtained as follows:
 
-	require(['my-package/other-module'], callback);
+	curl(['my-package/other-module'], callback);
 
 and will be fetched from the following path:
 
