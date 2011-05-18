@@ -393,7 +393,7 @@
 			var prefixPath = resolvePath(prefix);
 			var slashPos = prefixPath.indexOf('/');
 			if (slashPos < 0) {
-				prefixPath = joinPath(pluginPath, prefixPath);
+				prefixPath = resolvePath(joinPath(pluginPath, prefixPath));
 			}
 
 			// the spec is unclear, so we're using the full name (prefix + name) to id resources
