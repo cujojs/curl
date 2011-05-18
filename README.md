@@ -5,7 +5,7 @@ version 0.4.4
 
 What's New?
 
-* `require` is no longer an lias for `curl` unless you set the
+* `require` is no longer an alias for `curl` unless you set the
   apiName:'require' config param
 * dojo 1.6 support was moved to a separate module and/or built curl.js
 * Fixed !order option for js! plugin in non-Firefox browsers (0.4.3)
@@ -22,9 +22,8 @@ What's New?
 
 TODO:
 
-* finish i18n plugin (eta: 2011-04-21)
-* move the dojo 1.6 shim code into it's own module (dojo16Compat.js)
-  (in progress)
+* finish i18n plugin (eta: June)
+* create dojo 1.6 tests
 * notes about using JSONP (it works for objects, arrays, functions, numbers
   and strings! use ?callback=define)
 * use CommonJS file structure (lib/ instead of src/)
