@@ -47,6 +47,7 @@
 		absUrlRx = /^\/|^[^:]*:\/\//,
 		normalizeRx = /^\.(\/|$)/,
 		findSlashRx = /\//,
+		hasExtRx = /\.\w+$/,
 		pathSearchRx,
 		// script ready states that signify it's loaded
 		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
@@ -234,7 +235,7 @@
 
 	function resolveUrl(path, baseUrl) {
 		// TODO: deal with possible existing .js extension already?
-		return (baseUrl && !absUrlRx.test(path) ? joinPath(baseUrl, path) : path) + '.js';
+		return (baseUrl && !absUrlRx.test(path) ? joinPath(baseUrl, path) : path) + (hasExtRx.test(path) ? '' : '.js');
 	}
 
 	function loadScript (def, success, failure) {
@@ -328,7 +329,7 @@
 			function (deps) {
 				// node.js assumes `this` === exports
 				// anything returned overrides exports
-				var res = args.res.apply(childCtx.exports, deps) || childCtx.exports;
+				var res = args.res.apply(childCtx.vars.exports, deps) || childCtx.vars.exports;
 				def.resolve(res);
 			},
 			def.reject
