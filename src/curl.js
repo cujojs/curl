@@ -25,7 +25,7 @@
 
 
 	var
-		version = '0.4.3',
+		version = '0.4.4',
 		head = doc['head'] || doc.getElementsByTagName('head')[0],
 		// configuration information
 		baseUrl,
@@ -44,11 +44,13 @@
 		undef,
 		aslice = [].slice,
 		// RegExp's used later, "cached" here
-		absUrlRe = /^\/|^[^:]*:\/\//,
-		normalizeRe = /^\.(\/|$)/,
+		absUrlRx = /^\/|^[^:]*:\/\//,
+		normalizeRx = /^\.(\/|$)/,
+		findSlashRx = /\//,
 		pathSearchRx,
 		// script ready states that signify it's loaded
 		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
+		orsc = 'onreadystatechange',
 		// the defaults for a typical package descriptor
 		defaultDescriptor = {
 			main: './lib/main',
@@ -90,7 +92,7 @@
 		for (p in cfgPaths) {
 			pStrip = removeEndSlash(p);
 			path = paths[pStrip] = { path: removeEndSlash(cfgPaths[p]) };
-			path.specificity = (path.path.match(/\//) || []).length;
+			path.specificity = (path.path.match(findSlashRx) || []).length;
 			pathList.push(pStrip);
 		}
 
@@ -98,7 +100,7 @@
 		for (p in cfgPackages) {
 			pStrip = removeEndSlash(cfgPackages[p]['name'] || p);
 			path = paths[pStrip] = normalizePkgDescriptor(cfgPackages[p], pStrip);
-			path.specificity = (path.path.match(/\//) || []).length;
+			path.specificity = (path.path.match(findSlashRx) || []).length;
 			pathList.push(pStrip);
 		}
 
@@ -107,7 +109,8 @@
 			pathList.sort(function (a, b) { return paths[a].specificity < paths[b].specificity; } )
 				.join('|')
 				.replace(/\//g, '\\/') +
-			')(?=\\/|$)');
+			')(?=\\/|$)'
+		);
 
 		pluginPath = cfg['pluginPath'] || pluginPath;
 
@@ -118,29 +121,31 @@
 	function begetCtx (name) {
 
 		function toUrl (n) {
-			return resolvePath(normalizeName(n, baseName), baseUrl).url;
+			return resolveUrl(resolvePath(normalizeName(n, baseName)), baseUrl);
 		}
 
 		var baseName = name.substr(0, name.lastIndexOf('/')),
 			ctx = {
-				baseName: baseName,
-				exports: {},
-				module: {
-					'id': normalizeName(name, baseName),
-					'uri': toUrl(name)
-				}
+				baseName: baseName
 			};
 		// CommonJS Modules 1.1.1 compliance
-		ctx.require = function (deps, callback) {
-			return _require(deps, callback || noop, ctx);
+		ctx.vars = {
+			exports: {},
+			module: {
+				'id': normalizeName(name, baseName),
+				'uri': toUrl(name)
+			},
+			require: function (deps, callback) {
+				return _require(deps, callback || noop, ctx);
+			}
 		};
+		ctx.require = ctx.vars.require;
 		// using bracket property notation so closure won't clobber name
 		ctx.require['toUrl'] = toUrl;
 		
 		return ctx;
 	}
 
-	// TODO: add resolution chaining to see if it simplifies the rest of the code
 	function Promise () {
 
 		var thens = [];
@@ -199,7 +204,7 @@
 		return endsWithSlash(path) ? path.substr(0, path.length - 1) : path;
 	}
 
-	function resolvePath (name, baseUrl) {
+	function resolvePath (name) {
 		// TODO: figure out why this gets called so often for the same file
 		// searches through the configured path mappings and packages
 		// if the resulting module is part of a package, also return the main
@@ -224,11 +229,12 @@
 
 		});
 
-		return {
-			path: path,
-			// prepend baseUrl if we didn't find an absolute url
-			url: baseUrl && !absUrlRe.test(path) ? joinPath(baseUrl, path) : path
-		};
+		return path;
+	}
+
+	function resolveUrl(path, baseUrl) {
+		// TODO: deal with possible existing .js extension already?
+		return (baseUrl && !absUrlRx.test(path) ? joinPath(baseUrl, path) : path) + '.js';
 	}
 
 	function loadScript (def, success, failure) {
@@ -244,7 +250,7 @@
 			if (ev.type === 'load' || readyStates[this.readyState]) {
 				delete activeScripts[def.name];
 				// release event listeners
-				this.onload = this.onreadystatechange = this.onerror = null;
+				this.onload = this[orsc] = this.onerror = null;
 				success(el);
 			}
 		}
@@ -259,7 +265,7 @@
 		// prevent us from setting this later
 		el.type = 'text/javascript';
 		// using dom0 event handlers instead of wordy w3c/ms
-		el.onload = el.onreadystatechange = process;
+		el.onload = el[orsc] = process;
 		el.onerror = fail;
 		el.charset = def.charset || 'utf-8';
 		el.async = true;
@@ -368,11 +374,11 @@
 
 	function normalizeName (name, baseName) {
 		// if name starts with . then use parent's name as a base
-		return name.replace(normalizeRe, baseName + '/');
+		return name.replace(normalizeRx, baseName + '/');
 	}
 
 	function fetchDep (depName, ctx) {
-		var name, delPos, prefix, resName;
+		var name, delPos, prefix, resName, def;
 
 		// check for plugin prefix
 		delPos = depName.indexOf('!');
@@ -383,23 +389,21 @@
 			name = prefix + '!' + resName;
 
 			// prepend plugin folder path, if it's missing and path isn't in paths
-			var prefixInfo = resolvePath(prefix, baseUrl);
-			var slashPos = prefixInfo.path.indexOf('/');
+			var prefixPath = resolvePath(prefix);
+			var slashPos = prefixPath.indexOf('/');
 			if (slashPos < 0) {
-				prefixInfo.path = joinPath(pluginPath, prefixInfo.path);
-				prefixInfo.url = joinPath(baseUrl, prefixInfo.path);
+				prefixPath = joinPath(pluginPath, prefixPath);
 			}
 
 			// the spec is unclear, so we're using the full name (prefix + name) to id resources
-			var def = cache[name];
+			def = cache[name];
 			if (!def) {
 				def = cache[name] = new ResourceDef(resName);
-				var pathInfo = resolvePath(resName, baseUrl);
+				//var pathInfo = resolvePath(resName, baseUrl);
 				var pluginDef = cache[prefix];
 				if (!pluginDef) {
 					pluginDef = cache[prefix] = new ResourceDef(prefix);
-					// TODO: deal with possible existing .js extension already?
-					pluginDef.url = prefixInfo.url + '.js';
+					pluginDef.url = resolveUrl(prefixPath, baseUrl);
 					fetchResDef(pluginDef, ctx)
 				}
 				pluginDef.then(
@@ -422,12 +426,11 @@
 		else {
 			resName = name = normalizeName(depName, ctx.baseName);
 
-			var def = cache[resName];
+			def = cache[resName];
 			if (!def) {
 				def = cache[resName] = new ResourceDef(resName);
 				// TODO: should this be using ctx.toUrl()??????
-				var pathInfo = resolvePath(resName, baseUrl);
-				def.url = pathInfo.url + '.js';
+				def.url = resolveUrl(resolvePath(resName), baseUrl);
 				fetchResDef(def, ctx);
 			}
 
@@ -446,16 +449,8 @@
 		// obtain each dependency
 		// Note: IE may have obtained the dependencies sync (stooooopid!) thus the completed flag
 		for (var i = 0; i < len && !completed; i++) (function (index, depName) {
-			if (depName == 'require') {
-				deps[index] = ctx.require;
-				count--;
-			}
-			else if (depName == 'exports') {
-				deps[index] = ctx.exports;
-				count--;
-			}
-			else if (depName == 'module') {
-				deps[index] = ctx.module;
+			if (depName in ctx.vars) {
+				deps[index] = ctx.vars[depName];
 				count--;
 			}
 			else {
@@ -504,7 +499,6 @@
 		// Note: callback could be a promise
 
 		// RValue require
-		// TODO: move this to a CommonJS extension
 		if (isType(deps, 'String')) {
 			// return resource
 			var def = cache[deps],
@@ -547,7 +541,7 @@
 		deps = args[0];
 		callback = args[1];
 
-		// this should probably be after extractCfg
+		// this must be after extractCfg
 		ctx = begetCtx('');
 
 		var promise = new Promise(),
@@ -629,7 +623,7 @@
 		global[userCfg['apiName']] = _curl;
 	}
 	else {
-		global['require'] = global['curl'] = _curl;
+		global['curl'] = _curl;
 	}
 
 	// using bracket property notation so closure won't clobber name
@@ -647,5 +641,5 @@
 	this,
 	document,
 	// grab configuration
-	this['curl'] || this['require'] || {}
+	this['curl'] || {}
 ));
