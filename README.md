@@ -381,7 +381,7 @@ curl.js <http://github.com/unscriptable/curl>
 
 RequireJS <http://requirejs.org/>
 
-backdraft loader <http://http://bdframework.org/bdLoad>
+backdraft loader <http://bdframework.org/bdLoad>
 
 The beauty of AMD loaders is their ability to remove the drudgery of manually
 managing dependencies.  Since all dependencies are listed within the 
@@ -685,13 +685,13 @@ libs include:
 Kudos
 =================
 
-Many thanks to Bryan Forbes (@bryanforbes) for helping to clean up my code and
+Many thanks to Bryan Forbes ([@bryanforbes](http://www.twitter.com/bryanforbes)) for helping to clean up my code and
 for making cujo's domReady much more robust.
 More about Bryan: <http://www.reigndropsfall.net/>
 
-Kudos also to James Burke (@jrburke) who instigated the CommonJS AMD proposal
+Kudos also to James Burke ([@jrburke](http://www.twitter.com/jrburke)) who instigated the CommonJS AMD proposal
 and paved the way to create AMD-style loaders.
 More about James: <http://tagneto.blogspot.com/>
 
-Shout out to Kris Zyp (@kriszyp) for excellent ideas and feedback and to Kyle
-Simpson (@getify) who is inarguably the godfather of javascript loading.
+Shout out to Kris Zyp ([@kriszyp](http://www.twitter.com/kriszyp)) for excellent ideas and feedback and to Kyle
+Simpson ([@getify](http://www.twitter.com/getify)) who is inarguably the godfather of javascript loading.
