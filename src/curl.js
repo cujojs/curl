@@ -215,7 +215,7 @@
 		var pathInfo, main, path;
 		path = name.replace(pathSearchRx, function (match) {
 
-			pathInfo = paths[match];
+			pathInfo = paths[match] || {};
 
 			// if pathInfo.main and match == name, this is a main module
 			if (pathInfo.main && match == name) {
