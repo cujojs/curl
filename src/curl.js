@@ -551,7 +551,7 @@
 
 	function _curl (/* various */) {
 
-		var args = aslice.call(arguments), callback, deps, ctx;
+		var args = aslice.call(arguments), callback, names, ctx;
 
 		// extract config, if it's specified
 		if (isType(args[0], 'Object')) {
@@ -559,7 +559,7 @@
 		}
 
 		// extract dependencies
-		deps = args[0];
+		names = args[0];
 		callback = args[1];
 
 		// this must be after extractCfg
@@ -579,23 +579,25 @@
 			};
 
 			// promise chaining
-			api['next'] = function (deps, cb) {
+			api['next'] = function (names, cb) {
 				var origPromise = promise;
 				promise = new Promise();
 				origPromise.then(
 					// get dependencies and then resolve the previous promise
-					function () { ctx.require(deps, promise, ctx); }
+					function () { ctx.require(names, promise, ctx); }
 				);
 				// execute this callback after dependencies
 				if (cb) {
-					promise.then(cb);
+					promise.then(function (deps) {
+						cb.apply(this, deps)
+					});
 				}
 				return api;
 			};
 
 			if (callback) api['then'](callback);
 
-		ctx.require(deps, promise, ctx);
+		ctx.require(names, promise, ctx);
 
 		return api;
 
@@ -653,25 +655,11 @@
 		_curl['_listen'] = function (which, callback) {
 			eval('var orig=which;which=function(){callback.apply(null,arguments);return orig.apply(null,arguments);};');
 		};
-//		_curl['_listen'] = function (onDefine, onRequire) {
-//			var orig = {};
-//			if (onDefine) {
-//				orig._define = _define;
-//				_define = function () {
-//					onDefine.apply(null, arguments);
-//					orig._define.call(null, arguments);
-//				}
-//			}
-//		}
 	}
 
 	// using bracket property notation so closure won't clobber name
 	global['define'] = _curl['define'] = _define;
 	_curl['version'] = version;
-	
-	// unfortunately, we have to expose this one to work around bugs and
-	// "special" features in other implementations 
-	_curl['_require'] = _require;
 
 	// this is to comply with the AMD CommonJS proposal:
 	_define['amd'] = { plugins: true };
