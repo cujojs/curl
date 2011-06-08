@@ -33,7 +33,7 @@ TODO:
 What is curl.js?
 ================
 
-curl.js is a small, but very fast AMD-compliant asynchronous loader.
+curl.js is a small and very fast AMD-compliant asynchronous loader.
 Size: 4.2KB (2.1KB gzipped) using Google's Closure Compiler.
 
 If you'd like to use curl.js for non-AMD modules (ordinary javascript files),
@@ -59,7 +59,8 @@ Features at a glance:
 * Allows for virtually limitless combinations of files and dependencies
 * Tested with Chrome, FF3+, Safari 3.2+, IE6-8, Opera 9.5+
 
-Oh, did we mention?  It's fast!
+Oh, did we mention?  It's fast!  It's even faster than the leading non-AMD
+script loaders.
 
 ----------------------------------------
 
