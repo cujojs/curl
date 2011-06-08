@@ -2,7 +2,7 @@
  * curl js plugin
  *
  * (c) copyright 2011, unscriptable.com / John Hann
- * Licnsed under the MIT License at:
+ * Licensed under the MIT License at:
  * 		http://www.opensource.org/licenses/mit-license.php
  *
  * usage:

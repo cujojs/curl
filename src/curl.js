@@ -149,7 +149,8 @@
 
 	function Promise () {
 
-		var thens = [];
+		var self = this,
+			thens = [];
 
 		function then (resolved, rejected) {
 			// capture calls to callbacks
@@ -179,10 +180,16 @@
 		return {
 			then: function (resolved, rejected) {
 				then(resolved, rejected);
-				return this;
+				return self;
 			},
-			resolve: function (val) { resolve(val); },
-			reject: function (ex) { reject(ex); }
+			resolve: function (val) {
+				self.resolved = val;
+				resolve(val);
+			},
+			reject: function (ex) {
+				self.rejected = ex;
+				reject(ex);
+			}
 		}
 
 	}
@@ -214,7 +221,7 @@
 		var pathInfo, path;
 		path = name.replace(pathSearchRx, function (match) {
 
-			pathInfo = paths[match];
+			pathInfo = paths[match] || {};
 
 			// if pathInfo.main and match == name, this is a main module
 			if (pathInfo.main && match == name) {
@@ -503,12 +510,7 @@
 		if (isType(deps, 'String')) {
 			// return resource
 			var def = cache[deps],
-				res;
-			if (def) {
-				// this is a silly, convoluted way to synchronously get a
-				// value out of a resolved promise
-				def.then(function (r) { res = r; });
-			}
+				res = def && def.resolved;
 			if (res === undef) {
 				throw new Error('Module is not already resolved: '  + deps);
 			}
@@ -621,7 +623,7 @@
 
 	/***** define public API *****/
 
-	// allow curl / require to be renamed
+	// allow curl to be renamed
 	if (userCfg['apiName']) {
 		global[userCfg['apiName']] = _curl;
 	}
@@ -629,8 +631,15 @@
 		global['curl'] = _curl;
 	}
 
+	if (userCfg['debug']) {
+		_curl['_cache'] = _require['_cache'] = cache;
+		_curl['_cfg'] = _require['_cfg'] = userCfg;
+		_curl['_listen'] = function (which, callback) {
+			eval('var orig=which;which=function(){callback.apply(null,arguments);return orig.apply(null,arguments);};');
+		};
+	}
+
 	// using bracket property notation so closure won't clobber name
-	_curl['require'] = _curl;
 	global['define'] = _curl['define'] = _define;
 	_curl['version'] = version;
 
