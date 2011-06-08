@@ -20,9 +20,25 @@
 	 * IE requires a slightly different tactic. IE marks the readyState of the
 	 * currently executing script to 'interactive'. If we can find this script
 	 * while a define() is being called, we can match the define() to its name.
-	 * Opera, why are you being so difficult!?!?!?!?
+	 * Opera marks scripts as 'interactive' but at inopportune times so we
+	 * have to handle it specifically.
 	 */
 
+	/*
+	 * Paths in 0.5:
+	 * Use cases (most common first):
+	 * -  "my package is located at this url" (url / location or package)
+	 * -  "I want all text! plugins to use the module named x/text" (module id)
+	 * -  "I want calls to 'x/a' from one package to reference 'x1.5/x/a' but
+	 *    calls to 'x/a' from another package to reference 'x1.6/x/a'"
+	 *    (url/location)
+	 * -  "I want to alias calls to a generic 'array' module to the module
+	 *     named 'y/array'" (module id) (or vice versa. see chat with JD Dalton)
+	 * -  "I want to alias calls to 'my/array' to 'y/array'" (module id)
+	 * -  "I want to use root paths like in node.js ("/x/b" should be the same
+	 *    as "x/b" unless we implement a way to have each package specify its
+	 *    relative dependency paths)
+	 */
 
 	var
 		version = '0.4.4',
@@ -128,13 +144,15 @@
 		var baseName = name.substr(0, name.lastIndexOf('/')),
 			ctx = {
 				baseName: baseName
-			};
+			},
+			exports = {};
 		// CommonJS Modules 1.1.1 compliance
 		ctx.vars = {
-			exports: {},
+			exports: exports,
 			module: {
 				'id': normalizeName(name, baseName),
-				'uri': toUrl(name)
+				'uri': toUrl(name),
+				exports: exports
 			},
 			require: function (deps, callback) {
 				return _require(deps, callback || noop, ctx);

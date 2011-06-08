@@ -344,7 +344,7 @@ curl.js <http://github.com/unscriptable/curl>
 
 RequireJS <http://requirejs.org/>
 
-backdraft loader <http://http://bdframework.org/bdLoad>
+backdraft loader <http://bdframework.org/bdLoad>
 
 The beauty of AMD loaders is their ability to remove the drudgery of manually
 managing dependencies.  Since all dependencies are listed within the 
@@ -382,6 +382,9 @@ write code like this:
 		}
 	);
 
+(When using `require` as a dependency, it does not return a promise.
+This is so that 100% CommonJS compliance is assured inside modules.)
+
 ----------------------------------------
 
 Can curl.js work with non-AMD javascript files?
@@ -407,10 +410,11 @@ like this:
 	);
 
 The !order suffix instructs curl.js to wait for previous scripts to execute
-before executing. It downloads in parallel with the previous scripts,
+before executing the current script. All scripts download in parallel, though,
 unless you specify jsPrefetch:false in the config.  Be sure to have proper
 cache headers set if you plan to use jsPrefetch:true or scripts will get
-downloaded twice.
+downloaded twice in browsers that don't support async=false (only Firefox 4
+supports it so far).
 
 ----------------------------------------
 
@@ -427,7 +431,7 @@ text! -- loads text files
 You can also load css files by using the AMD plugin at the following repo:
 <https://github.com/unscriptable/cssx/blob/master/src/cssx/css.js>
 
-The following plugins are planned:
+The following plugins are in progress:
 
 i18n! -- loads text strings and other locale-specific constants
 
@@ -544,13 +548,10 @@ a plugin using options:
 How do I use curl.js?
 =====================
 
-1. Optional: Learn about AMD-formatted javascript modules if you don't already
-   know how.
+1. Optional: Learn about AMD-formatted javascript modules if you don't already know how.
 2. Clone or download curl to your local machine or server.
-3. Figure out the baseUrl and paths configuration that makes sense for your
-   project.
-4. Check out the "API at a glance" section above to figure out which loading
-   methodology you want to use.
+3. Figure out the baseUrl and paths configuration that makes sense for your project.
+4. Check out the "API at a glance" section above to figure out which loading methodology you want to use.
 5. Study the "Very Simple Example" and some of the test files.
 6. Try it on your own files.
 
@@ -573,9 +574,8 @@ Closure compiler.
 
 The build tool is used to concatenate several modules (and/or resources)
 into just a few files. It does this by following the dependency chain
-specified in the curl(), define(), and require() calls. You can specify which
-top-level modules or resources are in each file and the build tool finds the
-rest.
+specified in the define() and require() calls. You can specify which top-level
+modules or resources are in each file and the build tool finds the rest.
 
 After the build tool creates the concatenated files, the files can be passed
 into a compiler (also called a shrinker or compressor).
@@ -648,13 +648,13 @@ libs include:
 Kudos
 =================
 
-Many thanks to Bryan Forbes (@bryanforbes) for helping to clean up my code and
+Many thanks to Bryan Forbes ([@bryanforbes](http://www.twitter.com/bryanforbes)) for helping to clean up my code and
 for making cujo's domReady much more robust.
 More about Bryan: <http://www.reigndropsfall.net/>
 
-Kudos also to James Burke (@jrburke) who instigated the CommonJS AMD proposal
+Kudos also to James Burke ([@jrburke](http://www.twitter.com/jrburke)) who instigated the CommonJS AMD proposal
 and paved the way to create AMD-style loaders.
 More about James: <http://tagneto.blogspot.com/>
 
-Shout out to Kris Zyp (@kriszyp) for excellent ideas and feedback and to Kyle
-Simpson (@getify) who is inarguably the godfather of javascript loading.
+Shout out to Kris Zyp ([@kriszyp](http://www.twitter.com/kriszyp)) for excellent ideas and feedback and to Kyle
+Simpson ([@getify](http://www.twitter.com/getify)) who is inarguably the godfather of javascript loading.
