@@ -16,12 +16,15 @@
  *  	});
  *
  */
-(function (global, doc) {
+(function (global) {
 
 	// satisfy loader:
 	define(/*=='curl/dojo16Compat',==*/ function () {
 
-		var curl = global.curl || global.require;
+		// TODO: figure out a better way to grab global curl
+		// we should probably just add "curl" as a dependency (???)
+		var curl = global['curl'] || global['require'],
+			define = global['define'];
 
 		function duckPunchRequire (req) {
 			if (!req['ready']){
@@ -40,11 +43,41 @@
 
 		// modify global curl and private _require
 		duckPunchRequire(curl);
-		duckPunchRequire(curl['_require']);
+		//duckPunchRequire(curl['_require']);
+
+		global['define'] = function () {
+			var args, len, names, reqPos = [], defFunc, i;
+			// find dependency array
+			args = [].slice.call(arguments);
+			len = args.length;
+			names = args[len - 2];
+			defFunc = typeof args[len - 1] == 'function' ? args[len - 1] : null;
+			// if we have dependencies and a definition function
+			if (names && defFunc) {
+				// find all "require" dependencies
+				for (i = names.length - 1; i >= 0; i--) {
+					if (names[i] == 'require') {
+						reqPos.push(i);
+					}
+				}
+				// if there are any
+				if (reqPos.length > 0) {
+					// replace the definition function with one that replaces
+					// the "require" deps with duck-punched ones
+					args[len - 1] = function () {
+						var deps = [].slice.call(arguments);
+						for (i = 0; i < reqPos.length; i++) {
+							deps[reqPos[i]] = duckPunchRequire(deps[reqPos[i]]);
+						}
+						return defFunc.apply(this, deps);
+					};
+				}
+			}
+			return define.apply(null, args);
+		};
 
 		return true;
 
 	});
 
-
-}(this, document));
+}(this));
