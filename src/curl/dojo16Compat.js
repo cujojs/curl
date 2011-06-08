@@ -41,9 +41,8 @@
 			return req;
 		}
 
-		// modify global curl and private _require
+		// modify global curl
 		duckPunchRequire(curl);
-		//duckPunchRequire(curl['_require']);
 
 		global['define'] = function () {
 			var args, len, names, reqPos = [], defFunc, i;
