@@ -424,7 +424,6 @@
 			// the spec is unclear, so we're using the full name (prefix + name) to id resources
 			def = cache[name];
 			if (!def) {
-				def = cache[name] = new ResourceDef(resName);
 				//var pathInfo = resolvePath(resName, baseUrl);
 				var pluginDef = cache[prefix];
 				if (!pluginDef) {
@@ -432,20 +431,28 @@
 					pluginDef.url = resolveUrl(prefixPath, baseUrl);
 					fetchResDef(pluginDef, ctx)
 				}
-				pluginDef.then(
-					function (plugin) {
-						// curl's plugins prefer to receive the back-side of a promise,
-						// but to be compatible with commonjs's specification, we have to
-						// piggy-back on the callback function parameter:
-						var loaded = def.resolve;
-						// using bracket property notation so closure won't clobber name
-						loaded['resolve'] = loaded;
-						loaded['reject'] = def.reject;
-						// load the resource!
-						plugin.load(def.name, ctx.require, loaded, userCfg);
-					},
-					def.reject
-				);
+				// resName could be blank if the plugin doesn't specify a name (e.g. "domReady!")
+				if (resName) {
+					def = cache[name] = new ResourceDef(resName);
+					pluginDef.then(
+						function (plugin) {
+							// curl's plugins prefer to receive the back-side of a promise,
+							// but to be compatible with commonjs's specification, we have to
+							// piggy-back on the callback function parameter:
+							var loaded = def.resolve;
+							// using bracket property notation so closure won't clobber name
+							loaded['resolve'] = loaded;
+							loaded['reject'] = def.reject;
+							// load the resource!
+							plugin.load(def.name, ctx.require, loaded, userCfg);
+						},
+						def.reject
+					);
+				}
+				else {
+					// use pluginDef instead since we don't have a def
+					def = pluginDef;
+				}
 			}
 
 		}
