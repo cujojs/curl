@@ -60,6 +60,13 @@ define(/*=='text',==*/ function () {
 		}
 	}
 
+	function jsEncode (text) {
+		var map = { 34: '\\"', 13: '\\r', 12: '\\f', 10: '\\n', 9: '\\t', 8: '\\b' };
+		return text.replace(/(["|\n|\f|\t|\r|\b])/g, function (c) {
+			return map[c.charCodeAt(0)];
+		});
+	}
+
 	return {
 
 		load: function (resourceName, req, callback, config) {
@@ -77,15 +84,14 @@ define(/*=='text',==*/ function () {
 			// config is the global config
 			// returns a function that the build tool can use to tell this
 			// plugin to write-out a resource
-			return function (resourceId, resolver) {
+			return function write (pluginId, resource, resolver) {
 				var url, text, output;
-				url = resolver['toUrl'](nameWithExt(resourceId, 'html'));
+				url = resolver['toUrl'](nameWithExt(resource, 'html'));
 				// fetch text
-				text = fetcher(url);
-				text = text.replace('"', '\\"');
+				text = jsEncode(fetcher(url));
 				// write out a define
 				// TODO: implement toAbsMid function to get this plugin's module id
-				output = 'define("curl/plugin/text!' + resourceId + '", function () {\n' +
+				output = 'define("' + pluginId + '!' + resource + '", function () {\n' +
 					'\treturn "' + text + '";\n' +
 				'});\n';
 				writer(output);

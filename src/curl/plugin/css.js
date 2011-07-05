@@ -298,6 +298,13 @@
 		};
 	}
 
+	function jsEncode (text) {
+		var map = { 34: '\\"', 13: '\\r', 12: '\\f', 10: '\\n', 9: '\\t', 8: '\\b' };
+		return text.replace(/(["|\n|\f|\t|\r|\b])/g, function (c) {
+			return map[c.charCodeAt(0)];
+		});
+	}
+
 /***** finally! the actual plugin *****/
 
 	define({
@@ -367,20 +374,19 @@
 			// config is the global config
 			// returns a function that the build tool can use to tell this
 			// plugin to write-out a resource
-			return function (resourceId, resolver) {
+			return function write (pluginId, resource, resolver) {
 				var opts, name, url, text, output;
 				// TODO: implement !nowait
-				opts = parseSuffixes(resourceId);
+				opts = parseSuffixes(resource);
 				name = opts.shift();
 				url = resolver['toUrl'](nameWithExt(name, 'css'));
 				// fetch text
-				text = fetcher(url);
-				text = text.replace('"', '\\"');
+				text = jsEncode(fetcher(url));
 				// write out a define
 				// TODO: implement toAbsMid function to get this plugin's module id
 				// TODO: wait until sheet's rules are active before returning (use an amd promise)
 				// instead of hard-coding the typical one: "curl/plugin/css"
-				output = 'define("curl/plugin/css!' + name + '", ["curl/plugin/css"], function (plugin) {\n' +
+				output = 'define("' + pluginId + '!' + name + '", ["curl/plugin/css"], function (plugin) {\n' +
 					// call the _injectStyle function
 					'\treturn plugin.proxySheet(plugin.injectStyle("' + text + '"));\n' +
 				'});\n';
@@ -393,7 +399,8 @@
 		},
 
 		'proxySheet': function (sheet) {
-			// for W3C, point to stylesheet, not <style> node
+			// for W3C, `sheet` is a reference to a <style> node so we need to
+			// return the sheet property.
 			if (sheet.sheet /* instanceof CSSStyleSheet */) sheet = sheet.sheet;
 			return createSheetProxy(sheet);
 		}
