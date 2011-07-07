@@ -2,7 +2,7 @@
  * Copyright (c) 2010 unscriptable.com
  */
 
-(function (doc) {
+(function (global) {
 "use strict";
 
 /*
@@ -87,8 +87,13 @@
 				// true if the onload event handler works
 				// "event-link-onload" : false
 			},
+			doc = global.document,
 			// find the head element and set it to it's standard property if nec.
+			head;
+			
+		if(doc) {
 			head = doc.head || (doc.head = doc.getElementsByTagName('head')[0]);
+		}
 
 		function has (feature) {
 			return features[feature];
@@ -261,7 +266,7 @@
 	function createStyle (cssText) {
 		clearTimeout(createStyle.debouncer);
 		if (createStyle.accum) {
-			createStyle.accum.push(cssText)
+			createStyle.accum.push(cssText);
 		}
 		else {
 			createStyle.accum = [cssText];
@@ -408,4 +413,4 @@
 
 	});
 
-})(document);
+})(this);
