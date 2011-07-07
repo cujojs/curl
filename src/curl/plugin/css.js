@@ -299,6 +299,7 @@
 	}
 
 	function jsEncode (text) {
+		// TODO: hoist the map and regex to the enclosing scope for better performance
 		var map = { 34: '\\"', 13: '\\r', 12: '\\f', 10: '\\n', 9: '\\t', 8: '\\b' };
 		return text.replace(/(["|\n|\f|\t|\r|\b])/g, function (c) {
 			return map[c.charCodeAt(0)];
@@ -375,18 +376,18 @@
 			// returns a function that the build tool can use to tell this
 			// plugin to write-out a resource
 			return function write (pluginId, resource, resolver) {
-				var opts, name, url, text, output;
-				// TODO: implement !nowait
+				var opts, name, url, absId, text, output;
+				// TODO: implement !nowait and comma-sep files!
 				opts = parseSuffixes(resource);
 				name = opts.shift();
 				url = resolver['toUrl'](nameWithExt(name, 'css'));
+				absId = resolver['toAbsMid'](name);
 				// fetch text
 				text = jsEncode(fetcher(url));
 				// write out a define
-				// TODO: implement toAbsMid function to get this plugin's module id
 				// TODO: wait until sheet's rules are active before returning (use an amd promise)
 				// instead of hard-coding the typical one: "curl/plugin/css"
-				output = 'define("' + pluginId + '!' + name + '", ["curl/plugin/css"], function (plugin) {\n' +
+				output = 'define("' + pluginId + '!' + absId + '", ["curl/plugin/css"], function (plugin) {\n' +
 					// call the _injectStyle function
 					'\treturn plugin.proxySheet(plugin.injectStyle("' + text + '"));\n' +
 				'});\n';
