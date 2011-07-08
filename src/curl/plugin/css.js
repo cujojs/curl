@@ -262,6 +262,8 @@
 	}
 
 	/***** style element functions *****/
+	
+	var currentStyle;
 
 	function createStyle (cssText) {
 		clearTimeout(createStyle.debouncer);
@@ -270,17 +272,26 @@
 		}
 		else {
 			createStyle.accum = [cssText];
+			currentStyle = doc.createStyleSheet ? doc.createStyleSheet() :
+				head.appendChild(doc.createElement('style'));
 		}
+		
 		createStyle.debouncer = setTimeout(function () {
 			// Note: IE 6-8 won't accept the W3C method for inserting css text
 			var style, allCssText;
-			style = doc.createStyleSheet ? doc.createStyleSheet() :
-				head.appendChild(doc.createElement('style'));
+
+			style = currentStyle;
+			currentStyle = undef;
+
 			allCssText = createStyle.accum.join('\n');
 			createStyle.accum = undef;
+
 			style.cssText ? style.cssText = allCssText :
 				style.appendChild(doc.createTextNode(allCssText));
+				
 		}, 0);
+		
+		return currentStyle;
 	}
 
 	function createSheetProxy (sheet) {
