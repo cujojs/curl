@@ -91,7 +91,7 @@
 			// find the head element and set it to it's standard property if nec.
 			head;
 			
-		if(doc) {
+		if (doc) {
 			head = doc.head || (doc.head = doc.getElementsByTagName('head')[0]);
 		}
 
@@ -385,15 +385,14 @@
 				// TODO: implement !nowait and comma-sep files!
 				opts = parseSuffixes(resource);
 				name = opts.shift();
-				url = resolver['toUrl'](nameWithExt(name, 'css'));
 				absId = resolver['toAbsMid'](name);
+				url = resolver['toUrl'](nameWithExt(absId, 'css'));
 				// fetch text
 				text = jsEncode(fetcher(url));
 				// write out a define
 				// TODO: wait until sheet's rules are active before returning (use an amd promise)
-				// instead of hard-coding the typical one: "curl/plugin/css"
-				output = 'define("' + pluginId + '!' + absId + '", ["curl/plugin/css"], function (plugin) {\n' +
-					// call the _injectStyle function
+				output = 'define("' + pluginId + '!' + absId + '", ["' + pluginId + '"], function (plugin) {\n' +
+					// call the injectStyle function
 					'\treturn plugin.proxySheet(plugin.injectStyle("' + text + '"));\n' +
 				'});\n';
 				writer(output);
