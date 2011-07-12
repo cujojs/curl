@@ -7,7 +7,6 @@
 
 	curl = {
 		paths: {
-			cssx: 'cssx/',
 			curl: '../src/curl/'
 		}
 	};
@@ -27,7 +26,6 @@
 	}
 
 </script>
-<!--<script src="require.js" type="text/javascript"></script>-->
 <script src="../src/curl.js" type="text/javascript"></script>
 
 <script type="text/javascript">
@@ -36,7 +34,7 @@
 	curl({ debug: true }, ['curl/debug']).next(
 		[
 			'stuff/three',
-			'cssx/css!stuff/base',
+			'css!stuff/base',
 			//'require/i18n!stuff/nls/strings',
 			'text!stuff/template.html'
 		]
