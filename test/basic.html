@@ -7,9 +7,7 @@
 
 	curl = {
 		paths: {
-			cssx: 'cssx/',
-			curl: '../src/curl/'/*,
-			text: '../src/curl/plugin/text'*/
+			curl: '../src/curl/'
 		}
 	};
 
@@ -37,7 +35,7 @@
 	curl(
 		[
 			'stuff/three',
-			'cssx/css!stuff/base',
+			'css!stuff/base',
 			//'require/i18n!stuff/nls/strings',
 			'text!stuff/template.html'
 		]

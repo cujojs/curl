@@ -188,9 +188,8 @@
 			ready = rules ?
 				rules.length > 0 : // || (sheet.imports && sheet.imports.length > 0) :
 				rules !== undef;
-			// thanks, Chrome 8+, for this lovely hack
-			// TODO: find a better inference to only waste cpu cycles on Chrome
-			if (ready && doc.defaultView) {
+			// thanks, Chrome 8+, for this lovely hack. TODO: find a better way
+			if (ready && {}.toString.call(window.chrome) == '[object Chrome]') {
 				// fwiw, we'll never get this far if this is an XD stylesheet
 				sheet.insertRule('#_cssx_load_test{margin-top:-5px;}', 0);
 				ready = styleIsApplied();
