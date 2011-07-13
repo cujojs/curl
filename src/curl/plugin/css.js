@@ -76,20 +76,26 @@
 
 	var
 		// compressibility shortcuts
-			onreadystatechange = 'onreadystatechange',
-			onload = 'onload',
-			createElement = 'createElement',
-			// failed is true if RequireJS threw an exception
-			failed = false,
-			undef,
-			insertedSheets = {},
-			features = {
-				// true if the onload event handler works
-				// "event-link-onload" : false
-			},
-			doc = global.document,
-			// find the head element and set it to it's standard property if nec.
-			head;
+		onreadystatechange = 'onreadystatechange',
+		onload = 'onload',
+		createElement = 'createElement',
+		// failed is true if RequireJS threw an exception
+		failed = false,
+		undef,
+		insertedSheets = {},
+		features = {
+			// true if the onload event handler works
+			// "event-link-onload" : false
+		},
+		// this actually tests for absolute urls and root-relative urls
+		// they're both non-relative
+		nonRelUrlRe = /^\/|^[^:]*:\/\//,
+		// Note: this will fail if there are parentheses in the url
+		findUrlRx = /url\s*\(['"]?([^'"\)]*)['"]?\)/g,
+		// doc will be undefined during a build
+		doc = global.document,
+		// find the head element and set it to it's standard property if nec.
+		head;
 			
 		if (doc) {
 			head = doc.head || (doc.head = doc.getElementsByTagName('head')[0]);
@@ -264,6 +270,21 @@
 	
 	var currentStyle;
 
+	function translateUrls (cssText, baseUrl) {
+		return cssText.replace(findUrlRx, function (all, url) {
+			return 'url("' + translateUrl(url, baseUrl) + '")';
+		});
+	}
+
+	function translateUrl (url, parentPath) {
+		// if this is a relative url
+		if (!nonRelUrlRe.test(url)) {
+			// append path onto it
+			url = parentPath + url;
+		}
+		return url;
+	}
+
 	function createStyle (cssText) {
 		clearTimeout(createStyle.debouncer);
 		if (createStyle.accum) {
@@ -274,7 +295,7 @@
 			currentStyle = doc.createStyleSheet ? doc.createStyleSheet() :
 				head.appendChild(doc.createElement('style'));
 		}
-		
+
 		createStyle.debouncer = setTimeout(function () {
 			// Note: IE 6-8 won't accept the W3C method for inserting css text
 			var style, allCssText;
@@ -285,7 +306,7 @@
 			allCssText = createStyle.accum.join('\n');
 			createStyle.accum = undef;
 
-			style.cssText ? style.cssText = allCssText :
+			'cssText' in style ? style.cssText = allCssText :
 				style.appendChild(doc.createTextNode(allCssText));
 				
 		}, 0);
@@ -326,7 +347,7 @@
 	define({
 
 		'load': function (resourceId, require, callback, config) {
-				var resources = resourceId.split(","),
+				var resources = (resourceId || '').split(","),
 					loadingCount = resources.length;
 
 			// all detector functions must ensure that this function only gets
@@ -340,6 +361,28 @@
 					// TODO: move this setTimeout to loadHandler
 					setTimeout(function () { callback(createSheetProxy(link.sheet || link.styleSheet)); }, 0);
 				}
+			}
+
+			if (!resourceId) {
+				// return the run-time API
+				callback({
+					'translateUrls': function (cssText, baseId) {
+						var baseUrl;
+						baseUrl = require['toUrl'](baseId);
+						baseUrl = baseUrl.substr(0, baseUrl.lastIndexOf('/') + 1);
+						return translateUrls(cssText, baseUrl);
+					},
+					'injectStyle': function (cssText) {
+						return createStyle(cssText);
+					},
+
+					'proxySheet': function (sheet) {
+						// for W3C, `sheet` is a reference to a <style> node so we need to
+						// return the sheet property.
+						if (sheet.sheet /* instanceof CSSStyleSheet */) sheet = sheet.sheet;
+						return createSheetProxy(sheet);
+					}
+				});
 			}
 
 			// `after` will become truthy once the loop executes a second time
@@ -401,23 +444,16 @@
 				text = jsEncode(fetcher(url));
 				// write out a define
 				// TODO: wait until sheet's rules are active before returning (use an amd promise)
-				output = 'define("' + pluginId + '!' + absId + '", ["' + pluginId + '"], function (plugin) {\n' +
+				// TODO: fix parser so that it doesn't choke on the word define( in a string
+				output = 'def' + 'ine("' + pluginId + '!' + absId + '", ["' + pluginId + '!"], function (api) {\n' +
+					// translate urls
+					'\tvar cssText = "' + text + '";\n' +
+					'\tcssText = api.translateUrls(cssText, "' + absId + '");\n' +
 					// call the injectStyle function
-					'\treturn plugin.proxySheet(plugin.injectStyle("' + text + '"));\n' +
+					'\treturn api.proxySheet(api.injectStyle(cssText));\n' +
 				'});\n';
 				writer(output);
 			};
-		},
-
-		'injectStyle': function (cssText) {
-			return createStyle(cssText);
-		},
-
-		'proxySheet': function (sheet) {
-			// for W3C, `sheet` is a reference to a <style> node so we need to
-			// return the sheet property.
-			if (sheet.sheet /* instanceof CSSStyleSheet */) sheet = sheet.sheet;
-			return createSheetProxy(sheet);
 		}
 
 	});
