@@ -9,7 +9,9 @@
 
 define(/*=='text',==*/ function () {
 
-	var progIds = ['Msxml2.XMLHTTP', 'Microsoft.XMLHTTP', 'Msxml2.XMLHTTP.4.0'];
+	var progIds = ['Msxml2.XMLHTTP', 'Microsoft.XMLHTTP', 'Msxml2.XMLHTTP.4.0'],
+		// collection of modules that have been written to the built file
+		built = {};
 
 	function xhr () {
 		if (typeof XMLHttpRequest !== "undefined") {
@@ -89,6 +91,8 @@ define(/*=='text',==*/ function () {
 				var url, absId, text, output;
 				url = resolver['toUrl'](nameWithExt(resource, 'html'));
 				absId = resolver['toAbsMid'](resource);
+				if (!(absId in built)) {
+					built[absId] = true;
 				// fetch text
 				text = jsEncode(fetcher(url));
 				// write out a define
@@ -96,6 +100,7 @@ define(/*=='text',==*/ function () {
 					'\treturn "' + text + '";\n' +
 				'});\n';
 				writer(output);
+				}
 			};
 		}
 

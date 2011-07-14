@@ -95,7 +95,9 @@
 		// doc will be undefined during a build
 		doc = global.document,
 		// find the head element and set it to it's standard property if nec.
-		head;
+		head,
+		// collection of modules that have been written to the built file
+		built = {};
 			
 		if (doc) {
 			head = doc.head || (doc.head = doc.getElementsByTagName('head')[0]);
@@ -384,6 +386,7 @@
 					}
 				});
 			}
+			else {
 
 			// `after` will become truthy once the loop executes a second time
 			for (var i = resources.length - 1, after; i >= 0; i--, after = true) {
@@ -423,6 +426,8 @@
 				insertedSheets[url] = link;
 			}
 
+			}
+
 		},
 
 		/***** build methods *****/
@@ -439,6 +444,8 @@
 				opts = parseSuffixes(resource);
 				name = opts.shift();
 				absId = resolver['toAbsMid'](name);
+				if (!(absId in built)) {
+					built[absId] = true;
 				url = resolver['toUrl'](nameWithExt(absId, 'css'));
 				// fetch text
 				text = jsEncode(fetcher(url));
@@ -453,6 +460,7 @@
 					'\treturn api.proxySheet(api.injectStyle(cssText));\n' +
 				'});\n';
 				writer(output);
+				}
 			};
 		}
 
