@@ -376,7 +376,7 @@
 
 					if (!args) {
 						// uh oh, nothing was added to the resource net
-						def.reject(new Error('define() not found: ' + def.url));
+						def.reject(new Error('define() not found or duplicates found: ' + def.url));
 					}
 					else if (args.ex) {
 						// the resNet resource was already rejected, but it didn't know
