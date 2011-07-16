@@ -347,7 +347,8 @@
 
 	function resolveResDef (def, args, ctx) {
 
-		var childCtx = begetCtx(def.name);
+		// if a module id has been remapped, it will have a baseName
+		var childCtx = begetCtx(def.baseName || def.name);
 
 		// get the dependencies and then resolve/reject
 		getDeps(def, args.deps, childCtx,
@@ -427,12 +428,12 @@
 			// the spec is unclear, so we're using the full name (prefix + name) to id resources
 			def = cache[name];
 			if (!def) {
-				//var pathInfo = resolvePath(resName, baseUrl);
 				var pluginDef = cache[prefix];
 				if (!pluginDef) {
 					pluginDef = cache[prefix] = new ResourceDef(prefix);
 					pluginDef.url = resolveUrl(prefixPath, baseUrl);
-					fetchResDef(pluginDef, ctx)
+					pluginDef.baseName = prefixPath;
+					fetchResDef(pluginDef, ctx);
 				}
 				// resName could be blank if the plugin doesn't specify a name (e.g. "domReady!")
 				if (resName) {
