@@ -104,6 +104,15 @@
 
 		baseUrl = cfg['baseUrl'] || '';
 
+		if (cfg['debug']) {
+			_curl['cache'] = _require['_cache'] = cache;
+			_curl['cfg'] = _require['_cfg'] = userCfg;
+			_curl['undefine'] = function (moduleId) { delete cache[moduleId]; };
+			_curl['listen'] = function (which, callback) {
+				eval('var orig=which;which=function(){callback.apply(null,arguments);return orig.apply(null,arguments);};');
+			};
+		}
+
 		// fix all paths
 		var cfgPaths = cfg['paths'];
 		for (p in cfgPaths) {
@@ -353,9 +362,15 @@
 		// get the dependencies and then resolve/reject
 		getDeps(def, args.deps, childCtx,
 			function (deps) {
-				// node.js assumes `this` === exports
-				// anything returned overrides exports
-				var res = args.res.apply(childCtx.vars.exports, deps) || childCtx.vars.exports;
+				try {
+					// node.js assumes `this` === exports
+					// anything returned overrides exports
+					var res = args.res.apply(childCtx.vars.exports, deps) || childCtx.vars.exports;
+				}
+				catch (ex) {
+					def.reject(ex);
+				}
+				def.resolved = true;
 				def.resolve(res);
 			},
 			def.reject
@@ -644,7 +659,7 @@
 
 	/***** grab any global configuration info *****/
 
-	// if userCfg is a function, assume require() exists already
+	// if userCfg is a function, assume curl() exists already
 	var conflict = isType(userCfg, 'Function');
 	if (!conflict) {
 		extractCfg(userCfg);
@@ -658,14 +673,6 @@
 	}
 	else {
 		global['curl'] = _curl;
-	}
-
-	if (userCfg['debug']) {
-		_curl['_cache'] = _require['_cache'] = cache;
-		_curl['_cfg'] = _require['_cfg'] = userCfg;
-		_curl['_listen'] = function (which, callback) {
-			eval('var orig=which;which=function(){callback.apply(null,arguments);return orig.apply(null,arguments);};');
-		};
 	}
 
 	// using bracket property notation so closure won't clobber name
