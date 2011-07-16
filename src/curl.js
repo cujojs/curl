@@ -61,7 +61,7 @@
 		aslice = [].slice,
 		// RegExp's used later, "cached" here
 		absUrlRx = /^\/|^[^:]*:\/\//,
-		normalizeRx = /^\.(\/|$)/,
+		normalizeRx = /^(\.)(\.)?(\/|$)/,
 		findSlashRx = /\//,
 		hasExtRx = /\.\w+$/,
 		pathSearchRx,
@@ -400,7 +400,10 @@
 
 	function normalizeName (name, baseName) {
 		// if name starts with . then use parent's name as a base
-		return name.replace(normalizeRx, baseName + '/');
+		// if name starts with .. then use parent's parent
+		return name.replace(normalizeRx, function (match, dot1, dot2) {
+			return (dot2 ? baseName.substr(0, baseName.lastIndexOf('/')) : baseName) + '/';
+		});
 	}
 
 	function fetchDep (depName, ctx) {
