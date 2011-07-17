@@ -6,6 +6,7 @@
 <script>
 
 	curl = {
+		debug: true,
 		paths: {
 			curl: '../src/curl/'
 		}
@@ -31,15 +32,14 @@
 <script type="text/javascript">
 
 	var start = new Date();
-	curl({ debug: true }, ['curl/debug']).next(
+	curl(['curl/debug']).next(
 		[
 			'stuff/three',
 			'css!stuff/base',
-			//'require/i18n!stuff/nls/strings',
 			'text!stuff/template.html'
 		]
 	).then(
-		function (three, link, /*strings,*/ template) {
+		function (three, link, template) {
 			console.log('total time:', new Date() - start);
 			if (document.body) {
 				document.body.appendChild(document.createTextNode('A module with dependencies loaded successfully if 3 == ' + three + '.'));

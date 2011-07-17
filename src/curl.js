@@ -159,6 +159,9 @@
 			}
 		};
 		ctx.require = ctx.vars.require;
+		if (userCfg['debug']) {
+			ctx.require['curl'] = _curl;
+		}
 		// using bracket property notation so closure won't clobber name
 		ctx.require['toUrl'] = toUrl;
 		
@@ -654,9 +657,9 @@
 	}
 
 	if (userCfg['debug']) {
-		_curl['_cache'] = _require['_cache'] = cache;
-		_curl['_cfg'] = _require['_cfg'] = userCfg;
-		_curl['_listen'] = function (which, callback) {
+		_curl['cache'] = _require['cache'] = cache;
+		_curl['cfg'] = _require['cfg'] = userCfg;
+		_curl['listen'] = function (which, callback) {
 			eval('var orig=which;which=function(){callback.apply(null,arguments);return orig.apply(null,arguments);};');
 		};
 	}
