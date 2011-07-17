@@ -581,7 +581,8 @@
 
 		// extract config, if it's specified
 		if (isType(args[0], 'Object')) {
-			extractCfg(args.shift());
+			userCfg = args.shift();
+			extractCfg(userCfg);
 		}
 
 		// extract dependencies
