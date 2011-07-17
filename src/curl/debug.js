@@ -17,20 +17,22 @@
 
 define(function (require) {
 
-	var curl = require['_curl'],
-		cache = curl['cache'],
-		listen = curl['listen'],
-		apiName = curl['cfg']['apiName'] || 'curl',
-		totalWaiting = 0,
-		prevTotal;
+	var curl, cache, listen, apiName, totalWaiting, prevTotal;
+
+	curl = require['curl'];
+	listen = curl['listen'];
 
 	if (!curl || !listen) {
 		throw new Error('You must also enable debugging via the debug:true config param.');
 	}
 	else if (typeof console == 'undefined') {
-		throw new Error('No console to output debug info.');
+		throw new Error('`console` object must be defined to use debug module.');
 	}
 	else {
+
+		cache = curl['cache'];
+		apiName = curl['cfg']['apiName'] || 'curl';
+		totalWaiting = 0;
 
 		function count () {
 			totalWaiting = 0;

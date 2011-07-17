@@ -41,7 +41,7 @@
 	 */
 
 	var
-		version = '0.4.4',
+		version = '0.4.5',
 		head = doc['head'] || doc.getElementsByTagName('head')[0],
 		// configuration information
 		baseUrl,
@@ -104,9 +104,9 @@
 
 		baseUrl = cfg['baseUrl'] || '';
 
-		if (cfg['debug']) {
-			_curl['cache'] = _require['_cache'] = cache;
-			_curl['cfg'] = _require['_cfg'] = userCfg;
+		if (userCfg['debug']) {
+			_curl['cache'] = cache;
+			_curl['cfg'] = userCfg;
 			_curl['undefine'] = function (moduleId) { delete cache[moduleId]; };
 			_curl['listen'] = function (which, callback) {
 				eval('var orig=which;which=function(){callback.apply(null,arguments);return orig.apply(null,arguments);};');
@@ -168,6 +168,9 @@
 			}
 		};
 		ctx.require = ctx.vars.require;
+		if (userCfg['debug']) {
+			ctx.require['curl'] = _curl;
+		}
 		// using bracket property notation so closure won't clobber name
 		ctx.require['toUrl'] = toUrl;
 		
@@ -450,28 +453,25 @@
 					pluginDef.baseName = prefixPath;
 					fetchResDef(pluginDef, ctx);
 				}
+				def = new ResourceDef(resName);
 				// resName could be blank if the plugin doesn't specify a name (e.g. "domReady!")
 				if (resName) {
-					def = cache[name] = new ResourceDef(resName);
-					pluginDef.then(
-						function (plugin) {
-							// curl's plugins prefer to receive the back-side of a promise,
-							// but to be compatible with commonjs's specification, we have to
-							// piggy-back on the callback function parameter:
-							var loaded = def.resolve;
-							// using bracket property notation so closure won't clobber name
-							loaded['resolve'] = loaded;
-							loaded['reject'] = def.reject;
-							// load the resource!
-							plugin.load(def.name, ctx.require, loaded, userCfg);
-						},
-						def.reject
-					);
+					cache[name] = def;
 				}
-				else {
-					// use pluginDef instead since we don't have a def
-					def = pluginDef;
-				}
+				pluginDef.then(
+					function (plugin) {
+						// curl's plugins prefer to receive the back-side of a promise,
+						// but to be compatible with commonjs's specification, we have to
+						// piggy-back on the callback function parameter:
+						var loaded = def.resolve;
+						// using bracket property notation so closure won't clobber name
+						loaded['resolve'] = loaded;
+						loaded['reject'] = def.reject;
+						// load the resource!
+						plugin.load(def.name, ctx.require, loaded, userCfg);
+					},
+					def.reject
+				);
 			}
 
 		}
