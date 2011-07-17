@@ -18,9 +18,9 @@
 define(function (require) {
 
 	var curl = require['_curl'],
-		cache = require['_cache'],
-		listen = curl['_listen'],
-		apiName = curl['_cfg']['apiName'] || 'curl',
+		cache = curl['cache'],
+		listen = curl['listen'],
+		apiName = curl['cfg']['apiName'] || 'curl',
 		totalWaiting = 0,
 		prevTotal;
 
