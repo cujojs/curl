@@ -72,7 +72,9 @@
 		defaultDescriptor = {
 			main: './lib/main',
 			lib: './lib'
-		};
+		},
+		debug,
+		debugIndent = '';
 
 	function isType (obj, type) {
 		return toString.call(obj).indexOf('[object ' + type) == 0;
@@ -104,13 +106,12 @@
 
 		baseUrl = cfg['baseUrl'] || '';
 
-		if (userCfg['debug']) {
+		if (cfg['debug']) {
+			debug = true;
+			// add debugging aides
 			_curl['cache'] = cache;
-			_curl['cfg'] = userCfg;
+			_curl['cfg'] = cfg;
 			_curl['undefine'] = function (moduleId) { delete cache[moduleId]; };
-			_curl['listen'] = function (which, callback) {
-				eval('var orig=which;which=function(){callback.apply(null,arguments);return orig.apply(null,arguments);};');
-			};
 		}
 
 		// fix all paths
@@ -154,7 +155,10 @@
 			ctx = {
 				baseName: baseName
 			},
-			exports = {};
+			exports = {},
+			require = function (deps, callback) {
+				return _require(deps, callback || noop, ctx);
+			};
 		// CommonJS Modules 1.1.1 compliance
 		ctx.vars = {
 			exports: exports,
@@ -162,17 +166,14 @@
 				'id': normalizeName(name, baseName),
 				'uri': toUrl(name),
 				exports: exports
-			},
-			require: function (deps, callback) {
-				return _require(deps, callback || noop, ctx);
 			}
 		};
-		ctx.require = ctx.vars.require;
-		if (userCfg['debug']) {
-			ctx.require['curl'] = _curl;
+		if (debug) {
+			require['curl'] = _curl;
 		}
+		ctx.require = ctx.vars.require = require;
 		// using bracket property notation so closure won't clobber name
-		ctx.require['toUrl'] = toUrl;
+		require['toUrl'] = toUrl;
 		
 		return ctx;
 	}
@@ -359,6 +360,11 @@
 
 	function resolveResDef (def, args, ctx) {
 
+		if (debug) {
+			debugIndent += '\t';
+			console && console.log(debugIndent + 'curl: resolving', def.name, debugIndent.length);
+		}
+
 		// if a module id has been remapped, it will have a baseName
 		var childCtx = begetCtx(def.baseName || def.name);
 
@@ -369,6 +375,10 @@
 					// node.js assumes `this` === exports
 					// anything returned overrides exports
 					var res = args.res.apply(childCtx.vars.exports, deps) || childCtx.vars.exports;
+					if (debug) {
+						console && console.log(debugIndent + 'curl: defined', def.name, res.toString().substr(0, 50).replace(/\n/, ' '), debugIndent.length);
+						debugIndent = debugIndent.slice(0, -1);
+					}
 				}
 				catch (ex) {
 					def.reject(ex);

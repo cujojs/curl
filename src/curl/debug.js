@@ -15,14 +15,13 @@
  */
 (function (global) {
 
-define(function (require) {
+define(['require'], function (require) {
 
-	var curl, cache, listen, apiName, totalWaiting, prevTotal;
+	var curl, cache, totalWaiting, prevTotal;
 
 	curl = require['curl'];
-	listen = curl['listen'];
 
-	if (!curl || !listen) {
+	if (!curl) {
 		throw new Error('You must also enable debugging via the debug:true config param.');
 	}
 	else if (typeof console == 'undefined') {
@@ -31,7 +30,6 @@ define(function (require) {
 	else {
 
 		cache = curl['cache'];
-		apiName = curl['cfg']['apiName'] || 'curl';
 		totalWaiting = 0;
 
 		function count () {
@@ -41,21 +39,6 @@ define(function (require) {
 			}
 		}
 		count();
-
-		listen('_define', function () {
-			var args = [].slice.apply(arguments).join(', ');
-			console.log('curl: define(' + args + ');');
-		});
-
-		listen('_require', function () {
-			var args = [].slice.apply(arguments).join(', ');
-			console.log('curl: require(' + args + ');');
-		});
-
-		listen('_curl', function () {
-			var args = [].slice.apply(arguments).join(', ');
-			console.log('curl: ' + apiName + '(' + args + ');');
-		});
 
 		function periodicLogger () {
 			count();
