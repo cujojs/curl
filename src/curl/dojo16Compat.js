@@ -35,13 +35,14 @@
 			if (!req['nameToUrl']) {
 				req['nameToUrl'] = function (name, ext) {
 					// map non-standard nameToUrl to toUrl
-					return req['toUrl'](name) + (ext || '');
+					return req['toUrl'](name + (ext || ''));
 				};
 			}
 			return req;
 		}
 
-		// modify global curl
+		// modify global curl cuz dojo doesn't always use standard `require`
+		// as a dependency
 		duckPunchRequire(curl);
 
 		global['define'] = function () {
