@@ -73,8 +73,7 @@
 			main: './lib/main',
 			lib: './lib'
 		},
-		debug,
-		debugIndent = '';
+		debug;
 
 	function isType (obj, type) {
 		return toString.call(obj).indexOf('[object ' + type) == 0;
@@ -208,27 +207,24 @@
 			}
 		}
 
-		return {
-			then: function (resolved, rejected) {
-				then(resolved, rejected);
-				return self;
-			},
-			resolve: function (val) {
-				self.resolved = val;
-				resolve(val);
-			},
-			reject: function (ex) {
-				self.rejected = ex;
-				reject(ex);
-			}
-		}
+		this.then = function (resolved, rejected) {
+			then(resolved, rejected);
+			return self;
+		};
+		this.resolve = function (val) {
+			self.resolved = val;
+			resolve(val);
+		};
+		this.reject = function (ex) {
+			self.rejected = ex;
+			reject(ex);
+		};
 
 	}
 
 	function ResourceDef (name) {
-		var promise = Promise();
-		promise.name = name;
-		return promise;
+		Promise.apply(this);
+		this.name = name;
 	}
 
 	function endsWithSlash (str) {
@@ -360,9 +356,8 @@
 
 	function resolveResDef (def, args, ctx) {
 
-		if (debug) {
-			debugIndent += '\t';
-			console && console.log(debugIndent + 'curl: resolving', def.name, debugIndent.length);
+		if (debug && console) {
+			console.log('curl: resolving', def.name);
 		}
 
 		// if a module id has been remapped, it will have a baseName
@@ -375,15 +370,13 @@
 					// node.js assumes `this` === exports
 					// anything returned overrides exports
 					var res = args.res.apply(childCtx.vars.exports, deps) || childCtx.vars.exports;
-					if (debug) {
-						console && console.log(debugIndent + 'curl: defined', def.name, res.toString().substr(0, 50).replace(/\n/, ' '), debugIndent.length);
-						debugIndent = debugIndent.slice(0, -1);
+					if (debug && console) {
+						console.log('curl: defined', def.name, res.toString().substr(0, 50).replace(/\n/, ' '));
 					}
 				}
 				catch (ex) {
 					def.reject(ex);
 				}
-				def.resolved = true;
 				def.resolve(res);
 			},
 			def.reject
@@ -463,7 +456,7 @@
 					pluginDef.baseName = prefixPath;
 					fetchResDef(pluginDef, ctx);
 				}
-				def = new ResourceDef(resName);
+				def = new ResourceDef(name);
 				// resName could be blank if the plugin doesn't specify a name (e.g. "domReady!")
 				if (resName) {
 					cache[name] = def;
@@ -478,7 +471,7 @@
 						loaded['resolve'] = loaded;
 						loaded['reject'] = def.reject;
 						// load the resource!
-						plugin.load(def.name, ctx.require, loaded, userCfg);
+						plugin.load(resName, ctx.require, loaded, userCfg);
 					},
 					def.reject
 				);
@@ -619,9 +612,12 @@
 			api['next'] = function (names, cb) {
 				var origPromise = promise;
 				promise = new Promise();
+				// wait for the previous promise
 				origPromise.then(
-					// get dependencies and then resolve the previous promise
-					function () { ctx.require(names, promise, ctx); }
+					// get dependencies and then resolve the current promise
+					function () { ctx.require(names, promise, ctx); },
+					// fail the current promise
+					function (ex) { promise.reject(ex); }
 				);
 				// execute this callback after dependencies
 				if (cb) {
@@ -663,7 +659,12 @@
 				def = cache[name] = new ResourceDef(name);
 			}
 			def.useNet = false;
-			resolveResDef(def, args, begetCtx(name));
+			// check if this resource has already been resolved (can happen if
+			// a module was defined inside a built file and outside of it and
+			// dev didn't coordinate it explicitly)
+			if (!('resolved' in def)) {
+				resolveResDef(def, args, begetCtx(name));
+			}
 		}
 
 	}
