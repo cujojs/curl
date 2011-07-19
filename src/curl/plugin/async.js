@@ -1,4 +1,5 @@
 /*
+	(c) copyright 2011, unscriptable.com / John M. Hann
 
 	async plugin takes another module as it's resource and defers callback
 	until that module is complete.  the module must return a promise-like

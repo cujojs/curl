@@ -35,7 +35,7 @@ define(['require'], function (require) {
 		function count () {
 			totalWaiting = 0;
 			for (var p in cache) {
-				if (cache[p].resolved) totalWaiting++;
+				if ('resolved' in cache[p]) totalWaiting++;
 			}
 		}
 		count();
@@ -43,7 +43,7 @@ define(['require'], function (require) {
 		function periodicLogger () {
 			count();
 			if (prevTotal != totalWaiting) {
-				console.log('curl: modules waiting: ' + totalWaiting);
+				console.log('curl: ********** modules waiting: ' + totalWaiting);
 			}
 			prevTotal = totalWaiting;
 			setTimeout(periodicLogger, 500);
