@@ -1,29 +1,29 @@
-curl (Cujo Resource Loader)
+curl (cujo resource loader)
 =====================
 
-version 0.4.4
+version 0.5
 
 What's New?
 
+* dojo 1.6 support has been moved to separate module (curl/dojo16Compat)
+* curl/domReady now returns a callback function (not a promise)
+* new async! plugin to allow a module to defer definition
+* new css! plugin that inlines css into javascript when used with cram
+* cram (AMD builder) support (css! and async! plugins)
 * `require` is no longer an alias for `curl` unless you set the
-  apiName:'require' config param
-* dojo 1.6 support was moved to a separate module and/or built curl.js
+  `apiName` config param to "require"
+* configuration parameters for plugins are now defined in a sub-object
+  of the main config object: { css: { cssOption: true } }
 * Fixed !order option for js! plugin in non-Firefox browsers (0.4.3)
 * Fixed the compiled version in 0.4.2 (dist/ folder)
 * Several fixes to path and package mapping were made in 0.4.1
-* CommonJS Modules 1.1
-* CommonJS Packages 1.1
-* dojo 1.6 support (dojo relies on non-standard RequireJS features)
-* node.js support (when module is wrapped in a define())
-* require(dep) as an RValue (needed or dojo and node)
-* !noexec suffix for js! plugin (load, but don't execute)
-* !wait suffix was renamed to !order (and semantics were changed)
-* async=false
 
 TODO:
 
-* finish i18n plugin (eta: June)
+* configuration options per package
+* finish i18n plugin (eta: August 1)
 * create dojo 1.6 tests
+* document plugin configuration options and how to use plugins
 * notes about using JSONP (it works for objects, arrays, functions, numbers
   and strings! use ?callback=define)
 * use CommonJS file structure (lib/ instead of src/)
@@ -34,15 +34,19 @@ What is curl.js?
 ================
 
 curl.js is a small and very fast AMD-compliant asynchronous loader.
-Size: 4.2KB (2.1KB gzipped) using Google's Closure Compiler.
+Size: 4.6KB (2.5KB gzipped) using Google's Closure Compiler.
 
 If you'd like to use curl.js for non-AMD modules (ordinary javascript files),
 you'll want to  use the version with the js! plugin built in.  You may also
 want to build-in the domReady module.  The combined curl+js+domReady loader
-is still only 6.0KB (2.7KB gzipped).
+is still only 6.4KB (3KB gzipped).
 
 What the heck is "cujo"?  cujo.js is a web app development platform.
 See the bottom of this file for more info.
+
+What is "cram"? cram (cujo resource assembler) is the build tool companion to
+curl.js.  You use cram to compile all of your modules into a small number of
+javascript files which are loaded much faster into the browsers.
 
 ----------------------------------------
 
@@ -96,12 +100,12 @@ Specify configuration options, load dependencies, and execute callback.
 * callback: Function to receive modules or resources
 
 ---------
-	curl(['domReady', 'dep2', 'dep3' /* etc */])
+	curl(['domReady!', 'dep2', 'dep3' /* etc */])
 		.then(
 			callback,
 			errorback
 		);
-	curl(['dep1', 'dep2', 'domReady' /* etc */], function (dep1, dep2) {
+	curl(['dep1', 'dep2', 'domReady!' /* etc */], function (dep1, dep2) {
 		// do something here
 	});
 
@@ -112,7 +116,7 @@ all dependencies have loaded.
 * errorback: Function to call if an exception occurred while loading
 
 ---------
-	curl(['domReady', 'js!nonAMD.js!order', 'js!another.js!order']), function (domReady) {
+	curl(['domReady!', 'js!nonAMD.js!order', 'js!another.js!order']), function () {
 		/* do something cool here */
 	});
 
@@ -125,7 +129,7 @@ before executing.
 		.next(['dep1', 'dep2', 'dep3'], function (dep1, dep2, dep3) {
 			// do something before the dom is ready
 		})
-		.next(['domReady'])
+		.next(['domReady!'])
 		.then(
 			function () {
 				// do something after the dom is ready
@@ -212,7 +216,7 @@ Very Simple Example
 				'cssx/css!stuff/base', // a css file
 				'i18n!stuff/nls/strings', // a translation file
 				'text!stuff/template.html', // an html template
-				'curl/domReady'
+				'domReady!'
 			]
 		)
 		// when they are loaded
@@ -527,12 +531,9 @@ pluginPath config option, you can use its full path or you can specify a path
 for it in curl's paths config object.
 
 	// example of a fully-pathed plugin under the cssx folder
-	define(['cssx/cssx!myCssFile'], function (cssxDef) {
+	define(['/css!myCssFile'], function (cssxDef) {
 		// do some awesome css stuff here
 	});
-
-(cssx is the Cujo Style Sheet eXtender AMD plugin that repairs browser css
-deficiencies on-the-fly.)
 
 Plugins can also have configuration options. Global options can be specified
 on curl's configuration object. Options can also be supplied to plugins via
@@ -540,7 +541,7 @@ suffixes. Suffixes are also delineated by the ! symbol. Here's an example of
 a plugin using options:
 
 	// don't try to repair IE6-8 opacity issues in my css file
-	define(['cssx/cssx!myCssFile!ignore:opacity'], function (cssxDef) {
+	define(['css!myCssFile!ignore:opacity'], function (cssxDef) {
 		// do some awesome css stuff here
 	});
 
@@ -643,7 +644,6 @@ libs include:
 
 [canhaz](https://github.com/briancavalier/canhaz): a project and code bootstrapping tool that will save you tons of typing.
 [wire](https://github.com/briancavalier/wire): an application bootstrap, configuration, and assembly tool based on the principles of Inversion of Control, and Dependency Injection.
-[cssx](https://github.com/unscriptable/cssx): library for extending css in older browsers
 [cram](https://github.com/unscriptable/cram): a [forthcoming] javascript compressor, concatenator, and optimizer meant to be used with curl.js
 
 Kudos
