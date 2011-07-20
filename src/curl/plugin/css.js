@@ -308,6 +308,11 @@
 			allCssText = createStyle.accum.join('\n');
 			createStyle.accum = undef;
 
+			// for safari which chokes on @charset "UTF-8";
+			allCssText = allCssText.replace(/.+charset[^;]+;/g, '');
+
+			// TODO: hoist all @imports to the top of the file to follow w3c spec
+
 			'cssText' in style ? style.cssText = allCssText :
 				style.appendChild(doc.createTextNode(allCssText));
 				
@@ -388,43 +393,43 @@
 			}
 			else {
 
-			// `after` will become truthy once the loop executes a second time
-			for (var i = resources.length - 1, after; i >= 0; i--, after = true) {
+				// `after` will become truthy once the loop executes a second time
+				for (var i = resources.length - 1, after; i >= 0; i--, after = true) {
 
-				resourceId = resources[i];
+					resourceId = resources[i];
 
-				var
-					// TODO: this is a bit weird: find a better way to extract name?
-					opts = parseSuffixes(resourceId),
-					name = opts.shift(),
-					url = require['toUrl'](nameWithExt(name, 'css')),
-					link = createLink(doc),
-					nowait = 'nowait' in opts ? opts['nowait'] != 'false' : !!config['cssDeferLoad'],
-					params = {
-						link: link,
-						url: url,
-						wait: config['cssWatchPeriod'] || 50
-					};
+					var
+						// TODO: this is a bit weird: find a better way to extract name?
+						opts = parseSuffixes(resourceId),
+						name = opts.shift(),
+						url = require['toUrl'](nameWithExt(name, 'css')),
+						link = createLink(doc),
+						nowait = 'nowait' in opts ? opts['nowait'] != 'false' : !!config['cssDeferLoad'],
+						params = {
+							link: link,
+							url: url,
+							wait: config['cssWatchPeriod'] || 50
+						};
 
-				if (nowait) {
-					callback(createSheetProxy(link.sheet || link.styleSheet));
+					if (nowait) {
+						callback(createSheetProxy(link.sheet || link.styleSheet));
+					}
+					else {
+						// hook up load detector(s)
+						loadDetector(params, loaded);
+					}
+
+					// go!
+					link.href = url;
+
+					if (after) {
+						head.insertBefore(link, insertedSheets[after].previousSibling);
+					}
+					else {
+						head.appendChild(link);
+					}
+					insertedSheets[url] = link;
 				}
-				else {
-					// hook up load detector(s)
-					loadDetector(params, loaded);
-				}
-
-				// go!
-				link.href = url;
-
-				if (after) {
-					head.insertBefore(link, insertedSheets[after].previousSibling);
-				}
-				else {
-					head.appendChild(link);
-				}
-				insertedSheets[url] = link;
-			}
 
 			}
 
@@ -446,20 +451,20 @@
 				absId = resolver['toAbsMid'](name);
 				if (!(absId in built)) {
 					built[absId] = true;
-				url = resolver['toUrl'](nameWithExt(absId, 'css'));
-				// fetch text
-				text = jsEncode(fetcher(url));
-				// write out a define
-				// TODO: wait until sheet's rules are active before returning (use an amd promise)
-				// TODO: fix parser so that it doesn't choke on the word define( in a string
-				output = 'def' + 'ine("' + pluginId + '!' + absId + '", ["' + pluginId + '!"], function (api) {\n' +
-					// translate urls
-					'\tvar cssText = "' + text + '";\n' +
-					'\tcssText = api.translateUrls(cssText, "' + absId + '");\n' +
-					// call the injectStyle function
-					'\treturn api.proxySheet(api.injectStyle(cssText));\n' +
-				'});\n';
-				writer(output);
+					url = resolver['toUrl'](nameWithExt(absId, 'css'));
+					// fetch text
+					text = jsEncode(fetcher(url));
+					// write out a define
+					// TODO: wait until sheet's rules are active before returning (use an amd promise)
+					// TODO: fix parser so that it doesn't choke on the word define( in a string
+					output = 'def' + 'ine("' + pluginId + '!' + absId + '", ["' + pluginId + '!"], function (api) {\n' +
+						// translate urls
+						'\tvar cssText = "' + text + '";\n' +
+						'\tcssText = api.translateUrls(cssText, "' + absId + '");\n' +
+						// call the injectStyle function
+						'\treturn api.proxySheet(api.injectStyle(cssText));\n' +
+					'});\n';
+					writer(output);
 				}
 			};
 		}

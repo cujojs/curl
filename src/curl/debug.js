@@ -15,50 +15,35 @@
  */
 (function (global) {
 
-define(function (require) {
+define(['require'], function (require) {
 
-	var curl = require['curl'],
-		cache = curl['cache'],
-		listen = curl['listen'],
-		apiName = curl['cfg']['apiName'] || 'curl',
-		totalWaiting = 0,
-		prevTotal;
+	var curl, cache, totalWaiting, prevTotal;
 
-	if (!curl || !listen) {
+	curl = require['curl'];
+
+	if (!curl) {
 		throw new Error('You must also enable debugging via the debug:true config param.');
 	}
 	else if (typeof console == 'undefined') {
-		throw new Error('No console to output debug info.');
+		throw new Error('`console` object must be defined to use debug module.');
 	}
 	else {
+
+		cache = curl['cache'];
+		totalWaiting = 0;
 
 		function count () {
 			totalWaiting = 0;
 			for (var p in cache) {
-				if (cache[p].resolved) totalWaiting++;
+				if ('resolved' in cache[p]) totalWaiting++;
 			}
 		}
 		count();
 
-		listen('_define', function () {
-			var args = [].slice.apply(arguments).join(', ');
-			console.log('curl: define(' + args + ');');
-		});
-
-		listen('_require', function () {
-			var args = [].slice.apply(arguments).join(', ');
-			console.log('curl: require(' + args + ');');
-		});
-
-		listen('_curl', function () {
-			var args = [].slice.apply(arguments).join(', ');
-			console.log('curl: ' + apiName + '(' + args + ');');
-		});
-
 		function periodicLogger () {
 			count();
 			if (prevTotal != totalWaiting) {
-				console.log('curl: modules waiting: ' + totalWaiting);
+				console.log('curl: ********** modules waiting: ' + totalWaiting);
 			}
 			prevTotal = totalWaiting;
 			setTimeout(periodicLogger, 500);

@@ -19,7 +19,7 @@
 (function (global) {
 
 	// satisfy loader:
-	define(/*=='curl/dojo16Compat',==*/ function () {
+	define(/*=='curl/dojo16Compat',==*/ ['./domReady'], function (domReady) {
 
 		// TODO: figure out a better way to grab global curl
 		// we should probably just add "curl" as a dependency (???)
@@ -29,23 +29,24 @@
 		function duckPunchRequire (req) {
 			if (!req['ready']){
 				req['ready'] = function (cb) {
-					curl(['domReady!'], cb);
+					domReady(cb);
 				};
 			}
 			if (!req['nameToUrl']) {
 				req['nameToUrl'] = function (name, ext) {
 					// map non-standard nameToUrl to toUrl
-					return req['toUrl'](name) + (ext || '');
+					return req['toUrl'](name + (ext || ''));
 				};
 			}
 			return req;
 		}
 
-		// modify global curl
+		// modify global curl cuz dojo doesn't always use standard `require`
+		// as a dependency
 		duckPunchRequire(curl);
 
 		global['define'] = function () {
-			var args, len, names, reqPos = [], defFunc, i;
+			var args, len, names, reqPos = [], defFunc, i, needsDomReady;
 			// find dependency array
 			args = [].slice.call(arguments);
 			len = args.length;
@@ -58,6 +59,7 @@
 					if (names[i] == 'require') {
 						reqPos.push(i);
 					}
+//					needsDomReady = needsDomReady || names[i] == 'dojo/_base/html';
 				}
 				// if there are any
 				if (reqPos.length > 0) {
@@ -71,6 +73,10 @@
 						return defFunc.apply(this, deps);
 					};
 				}
+				// if we need to fix dojo's domReady bugs
+//				if (needsDomReady) {
+//					names.push('domReady!');
+//				}
 			}
 			return define.apply(null, args);
 		};

@@ -12,12 +12,12 @@
  *
  */
 
-define(/*=='domReady',==*/ ['require'], function (require) {
+define(/*=='domReady',==*/ ['../domReady'], function (domReady) {
 
 	return {
 
 		'load': function (name, req, cb, cfg) {
-			require(['curl/domReady'], cb);
+			domReady(cb);
 		}
 
 	};

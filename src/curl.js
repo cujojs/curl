@@ -61,7 +61,7 @@
 		aslice = [].slice,
 		// RegExp's used later, "cached" here
 		absUrlRx = /^\/|^[^:]*:\/\//,
-		normalizeRx = /^\.(\/|$)/,
+		normalizeRx = /^(\.)(\.)?(\/|$)/,
 		findSlashRx = /\//,
 		hasExtRx = /\.\w+$/,
 		pathSearchRx,
@@ -72,7 +72,8 @@
 		defaultDescriptor = {
 			main: './lib/main',
 			lib: './lib'
-		};
+		},
+		debug;
 
 	function isType (obj, type) {
 		return toString.call(obj).indexOf('[object ' + type) == 0;
@@ -103,6 +104,14 @@
 		var p, pStrip, path, pathList = [];
 
 		baseUrl = cfg['baseUrl'] || '';
+
+		if (cfg['debug']) {
+			debug = true;
+			// add debugging aides
+			_curl['cache'] = cache;
+			_curl['cfg'] = cfg;
+			_curl['undefine'] = function (moduleId) { delete cache[moduleId]; };
+		}
 
 		// fix all paths
 		var cfgPaths = cfg['paths'];
@@ -145,7 +154,10 @@
 			ctx = {
 				baseName: baseName
 			},
-			exports = {};
+			exports = {},
+			require = function (deps, callback) {
+				return _require(deps, callback || noop, ctx);
+			};
 		// CommonJS Modules 1.1.1 compliance
 		ctx.vars = {
 			exports: exports,
@@ -153,17 +165,14 @@
 				'id': normalizeName(name, baseName),
 				'uri': toUrl(name),
 				exports: exports
-			},
-			require: function (deps, callback) {
-				return _require(deps, callback || noop, ctx);
 			}
 		};
-		ctx.require = ctx.vars.require;
-		if (userCfg['debug']) {
-			ctx.require['curl'] = _curl;
+		if (debug) {
+			require['curl'] = _curl;
 		}
+		ctx.require = ctx.vars.require = require;
 		// using bracket property notation so closure won't clobber name
-		ctx.require['toUrl'] = toUrl;
+		require['toUrl'] = toUrl;
 		
 		return ctx;
 	}
@@ -198,27 +207,24 @@
 			}
 		}
 
-		return {
-			then: function (resolved, rejected) {
-				then(resolved, rejected);
-				return self;
-			},
-			resolve: function (val) {
-				self.resolved = val;
-				resolve(val);
-			},
-			reject: function (ex) {
-				self.rejected = ex;
-				reject(ex);
-			}
-		}
+		this.then = function (resolved, rejected) {
+			then(resolved, rejected);
+			return self;
+		};
+		this.resolve = function (val) {
+			self.resolved = val;
+			resolve(val);
+		};
+		this.reject = function (ex) {
+			self.rejected = ex;
+			reject(ex);
+		};
 
 	}
 
 	function ResourceDef (name) {
-		var promise = Promise();
-		promise.name = name;
-		return promise;
+		Promise.apply(this);
+		this.name = name;
 	}
 
 	function endsWithSlash (str) {
@@ -350,14 +356,27 @@
 
 	function resolveResDef (def, args, ctx) {
 
-		var childCtx = begetCtx(def.name);
+		if (debug && console) {
+			console.log('curl: resolving', def.name);
+		}
+
+		// if a module id has been remapped, it will have a baseName
+		var childCtx = begetCtx(def.baseName || def.name);
 
 		// get the dependencies and then resolve/reject
 		getDeps(def, args.deps, childCtx,
 			function (deps) {
-				// node.js assumes `this` === exports
-				// anything returned overrides exports
-				var res = args.res.apply(childCtx.vars.exports, deps) || childCtx.vars.exports;
+				try {
+					// node.js assumes `this` === exports
+					// anything returned overrides exports
+					var res = args.res.apply(childCtx.vars.exports, deps) || childCtx.vars.exports;
+					if (debug && console) {
+						console.log('curl: defined', def.name, res.toString().substr(0, 50).replace(/\n/, ' '));
+					}
+				}
+				catch (ex) {
+					def.reject(ex);
+				}
 				def.resolve(res);
 			},
 			def.reject
@@ -403,7 +422,10 @@
 
 	function normalizeName (name, baseName) {
 		// if name starts with . then use parent's name as a base
-		return name.replace(normalizeRx, baseName + '/');
+		// if name starts with .. then use parent's parent
+		return name.replace(normalizeRx, function (match, dot1, dot2) {
+			return (dot2 ? baseName.substr(0, baseName.lastIndexOf('/')) : baseName) + '/';
+		});
 	}
 
 	function fetchDep (depName, ctx) {
@@ -427,14 +449,14 @@
 			// the spec is unclear, so we're using the full name (prefix + name) to id resources
 			def = cache[name];
 			if (!def) {
-				//var pathInfo = resolvePath(resName, baseUrl);
 				var pluginDef = cache[prefix];
 				if (!pluginDef) {
 					pluginDef = cache[prefix] = new ResourceDef(prefix);
 					pluginDef.url = resolveUrl(prefixPath, baseUrl);
-					fetchResDef(pluginDef, ctx)
+					pluginDef.baseName = prefixPath;
+					fetchResDef(pluginDef, ctx);
 				}
-				def = new ResourceDef(resName);
+				def = new ResourceDef(name);
 				// resName could be blank if the plugin doesn't specify a name (e.g. "domReady!")
 				if (resName) {
 					cache[name] = def;
@@ -449,7 +471,7 @@
 						loaded['resolve'] = loaded;
 						loaded['reject'] = def.reject;
 						// load the resource!
-						plugin.load(def.name, ctx.require, loaded, userCfg);
+						plugin.load(resName, ctx.require, loaded, userCfg);
 					},
 					def.reject
 				);
@@ -562,7 +584,8 @@
 
 		// extract config, if it's specified
 		if (isType(args[0], 'Object')) {
-			extractCfg(args.shift());
+			userCfg = args.shift();
+			extractCfg(userCfg);
 		}
 
 		// extract dependencies
@@ -589,9 +612,12 @@
 			api['next'] = function (names, cb) {
 				var origPromise = promise;
 				promise = new Promise();
+				// wait for the previous promise
 				origPromise.then(
-					// get dependencies and then resolve the previous promise
-					function () { ctx.require(names, promise, ctx); }
+					// get dependencies and then resolve the current promise
+					function () { ctx.require(names, promise, ctx); },
+					// fail the current promise
+					function (ex) { promise.reject(ex); }
 				);
 				// execute this callback after dependencies
 				if (cb) {
@@ -633,14 +659,19 @@
 				def = cache[name] = new ResourceDef(name);
 			}
 			def.useNet = false;
-			resolveResDef(def, args, begetCtx(name));
+			// check if this resource has already been resolved (can happen if
+			// a module was defined inside a built file and outside of it and
+			// dev didn't coordinate it explicitly)
+			if (!('resolved' in def)) {
+				resolveResDef(def, args, begetCtx(name));
+			}
 		}
 
 	}
 
 	/***** grab any global configuration info *****/
 
-	// if userCfg is a function, assume require() exists already
+	// if userCfg is a function, assume curl() exists already
 	var conflict = isType(userCfg, 'Function');
 	if (!conflict) {
 		extractCfg(userCfg);
@@ -654,14 +685,6 @@
 	}
 	else {
 		global['curl'] = _curl;
-	}
-
-	if (userCfg['debug']) {
-		_curl['cache'] = _require['cache'] = cache;
-		_curl['cfg'] = _require['cfg'] = userCfg;
-		_curl['listen'] = function (which, callback) {
-			eval('var orig=which;which=function(){callback.apply(null,arguments);return orig.apply(null,arguments);};');
-		};
 	}
 
 	// using bracket property notation so closure won't clobber name
