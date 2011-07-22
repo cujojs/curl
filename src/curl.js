@@ -25,7 +25,7 @@
 	 */
 
 	/*
-	 * Paths in 0.5:
+	 * Paths in 0.6:
 	 * Use cases (most common first):
 	 * -  "my package is located at this url" (url / location or package)
 	 * -  "I want all text! plugins to use the module named x/text" (module id)
@@ -41,7 +41,7 @@
 	 */
 
 	var
-		version = '0.4.5',
+		version = '0.5',
 		head = doc['head'] || doc.getElementsByTagName('head')[0],
 		// configuration information
 		baseUrl,

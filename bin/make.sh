@@ -1,14 +1,16 @@
+#!/bin/sh
 # grab the output file
 out=$1
+tmpfile=$(mktemp -t cram.XXXXXX)
 
 # use all of the remaining parameters as files to be concatenated
 shift
 
 # concatenate all of the files to a temp file
-cat $@ | sed -e "s:\/\*==::g" -e "s:==\*\/::g" > curl-temp.js
+cat $@ | sed -e "s:\/\*==::g" -e "s:==\*\/::g" > "$tmpfile"
 
 # compile them to the output file
-./compile.sh curl-temp.js > $out
+./compile.sh "$tmpfile" > "$out"
 
 # remove the temporary concatenated file
-rm curl-temp.js
+rm "$tmpfile"
