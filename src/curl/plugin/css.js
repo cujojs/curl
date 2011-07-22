@@ -344,7 +344,7 @@
 	function jsEncode (text) {
 		// TODO: hoist the map and regex to the enclosing scope for better performance
 		var map = { 34: '\\"', 13: '\\r', 12: '\\f', 10: '\\n', 9: '\\t', 8: '\\b' };
-		return text.replace(/(["|\n|\f|\t|\r|\b])/g, function (c) {
+		return text.replace(/(["\n\f\t\r\b])/g, function (c) {
 			return map[c.charCodeAt(0)];
 		});
 	}
