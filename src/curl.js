@@ -177,17 +177,17 @@
 			};
 		// CommonJS Modules 1.1.1 compliance
 		ctx.vars = {
-			exports: exports,
-			module: {
+			'exports': exports,
+			'module': {
 				'id': normalizeName(name, baseName),
 				'uri': toUrl(name),
-				exports: exports
+				'exports': exports
 			}
 		};
 		if (debug) {
 			require['curl'] = _curl;
 		}
-		ctx.require = ctx.vars.require = require;
+		ctx.require = ctx.vars['require'] = require;
 		// using bracket property notation so closure won't clobber name
 		require['toUrl'] = toUrl;
 		
@@ -386,7 +386,7 @@
 				try {
 					// node.js assumes `this` === exports
 					// anything returned overrides exports
-					var res = args.res.apply(childCtx.vars.exports, deps) || childCtx.vars.exports;
+					var res = args.res.apply(childCtx.vars['exports'], deps) || childCtx.vars['exports'];
 					if (debug && console) {
 						console.log('curl: defined', def.name, res.toString().substr(0, 50).replace(/\n/, ' '));
 					}
