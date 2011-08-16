@@ -63,7 +63,7 @@
 		absUrlRx = /^\/|^[^:]*:\/\//,
 		normalizeRx = /^(\.)(\.)?(\/|$)/,
 		findSlashRx = /\//,
-		hasExtRx = /\.\w+$/,
+		hasExtRx = /\.\w+($|[?#])/,
 		pathSearchRx,
 		// script ready states that signify it's loaded
 		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
