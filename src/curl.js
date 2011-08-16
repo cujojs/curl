@@ -41,7 +41,7 @@
 	 */
 
 	var
-		version = '0.5',
+		version = '0.5.1',
 		head = doc['head'] || doc.getElementsByTagName('head')[0],
 		// configuration information
 		baseUrl,

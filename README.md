@@ -1,22 +1,29 @@
 curl (cujo resource loader)
 =====================
 
-version 0.5
+version 0.5.1
 
 What's New?
 
-* dojo 1.6 support has been moved to separate module (curl/dojo16Compat)
-* curl/domReady now returns a callback function (not a promise)
-* new async! plugin to allow a module to defer definition
-* new css! plugin that inlines css into javascript when used with cram
-* cram (AMD builder) support (css! and async! plugins)
-* `require` is no longer an alias for `curl` unless you set the
-  `apiName` config param to "require"
-* configuration parameters for plugins are now defined in a sub-object
-  of the main config object: { css: { cssOption: true } }
-* Fixed !order option for js! plugin in non-Firefox browsers (0.4.3)
-* Fixed the compiled version in 0.4.2 (dist/ folder)
-* Several fixes to path and package mapping were made in 0.4.1
+* 0.5.1:
+	* fixes to domReady! in the compiled dist/ versions and
+	* fixes for commonjs compatibility caused by google-closure in dist/
+	  versions
+	* support for parent module ids (../sibling-of-parent)
+* 0.5:
+	* dojo 1.6 support has been moved to separate module (curl/dojo16Compat)
+	* curl/domReady now returns a callback function (not a promise)
+	* new async! plugin to allow a module to defer definition
+	* new css! plugin that inlines css into javascript when used with cram
+	* cram (AMD builder) support (css! and async! plugins)
+	* `require` is no longer an alias for `curl` unless you set the
+	  `apiName` config param to "require"
+	* configuration parameters for plugins are now defined in a sub-object
+	  of the main config object: { css: { cssOption: true } }
+* earlier:
+	* Fixed !order option for js! plugin in non-Firefox browsers (0.4.3)
+	* Fixed the compiled version in 0.4.2 (dist/ folder)
+	* Several fixes to path and package mapping were made in 0.4.1
 
 TODO:
 
