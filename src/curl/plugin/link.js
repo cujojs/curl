@@ -8,7 +8,7 @@
 /*
  * curl link! plugin
  * This plugin will load css files as <link> elements.  It does not wait for
- * css file to finish loading or evaluating before executing dependent modules.
+ * css file to finish loading / evaluating before executing dependent modules.
  * This plugin also does not handle IE's 31-stylesheet limit.
  * If you need any of the above behavior, use curl's css! plugin instead.
  *
@@ -33,8 +33,6 @@
 
 	var
 		// compressibility shortcuts
-		onreadystatechange = 'onreadystatechange',
-		onload = 'onload',
 		createElement = 'createElement',
 		// doc will be undefined during a build
 		doc = global.document,
@@ -54,64 +52,12 @@
 
 /***** style element functions *****/
 
-	function createLink (doc, optHref) {
+	function createLink (doc, href) {
 		var link = doc[createElement]('link');
 		link.rel = "stylesheet";
 		link.type = "text/css";
-		if (optHref) {
-			link.href = optHref;
-		}
+		link.href = href;
 		return link;
-	}
-
-	function createSheetProxy (sheet) {
-		var insertRule, deleteRule;
-
-		insertRule = function (text, index) {
-			if (sheet.insertRule) {
-				// W3C
-				insertRule = function (text, index) {
-					return sheet.insertRule(text, index);
-				};
-			}
-			else {
-				// IE
-				insertRule = function (text, index) {
-					var parts = text.split(/\{|\}/g);
-					sheet.addRule(parts[0], parts[1], index);
-					return index;
-				};
-			}
-			return insertRule(text, index);
-		};
-
-		deleteRule = function (index) {
-			if (sheet.deleteRule) {
-				// W3C
-				deleteRule = function (index) {
-					return sheet.deleteRule(index);
-				};
-			}
-			else {
-				// IE
-				deleteRule = function (index) {
-					sheet.removeRule(index);
-					return index;
-				}
-			}
-			return deleteRule(index);
-		};
-
-		return {
-			insertRule: insertRule,
-			deleteRule: deleteRule,
-			cssRules: function () {
-				return sheet.cssRules || sheet.rules;
-			},
-			sheet: function () {
-				return sheet;
-			}
-		};
 	}
 
 /***** finally! the actual plugin *****/
@@ -119,23 +65,13 @@
 	define(/*=='link',==*/ {
 
 		'load': function (resourceId, require, callback, config) {
-			var resources, i;
+				var url, link;
 
-			resources = (resourceId || '').split(",");
-
-			for (i = resources.length - 1; i >= 0; i--) {
-				var name, url, link;
-
-				name = resources[i];
-				url = require['toUrl'](nameWithExt(name, 'css'));
-				link = createLink(doc);
-
-				link.href = url;
+				url = require['toUrl'](nameWithExt(resourceId, 'css'));
+				link = createLink(doc, url);
 				head.appendChild(link);
 
-				callback(createSheetProxy(link.sheet || link.styleSheet));
-
-			}
+				callback(link.sheet || link.styleSheet);
 
 		}
 
