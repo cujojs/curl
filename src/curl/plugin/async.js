@@ -30,7 +30,7 @@
 	});
 
 */
-define(function () {
+define(/*=='async',==*/ function () {
 
 	return {
 

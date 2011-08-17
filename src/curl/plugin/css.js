@@ -351,7 +351,7 @@
 
 /***** finally! the actual plugin *****/
 
-	define({
+	define(/*=='css',==*/ {
 
 		'load': function (resourceId, require, callback, config) {
 				var resources = (resourceId || '').split(","),
