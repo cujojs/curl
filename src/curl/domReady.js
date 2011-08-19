@@ -6,7 +6,7 @@
  * 		http://www.opensource.org/licenses/mit-license.php
  *
  * usage:
- *  require(['ModuleA'], function (ModuleA, domReady) {
+ *  require(['ModuleA', 'curl/domReady'], function (ModuleA, domReady) {
  * 		var a = new ModuleA();
  * 		document.body.appendChild(a.domNode);
  * 	});
@@ -20,7 +20,7 @@
 	var
 		readyState = 'readyState',
 		// keep these quoted so closure compiler doesn't squash them
-		readyStates = { 'loaded': 1, /*'interactive': 1,*/ 'complete': 1 },
+		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
 		callbacks = [],
 		fixReadyState = typeof doc[readyState] != "string",
 		// IE needs this cuz it won't stop setTimeout if it's already queued up
