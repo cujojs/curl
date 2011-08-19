@@ -696,13 +696,13 @@
 
 	/***** define public API *****/
 
-	// allow curl to be renamed
-	if (userCfg['apiName']) {
-		global[userCfg['apiName']] = _curl;
-	}
-	else {
-		global['curl'] = _curl;
-	}
+	// allow curl to be renamed and added to a specified context
+	var apiName, apiContext;
+
+	apiName = userCfg['apiName'] || 'curl';
+	apiContext = userCfg['apiContext'] || global;
+
+	apiContext[apiName] = _curl;
 
 	// using bracket property notation so closure won't clobber name
 	global['define'] = _curl['define'] = _define;
