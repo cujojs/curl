@@ -649,9 +649,9 @@ out of cujo.js.  Our goal is to make the advanced concepts in cujo.js more
 palatable by breaking them down into easier-to-grok chunks.  Other cujo.js
 libs include:
 
-[canhaz](https://github.com/briancavalier/canhaz): a project and code bootstrapping tool that will save you tons of typing.
-[wire](https://github.com/briancavalier/wire): an application bootstrap, configuration, and assembly tool based on the principles of Inversion of Control, and Dependency Injection.
-[cram](https://github.com/unscriptable/cram): a [forthcoming] javascript compressor, concatenator, and optimizer meant to be used with curl.js
+* [canhaz](https://github.com/briancavalier/canhaz): a project and code bootstrapping tool that will save you tons of typing.
+* [wire](https://github.com/briancavalier/wire): A light, fast, flexible Javascript IOC container
+* [cram](https://github.com/unscriptable/cram): a [forthcoming] javascript compressor, concatenator, and optimizer meant to be used with curl.js
 
 Kudos
 =================
