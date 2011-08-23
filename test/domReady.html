@@ -22,24 +22,24 @@
 		}
 
 		// tester to see if the dom is really ready
-		var handle;
+		var handle, start;
+		start = new Date();
 		function isDomReady () {
 			return document.readyState in { 'loaded': 1, 'interactive': 1, 'complete': 1 };
 		}
 		function poller () {
 			var isReady = isDomReady();
-			console.log('it is ready?', isReady, document.readyState, new Date().getMilliseconds());
-			if (!isReady) setTimeout(poller, 10); else {
-				document.body.insertBefore(document.createTextNode('did this append?'), document.body.firstChild);
-			}
+			console.log('it is ready?', isReady, document.readyState, new Date() - start);
+			if (!isReady) setTimeout(poller, 10); 
 		}
-		console.log('dom should not be ready if false ==', isDomReady(), new Date().getMilliseconds());
+		console.log('dom should not be ready if false ==', isDomReady(), new Date() - start);
 		handle = setTimeout(poller, 10);
 
 		// go
 		curl({ baseUrl: '../src', debug: true }, ['domReady!'], function(domReady){
 			clearInterval(handle);
-			console.log('DOM Ready!', isDomReady(), new Date().getMilliseconds());
+			document.body.insertBefore(document.createTextNode('did this append?'), document.body.firstChild);
+			console.log('DOM Ready!', isDomReady(), new Date() - start);
 		});
 		
 	</script>

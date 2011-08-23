@@ -24,11 +24,12 @@
 	var
 		readyState = 'readyState',
 		// keep these quoted so closure compiler doesn't squash them
-		readyStates = { 'loaded': 1, 'complete': 1 },
+		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
 		callbacks = [],
 		fixReadyState = typeof doc[readyState] != "string",
 		// IE needs this cuz it won't stop setTimeout if it's already queued up
 		completed = false,
+		pollerTime = 30,
 		addEvent, remover, removers = [], pollerTO;
 
 	function ready () {
@@ -46,22 +47,27 @@
 	}
 
 	function checkDOMReady (e) {
-		if (!completed && readyStates[doc[readyState]]) {
+		var isready;
+		// all browsers except IE will be ready when readyState == 'interactive'
+		// so we also must check for document.body
+		// TODO: implement Diego Perini's IEContentLoaded?
+		isReady = readyStates[doc[readyState]] && doc.body;
+		if (!completed && isReady) {
 			ready();
 		}
+		return isReady;
 	}
 
 	function poller () {
 		checkDOMReady();
 		if (!completed) {
-			pollerTO = setTimeout(poller, 30);
+			pollerTO = setTimeout(poller, pollerTime);
 		}
 	}
 
 	// select the correct event listener function. all of our supported
 	// browsers will use one of these
 	if ('addEventListener' in global) {
-		readyStates['interactive'] = 1; // seriously bad browser inference
 		addEvent = function (node, event) {
 			node.addEventListener(event, checkDOMReady, false);
 			return function () { node.removeEventListener(event, checkDOMReady, false); };
@@ -75,10 +81,7 @@
 	}
 
 	if (doc) {
-		if (doc[readyState] in readyStates) {
-			ready();
-		}
-		else {
+		if (!checkDOMReady()) {
 			// add event listeners and collect remover functions
 			removers = [
 				addEvent(global, 'load'),
@@ -86,7 +89,7 @@
 				addEvent(global, 'DOMContentLoaded')
 			];
 			// additionally, poll for readystate
-			pollerTO = setTimeout(poller, 30);
+			pollerTO = setTimeout(poller, pollerTime);
 		}
 	}
 
