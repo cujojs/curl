@@ -8,8 +8,12 @@
  * usage:
  *  require(['ModuleA', 'curl/domReady'], function (ModuleA, domReady) {
  * 		var a = new ModuleA();
- * 		document.body.appendChild(a.domNode);
+ * 		domReady(function () {
+ * 			document.body.appendChild(a.domNode);
+ * 		});
  * 	});
+ *
+ * also: check out curl's domReady! plugin
  *
  * HT to Bryan Forbes who wrote the initial domReady code:
  * http://www.reigndropsfall.net/
@@ -20,7 +24,7 @@
 	var
 		readyState = 'readyState',
 		// keep these quoted so closure compiler doesn't squash them
-		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
+		readyStates = { 'loaded': 1, 'complete': 1 },
 		callbacks = [],
 		fixReadyState = typeof doc[readyState] != "string",
 		// IE needs this cuz it won't stop setTimeout if it's already queued up
@@ -55,29 +59,35 @@
 	}
 
 	// select the correct event listener function. all of our supported
-	// browser will use one of these
-	addEvent = ('addEventListener' in global) ?
-		function (node, event) {
+	// browsers will use one of these
+	if ('addEventListener' in global) {
+		readyStates['interactive'] = 1; // seriously bad browser inference
+		addEvent = function (node, event) {
 			node.addEventListener(event, checkDOMReady, false);
 			return function () { node.removeEventListener(event, checkDOMReady, false); };
-		} :
-		function (node, event) {
+		};
+	}
+	else {
+		addEvent = function (node, event) {
 			node.attachEvent('on' + event, checkDOMReady);
 			return function () { node.detachEvent(event, checkDOMReady); };
 		};
-
-	if (doc[readyState] == "complete") {
-		ready();
 	}
-	else {
-		// add event listeners and collect remover functions
-		removers = [
-			addEvent(global, 'load'),
-			addEvent(doc, 'readystatechange'),
-			addEvent(global, 'DOMContentLoaded')
-		];
-		// additionally, poll for readystate
-		pollerTO = setTimeout(poller, 30);
+
+	if (doc) {
+		if (doc[readyState] in readyStates) {
+			ready();
+		}
+		else {
+			// add event listeners and collect remover functions
+			removers = [
+				addEvent(global, 'load'),
+				addEvent(doc, 'readystatechange'),
+				addEvent(global, 'DOMContentLoaded')
+			];
+			// additionally, poll for readystate
+			pollerTO = setTimeout(poller, 30);
+		}
 	}
 
 	define(/*=='curl/domReady',==*/ function () {
