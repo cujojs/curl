@@ -1,10 +1,14 @@
 curl (cujo resource loader)
 =====================
 
-version 0.5.1
+version 0.5.2
 
 What's New?
 
+* 0.5.2
+	* faster domReady detection in non-IE browsers
+	* link! plugin for ultra-simple css loading (no waiting, no embedding)
+	* new apiContext config param to keep curl API off global object
 * 0.5.1:
 	* fixes to domReady! in the compiled dist/ versions and
 	* fixes for commonjs compatibility caused by google-closure in dist/
