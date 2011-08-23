@@ -32,12 +32,11 @@ What's New?
 TODO:
 
 * configuration options per package
-* finish i18n plugin (eta: August 1)
+* finish i18n plugin (eta: September)
 * create dojo 1.6 tests
 * document plugin configuration options and how to use plugins
 * notes about using JSONP (it works for objects, arrays, functions, numbers
   and strings! use ?callback=define)
-* use CommonJS file structure (lib/ instead of src/)
 
 ----------------------------------------
 
@@ -45,12 +44,12 @@ What is curl.js?
 ================
 
 curl.js is a small and very fast AMD-compliant asynchronous loader.
-Size: 4.6KB (2.5KB gzipped) using Google's Closure Compiler.
+Size: 4.7KB (2.3KB gzipped) using Google's Closure Compiler.
 
 If you'd like to use curl.js for non-AMD modules (ordinary javascript files),
 you'll want to  use the version with the js! plugin built in.  You may also
 want to build-in the domReady module.  The combined curl+js+domReady loader
-is still only 6.4KB (3KB gzipped).
+is still only 6.5KB (3KB gzipped).
 
 What the heck is "cujo"?  cujo.js is a web app development platform.
 See the bottom of this file for more info.
