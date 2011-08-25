@@ -63,7 +63,7 @@
 		absUrlRx = /^\/|^[^:]*:\/\//,
 		normalizeRx = /^(\.)(\.)?(\/|$)/,
 		findSlashRx = /\//,
-		hasExtRx = /\.\w+($|[?#])/,
+		dontAddExtRx = /\?/,
 		pathSearchRx,
 		// script ready states that signify it's loaded
 		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
@@ -163,8 +163,12 @@
 
 	function begetCtx (name) {
 
+		function toAbsMid (n) {
+			return normalizeName(n, baseName);
+		}
+
 		function toUrl (n) {
-			return resolveUrl(resolvePath(normalizeName(n, baseName)), baseUrl);
+			return resolveUrl(resolvePath(toAbsMid(n)), baseUrl);
 		}
 
 		var baseName = name.substr(0, name.lastIndexOf('/')),
@@ -190,7 +194,8 @@
 		ctx.require = ctx.vars['require'] = require;
 		// using bracket property notation so closure won't clobber name
 		require['toUrl'] = toUrl;
-		
+		require['toAbsMid'] = toAbsMid;
+
 		return ctx;
 	}
 
@@ -284,9 +289,8 @@
 		return path;
 	}
 
-	function resolveUrl(path, baseUrl) {
-		// TODO: deal with possible existing .js extension already?
-		return (baseUrl && !absUrlRx.test(path) ? joinPath(baseUrl, path) : path) + (hasExtRx.test(path) ? '' : '.js');
+	function resolveUrl(path, baseUrl, addExt) {
+		return (baseUrl && !absUrlRx.test(path) ? joinPath(baseUrl, path) : path) + (addExt && !dontAddExtRx.test(path) ? '.js' : '');
 	}
 
 	function loadScript (def, success, failure) {
@@ -469,7 +473,7 @@
 				var pluginDef = cache[prefix];
 				if (!pluginDef) {
 					pluginDef = cache[prefix] = new ResourceDef(prefix);
-					pluginDef.url = resolveUrl(prefixPath, baseUrl);
+					pluginDef.url = resolveUrl(prefixPath, baseUrl, true);
 					pluginDef.baseName = prefixPath;
 					fetchResDef(pluginDef, ctx);
 				}
@@ -501,8 +505,7 @@
 			def = cache[resName];
 			if (!def) {
 				def = cache[resName] = new ResourceDef(resName);
-				// TODO: should this be using ctx.toUrl()??????
-				def.url = resolveUrl(resolvePath(resName), baseUrl);
+				def.url = resolveUrl(resolvePath(resName), baseUrl, true);
 				fetchResDef(def, ctx);
 			}
 
