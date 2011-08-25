@@ -29,12 +29,16 @@
 		fixReadyState = typeof doc[readyState] != "string",
 		// IE needs this cuz it won't stop setTimeout if it's already queued up
 		completed = false,
-		pollerTime = 30,
-		addEvent, remover, removers = [], pollerTO;
+		pollerTime = 10,
+		addEvent,
+		remover,
+		removers = [],
+		pollerHandle,
+		undef;
 
 	function ready () {
 		completed = true;
-		clearTimeout(pollerTO);
+		clearTimeout(pollerHandle);
 		while (remover = removers.pop()) remover();
 		if (fixReadyState) {
 			doc[readyState] = "complete";
@@ -46,12 +50,31 @@
 		}
 	}
 
+	var testEl;
+	function isDomManipulable () {
+		// question: implement Diego Perini's IEContentLoaded instead?
+		// answer: The current impl seems more future-proof rather than a
+		// non-standard method (doScroll). i don't care if the rest of the js
+		// world is using doScroll! They can have fun repairing their libs when
+		// the IE team removes doScroll in IE 13. :)
+		if (!doc.body) return false; // no body? we're definitely not ready!
+		if (!testEl) testEl = doc.createTextNode('');
+		try {
+			// webkit needs to use body. doc
+			doc.body.removeChild(doc.body.appendChild(testEl));
+			testEl = undef;
+			return true;
+		}
+		catch (ex) {
+			return false;
+		}
+	}
+
 	function checkDOMReady (e) {
 		var isready;
 		// all browsers except IE will be ready when readyState == 'interactive'
 		// so we also must check for document.body
-		// TODO: implement Diego Perini's IEContentLoaded?
-		isReady = readyStates[doc[readyState]] && doc.body;
+		isReady = readyStates[doc[readyState]] && isDomManipulable();
 		if (!completed && isReady) {
 			ready();
 		}
@@ -61,7 +84,7 @@
 	function poller () {
 		checkDOMReady();
 		if (!completed) {
-			pollerTO = setTimeout(poller, pollerTime);
+			pollerHandle = setTimeout(poller, pollerTime);
 		}
 	}
 
@@ -89,7 +112,7 @@
 				addEvent(global, 'DOMContentLoaded')
 			];
 			// additionally, poll for readystate
-			pollerTO = setTimeout(poller, pollerTime);
+			pollerHandle = setTimeout(poller, pollerTime);
 		}
 	}
 
