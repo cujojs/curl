@@ -38,7 +38,7 @@
 		// go
 		curl({ baseUrl: '../src', debug: true }, ['domReady!'], function(domReady){
 			clearInterval(handle);
-			document.body.insertBefore(document.createTextNode('did this append?'), document.body.firstChild);
+			document.body.appendChild(document.createTextNode('did this append?'));
 			console.log('DOM Ready!', isDomReady(), new Date() - start);
 		});
 		
@@ -49,7 +49,7 @@
 </head>
 <body>
 	<div id="a">check the log for test results</div>
-	<div id="b" style="visibility: hidden">
+	<div id="b" style="display: none">
 		<p>
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam in lorem
 ante. Duis quis lectus massa. Vestibulum ligula tortor, commodo at
