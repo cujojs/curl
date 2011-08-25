@@ -71,7 +71,7 @@
 	}
 
 	function checkDOMReady (e) {
-		var isready;
+		var isReady;
 		// all browsers except IE will be ready when readyState == 'interactive'
 		// so we also must check for document.body
 		isReady = readyStates[doc[readyState]] && isDomManipulable();
