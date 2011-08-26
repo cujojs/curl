@@ -163,12 +163,8 @@
 
 	function begetCtx (name) {
 
-		function toAbsMid (n) {
-			return normalizeName(n, baseName);
-		}
-
 		function toUrl (n) {
-			return resolveUrl(resolvePath(toAbsMid(n)), baseUrl);
+			return resolveUrl(resolvePath(normalizeName(n, baseName)), baseUrl);
 		}
 
 		var baseName = name.substr(0, name.lastIndexOf('/')),
@@ -194,7 +190,6 @@
 		ctx.require = ctx.vars['require'] = require;
 		// using bracket property notation so closure won't clobber name
 		require['toUrl'] = toUrl;
-		require['toAbsMid'] = toAbsMid;
 
 		return ctx;
 	}
@@ -457,8 +452,6 @@
 		if (delPos >= 0) {
 
 			prefix = depName.substr(0, delPos);
-			resName = normalizeName(depName.substr(delPos + 1), ctx.baseName);
-			name = prefix + '!' + resName;
 
 			// prepend plugin folder path, if it's missing and path isn't in paths
 			var prefixPath = resolvePath(prefix);
@@ -467,23 +460,39 @@
 				prefixPath = resolvePath(joinPath(pluginPath, prefixPath));
 			}
 
-			// the spec is unclear, so we're using the full name (prefix + name) to id resources
-			def = cache[name];
-			if (!def) {
-				var pluginDef = cache[prefix];
-				if (!pluginDef) {
-					pluginDef = cache[prefix] = new ResourceDef(prefix);
-					pluginDef.url = resolveUrl(prefixPath, baseUrl, true);
-					pluginDef.baseName = prefixPath;
-					fetchResDef(pluginDef, ctx);
-				}
-				def = new ResourceDef(name);
-				// resName could be blank if the plugin doesn't specify a name (e.g. "domReady!")
-				if (resName) {
-					cache[name] = def;
-				}
-				pluginDef.then(
-					function (plugin) {
+			// fetch plugin
+			var pluginDef = cache[prefix];
+			if (!pluginDef) {
+				pluginDef = cache[prefix] = new ResourceDef(prefix);
+				pluginDef.url = resolveUrl(prefixPath, baseUrl, true);
+				pluginDef.baseName = prefixPath;
+				fetchResDef(pluginDef, ctx);
+			}
+
+			pluginDef.then(
+				function (plugin) {
+
+					resName = depName.substr(delPos + 1);
+					// check if plugin supports the normalize method
+					if ('normalize' in plugin) {
+						resName = plugin['normalize'](resName, ctx.require);
+					}
+					else {
+						resName = normalizeName(resName, ctx.baseName);
+					}
+
+					// the spec is unclear, so we're using the full name (prefix + name) to id resources
+					// so multiple plugins could each process the same resource
+					name = prefix + '!' + resName;
+					def = cache[name];
+
+					if (!def) {
+						def = new ResourceDef(name);
+						// resName could be blank if the plugin doesn't specify a name (e.g. "domReady!")
+						// don't cache non-deteminate or non-cachable resources (or non-existent ones)
+						if (resName && !plugin['volatile'] && !plugin['caching']) {
+							cache[name] = def;
+						}
 						// curl's plugins prefer to receive the back-side of a promise,
 						// but to be compatible with commonjs's specification, we have to
 						// piggy-back on the callback function parameter:
@@ -493,10 +502,10 @@
 						loaded['reject'] = def.reject;
 						// load the resource!
 						plugin.load(resName, ctx.require, loaded, userCfg);
-					},
-					def.reject
-				);
-			}
+					}
+				},
+				def.reject
+			);
 
 		}
 		else {

@@ -353,9 +353,24 @@
 
 	define(/*=='css',==*/ {
 
+		'normalize': function (resourceId, toAbsMid) {
+			var resources, normalized;
+
+			if (!resourceId) return resourceId;
+
+			resources = resourceId.split(",");
+			normalized = [];
+
+			for (var i = 0, len = resources.length; i < len; i++) {
+				normalized.push(toAbsMid(resources[i]));
+			}
+
+			return normalized.join(',');
+		},
+
 		'load': function (resourceId, require, callback, config) {
-				var resources = (resourceId || '').split(","),
-					loadingCount = resources.length;
+			var resources = (resourceId || '').split(","),
+				loadingCount = resources.length;
 
 			// all detector functions must ensure that this function only gets
 			// called once per stylesheet!
