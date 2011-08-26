@@ -353,7 +353,7 @@
 
 	define(/*=='css',==*/ {
 
-		'normalize': function (resourceId, toAbsMid) {
+		'normalize': function (resourceId, toAbsId) {
 			var resources, normalized;
 
 			if (!resourceId) return resourceId;
@@ -362,7 +362,7 @@
 			normalized = [];
 
 			for (var i = 0, len = resources.length; i < len; i++) {
-				normalized.push(toAbsMid(resources[i]));
+				normalized.push(toAbsId(resources[i]));
 			}
 
 			return normalized.join(',');

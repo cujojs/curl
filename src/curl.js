@@ -469,16 +469,20 @@
 				fetchResDef(pluginDef, ctx);
 			}
 
+			function toAbsId (id) {
+				return normalizeName(id, ctx.baseName);
+			}
+
 			pluginDef.then(
 				function (plugin) {
 
 					resName = depName.substr(delPos + 1);
 					// check if plugin supports the normalize method
 					if ('normalize' in plugin) {
-						resName = plugin['normalize'](resName, ctx.require);
+						resName = plugin['normalize'](resName, toAbsId);
 					}
 					else {
-						resName = normalizeName(resName, ctx.baseName);
+						resName = toAbsId(resName);
 					}
 
 					// the spec is unclear, so we're using the full name (prefix + name) to id resources
