@@ -93,13 +93,13 @@ define(/*=='text',==*/ function () {
 				absId = resolver['toAbsMid'](resource);
 				if (!(absId in built)) {
 					built[absId] = true;
-				// fetch text
-				text = jsEncode(fetcher(url));
-				// write out a define
-				output = 'define("' + pluginId + '!' + absId + '", function () {\n' +
-					'\treturn "' + text + '";\n' +
-				'});\n';
-				writer(output);
+					// fetch text
+					text = jsEncode(fetcher(url));
+					// write out a define
+					output = 'define("' + pluginId + '!' + absId + '", function () {\n' +
+						'\treturn "' + text + '";\n' +
+					'});\n';
+					writer(output);
 				}
 			};
 		}
