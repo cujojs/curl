@@ -36,6 +36,8 @@
 		createElement = 'createElement',
 		// doc will be undefined during a build
 		doc = global.document,
+		// regexp to find url protocol for IE7/8 fix (see fixProtocol)
+		isProtocolRelativeRx = /^\/\//,
 		// find the head element and set it to it's standard property if nec.
 		head;
 
@@ -43,14 +45,10 @@
 		head = doc.head || (doc.head = doc.getElementsByTagName('head')[0]);
 	}
 
-/***** load-detection functions *****/
-
 	function nameWithExt (name, defaultExt) {
 		return name.lastIndexOf('.') <= name.lastIndexOf('/') ?
 			name + '.' + defaultExt : name;
 	}
-
-/***** style element functions *****/
 
 	function createLink (doc, href) {
 		var link = doc[createElement]('link');
@@ -60,18 +58,24 @@
 		return link;
 	}
 
-/***** finally! the actual plugin *****/
+	function fixProtocol (url, protocol) {
+		// IE 7 & 8 can't handle protocol-relative urls:
+		// http://www.stevesouders.com/blog/2010/02/10/5a-missing-schema-double-download/
+		return url.replace(isProtocolRelativeRx, protocol + '//');
+	}
 
 	define(/*=='link',==*/ {
 
 		'load': function (resourceId, require, callback, config) {
-				var url, link;
+			var url, link, fix;
 
-				url = require['toUrl'](nameWithExt(resourceId, 'css'));
-				link = createLink(doc, url);
-				head.appendChild(link);
+			url = require['toUrl'](nameWithExt(resourceId, 'css'));
+			fix = 'fixSchemalessUrls' in config ? config['fixSchemalessUrls'] : doc.location.protocol;
+			url = fix ? fixProtocol(url, fix) : url;
+			link = createLink(doc, url);
+			head.appendChild(link);
 
-				callback(link.sheet || link.styleSheet);
+			callback(link.sheet || link.styleSheet);
 
 		}
 
