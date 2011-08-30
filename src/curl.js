@@ -638,7 +638,7 @@
 		}
 
 		// extract dependencies
-		names = args[0];
+		names = [].concat(args[0]); // force to array TODO: create unit test when this is official
 		callback = args[1];
 
 		// this must be after extractCfg
