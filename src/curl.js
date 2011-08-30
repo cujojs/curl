@@ -494,7 +494,7 @@
 						def = new ResourceDef(name);
 						// resName could be blank if the plugin doesn't specify a name (e.g. "domReady!")
 						// don't cache non-deteminate "volatile" resources (or non-existent resources)
-						if (resName && !plugin['volatile']) {
+						if (resName && !plugin['dynamic']) {
 							cache[name] = def;
 						}
 						// curl's plugins prefer to receive the back-side of a promise,
