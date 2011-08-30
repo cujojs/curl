@@ -194,6 +194,16 @@
 		return ctx;
 	}
 
+	function begetCfg (absPluginId) {
+		var root;
+		noop.prototype = absPluginId ?
+			userCfg['plugins'] && userCfg['plugins'][absPluginId] :
+			userCfg;
+		var cfg = new noop();
+		noop.prototype = undef;
+		return cfg;
+	}
+
 	function Promise () {
 
 		var self = this,
@@ -276,7 +286,7 @@
 				return pathInfo.lib;
 			}
 			else {
-				return pathInfo.path;
+				return pathInfo.path || '';
 			}
 
 		});
@@ -445,7 +455,7 @@
 	}
 
 	function fetchDep (depName, ctx) {
-		var name, delPos, prefix, resName, def;
+		var name, delPos, prefix, resName, def, cfg;
 
 		// check for plugin prefix
 		delPos = depName.indexOf('!');
@@ -469,9 +479,15 @@
 				fetchResDef(pluginDef, ctx);
 			}
 
+			// get plugin config
+			cfg = begetCfg(prefix) || {};
+
 			function toAbsId (id) {
 				return normalizeName(id, ctx.baseName);
 			}
+
+			// we need to use depName until plugin tells us normalized name
+			def = new ResourceDef(depName);
 
 			pluginDef.then(
 				function (plugin) {
@@ -479,7 +495,7 @@
 					resName = depName.substr(delPos + 1);
 					// check if plugin supports the normalize method
 					if ('normalize' in plugin) {
-						resName = plugin['normalize'](resName, toAbsId);
+						resName = plugin['normalize'](resName, toAbsId, cfg);
 					}
 					else {
 						resName = toAbsId(resName);
@@ -488,12 +504,13 @@
 					// the spec is unclear, so we're using the full name (prefix + name) to id resources
 					// so multiple plugins could each process the same resource
 					name = prefix + '!' + resName;
-					def = cache[name];
 
-					if (!def) {
-						def = new ResourceDef(name);
+					if (!cache[name]) {
+						cache[name] = def;
+						// def name may have not been normalized. see above.
+						def.name = name;
 						// resName could be blank if the plugin doesn't specify a name (e.g. "domReady!")
-						// don't cache non-deteminate "volatile" resources (or non-existent resources)
+						// don't cache non-determinate "dynamic" resources (or non-existent resources)
 						if (resName && !plugin['dynamic']) {
 							cache[name] = def;
 						}
@@ -505,10 +522,9 @@
 						loaded['resolve'] = loaded;
 						loaded['reject'] = def.reject;
 						// load the resource!
-						plugin.load(resName, ctx.require, loaded, userCfg);
+						plugin.load(resName, ctx.require, loaded, cfg);
 					}
-				},
-				def.reject
+				}
 			);
 
 		}
