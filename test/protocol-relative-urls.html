@@ -1,13 +1,14 @@
 <!DOCTYPE HTML>
 <html>
 <head>
-<title>main curl test file</title>
+<title>protocol-relative-urls</title>
 
 <script>
 
 	curl = {
 		paths: {
-			curl: '../src/curl/'
+			curl: '../src/curl/',
+			resources: '//ajax.googleapis.com/ajax/libs/dojo/1.6/dojo/resources/'
 		}
 	};
 
@@ -30,16 +31,14 @@
 
 <script type="text/javascript">
 
-	var start = new Date();
 	curl(
 		[
 			'stuff/three',
-			'css!stuff/base',
+			'css!resources/dojo.css',
 			'text!stuff/template.html'
 		]
 	).then(
-		function (three, link, template) {
-			console.log('total time:', new Date() - start);
+		function (three, link, /*strings,*/ template) {
 			if (document.body) {
 				document.body.appendChild(document.createTextNode('A module with dependencies loaded successfully if 3 == ' + three + '.'));
 				document.body.appendChild(document.createElement('br'));
@@ -53,8 +52,6 @@
 
 </head>
 <body>
-
-<p>This text should all be the same <span style="color: #2faced;">color</span> if the css file loaded.</p>
 
 </body>
 </html>
