@@ -60,7 +60,7 @@
 		undef,
 		aslice = [].slice,
 		// RegExp's used later, "cached" here
-		absUrlRx = /^\/|^[^:]*:\/\//,
+		absUrlRx = /^\/|^[^:]+:\/\//,
 		normalizeRx = /^(\.)(\.)?(\/|$)/,
 		findSlashRx = /\//,
 		dontAddExtRx = /\?/,
