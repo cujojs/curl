@@ -487,10 +487,13 @@
 			}
 
 			// we need to use depName until plugin tells us normalized name
-			def = new ResourceDef(depName);
+			// if the plugin may changes the name, we need to consolidate
+			// def promises below
+			def = cache[depName] || new ResourceDef(depName);
 
 			pluginDef.then(
 				function (plugin) {
+					var firstDef;
 
 					resName = depName.substr(delPos + 1);
 					// check if plugin supports the normalize method
@@ -505,10 +508,16 @@
 					// so multiple plugins could each process the same resource
 					name = prefix + '!' + resName;
 
+					// if this is our first time fetching this (normalized) def
 					if (!cache[name]) {
-						cache[name] = def;
-						// def name may have not been normalized. see above.
-						def.name = name;
+						// if resource name changed, we need to consolidate the defs
+						if (depName != name) {
+							firstDef = def;
+							// create a common def for all normalized and non-normalized to share
+							def = cache[name] || new ResourceDef(name);
+							// join previous def onto common def
+							firstDef.then(def.resolve, def.reject);
+						}
 						// resName could be blank if the plugin doesn't specify a name (e.g. "domReady!")
 						// don't cache non-determinate "dynamic" resources (or non-existent resources)
 						if (resName && !plugin['dynamic']) {
@@ -524,7 +533,8 @@
 						// load the resource!
 						plugin.load(resName, ctx.require, loaded, cfg);
 					}
-				}
+				},
+				def.reject
 			);
 
 		}
@@ -645,7 +655,7 @@
 		ctx = begetCtx('');
 
 		var promise = new Promise(),
-				api = {};
+			api = {};
 
 			// return the dependencies as arguments, not an array
 			// using bracket property notation so closure won't clobber name
