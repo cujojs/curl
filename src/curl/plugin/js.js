@@ -93,7 +93,7 @@
 
 			order = name.indexOf('!order') >= 0;
 			noexec = name.indexOf('!noexec') >= 0;
-			prefetch = 'jsPrefetch' in config ? config['jsPrefetch'] : true;
+			prefetch = 'prefetch' in config ? config['prefetch'] : true;
 			name = order || noexec ? name.substr(0, name.indexOf('!')) : name;
 			def = {
 				name: name,
