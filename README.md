@@ -12,6 +12,8 @@ What's New?
 	* new apiContext config param to keep curl API off global object
 	* protocol-relative urls fixed
 	* curl() allows a single dependency to be specified without an array
+	* removed broken !noexec option for js! plugin since it no longer worked
+	  in the current browsers
 * 0.5.1:
 	* fixes to domReady! in the compiled dist/ versions and
 	* fixes for commonjs compatibility caused by google-closure in dist/

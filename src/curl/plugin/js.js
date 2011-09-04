@@ -18,7 +18,7 @@
  *
  */
 (function (global, doc) {
-
+"use strict";
 	var queue = [],
 		supportsAsyncFalse = doc.createElement('script').async == true,
 		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
@@ -89,12 +89,11 @@
 	define(/*=='js',==*/ {
 		'load': function (name, require, callback, config) {
 
-			var order, noexec, prefetch, def, promise;
+			var order, prefetch, def, promise;
 
 			order = name.indexOf('!order') >= 0;
-			noexec = name.indexOf('!noexec') >= 0;
 			prefetch = 'prefetch' in config ? config['prefetch'] : true;
-			name = order || noexec ? name.substr(0, name.indexOf('!')) : name;
+			name = order ? name.substr(0, name.indexOf('!')) : name;
 			def = {
 				name: name,
 				url: require['toUrl'](name),
@@ -108,13 +107,10 @@
 
 			// if this script has to wait for another
 			// or if we're loading, but not executing it
-			if (noexec || (order && !supportsAsyncFalse && waitForOrderedScript)) {
+			if (order && !supportsAsyncFalse && waitForOrderedScript) {
 				// push onto the stack of scripts that will be fetched
-				// from cache unless we're not executing it. do this
-				// before fetch in case IE has file cached.
-				if (!noexec) {
-					queue.push([def, promise]);
-				}
+				// from cache. do this before fetch in case IE has file cached.
+				queue.push([def, promise]);
 				// if we're prefetching
 				if (prefetch) {
 					// go get the file under an unknown mime type
