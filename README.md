@@ -6,9 +6,12 @@ version 0.5.2
 What's New?
 
 * 0.5.2
+	* better CDN support!
 	* faster domReady detection in non-IE browsers
 	* link! plugin for ultra-simple css loading (no waiting, no embedding)
 	* new apiContext config param to keep curl API off global object
+	* protocol-relative urls fixed
+	* curl() allows a single dependency to be specified without an array
 * 0.5.1:
 	* fixes to domReady! in the compiled dist/ versions and
 	* fixes for commonjs compatibility caused by google-closure in dist/
@@ -44,10 +47,10 @@ What is curl.js?
 ================
 
 curl.js is a small and very fast AMD-compliant asynchronous loader.
-Size: 4.7KB (2.3KB gzipped) using Google's Closure Compiler.
+Size: 5KB (2.5KB gzipped) using Google's Closure Compiler.
 
 If you'd like to use curl.js for non-AMD modules (ordinary javascript files),
-you'll want to  use the version with the js! plugin built in.  You may also
+you'll want to  use a version with the js! plugin built in.  You may also
 want to build-in the domReady module.  The combined curl+js+domReady loader
 is still only 6.5KB (3KB gzipped).
 
@@ -81,8 +84,9 @@ script loaders.
 API at a glance
 ===============
 
-
+```javascript
 	curl(['dep1', 'dep2', 'dep3' /* etc */], callback);
+```
 
 Loads dependencies and the executes callback.
 
@@ -91,8 +95,11 @@ Loads dependencies and the executes callback.
   typically start up your app.
 
 ---------
+
+```javascript
 	curl(['dep1', 'dep2', 'dep3' /* etc */])
 		.then(callback, errorback);
+```
 
 Promises-based API for executing callbacks.
 
@@ -101,8 +108,10 @@ Promises-based API for executing callbacks.
 * errorback: Function to call if an exception occurred while loading
 
 ---------
-	curl(config, ['dep1', 'dep2', 'dep3' /* etc */], callback);
 
+```javascript
+	curl(config, ['dep1', 'dep2', 'dep3' /* etc */], callback);
+```
 Specify configuration options, load dependencies, and execute callback.
 
 * config: Object containing curl configuration options (paths, etc.)
@@ -110,6 +119,8 @@ Specify configuration options, load dependencies, and execute callback.
 * callback: Function to receive modules or resources
 
 ---------
+
+```javascript
 	curl(['domReady!', 'dep2', 'dep3' /* etc */])
 		.then(
 			callback,
@@ -118,6 +129,7 @@ Specify configuration options, load dependencies, and execute callback.
 	curl(['dep1', 'dep2', 'domReady!' /* etc */], function (dep1, dep2) {
 		// do something here
 	});
+```
 
 Executes the callback when the dom is ready for manipulation AND
 all dependencies have loaded.
@@ -126,15 +138,20 @@ all dependencies have loaded.
 * errorback: Function to call if an exception occurred while loading
 
 ---------
+
+```javascript
 	curl(['domReady!', 'js!nonAMD.js!order', 'js!another.js!order']), function () {
 		/* do something cool here */
 	});
+```
 
 Executes the function when the non-AMD javascript files are loaded and
 the dom is ready. The another.js file will wait for the nonAMD.js file
 before executing.
 
 ---------
+
+```javascript
 	curl(['js!nonAMD.js'])
 		.next(['dep1', 'dep2', 'dep3'], function (dep1, dep2, dep3) {
 			// do something before the dom is ready
@@ -148,11 +165,13 @@ before executing.
 				// show an error to the user
 			}
 		);
+```
 
 Executes callbacks in stages using `.next(deps, callback)`.
 
 ---------
 
+```javascript
 	curl = {
 		baseUrl: '/path/to/my/js',
 		pluginPath: 'for/some/reason/plugins/r/here',
@@ -163,6 +182,7 @@ Executes callbacks in stages using `.next(deps, callback)`.
 		},
 		apiName: 'someOtherName'
 	};
+```
 
 If called before the `<script>` that loads curl.js, configures curl.js.  All of
 the configuration parameters are optional. curl.js tries to do something sensible
@@ -178,6 +198,7 @@ mapping that applies.
 
 ---------
 
+```javascript
 	define(['dep1', 'dep2', 'dep3' /* etc */], definition);
 	define(['dep1', 'dep2', 'dep3' /* etc */], module);
 	define(['dep1', 'dep2', 'dep3' /* etc */], promise);
@@ -188,6 +209,7 @@ mapping that applies.
 	define(name, ['dep1', 'dep2', 'dep3' /* etc */], promise);
 	define(name, module);
 	define(name, promise);
+```
 
 Defines a module per the CommonJS AMD proposed specification.
 
@@ -205,6 +227,7 @@ deferring resolution of the module.
 Very Simple Example
 ===================
 
+```html
 	<script>
 
 		// configure curl
@@ -249,6 +272,7 @@ Very Simple Example
 		);
 
 	</script>
+```
 
 The file structure for this example would look as follows:
 
@@ -383,6 +407,7 @@ a backwards-compatible way so AMD-compliant plugins will still work in curl.
 curl.js will also return a promise from curl() calls. This allows you to
 write code like this:
 
+```javascript
 	curl(
 		[
 			'myApp/moduleA',
@@ -396,6 +421,7 @@ write code like this:
 			alert('myApp didn't load. reason: ' + ex.message);
 		}
 	);
+```
 
 (When using `require` as a dependency, it does not return a promise.
 This is so that 100% CommonJS compliance is assured inside modules.)
@@ -410,6 +436,7 @@ Yes, but why would you?  Once you start using AMD, you'll never go back! :)
 You may use non-AMD javascript files by specifying the js! plugin prefix
 like this:
 
+```javascript
 	curl(
 		[
 			'js!plainOldJsFile1.js!order',
@@ -423,6 +450,7 @@ like this:
 			/* do something if any fail to load */
 		}
 	);
+```
 
 The !order suffix instructs curl.js to wait for previous scripts to execute
 before executing the current script. All scripts download in parallel, though,
@@ -443,14 +471,17 @@ js! -- loads non-AMD javascript files
 
 text! -- loads text files
 
-You can also load css files by using the AMD plugin at the following repo:
-<https://github.com/unscriptable/cssx/blob/master/src/cssx/css.js>
+link! -- loads css files via a link element (simple, fast)
+
+css! -- loads css files (lots of options)
+
+domReady! -- resolves when the dom is ready for manipulation
+
+async! -- resolves when a module signals it's ready
 
 The following plugins are in progress:
 
 i18n! -- loads text strings and other locale-specific constants
-
-cssx! -- loads and automatically shims css files for older browsers
 
 ----------------------------------------
 
@@ -482,12 +513,14 @@ You can tell curl.js to find modules in other locations by specifying a baseUrl 
 individual paths for each of your libraries.  For example, if you specify a baseUrl of
 `/resources/` and the following paths:
 
+```javascript
 	paths: {
 		dojo: "third-party/dojo",
 		css: "third-party/cssx/css",
 		my: "my-cool-app-v1.3",
 		"my/lib/js": "old-js-libs"
 	}
+```
 
 Then the modules listed above will be sought in the following locations:
 
@@ -519,6 +552,7 @@ Plugins are designated by a prefix on the name of the module or resource to be
 loaded. They are delineated by a ! symbol. The following example shows the use
 of some plugins:
 
+```javascript
 	define(
 		[
 			'text!myTemplate.html',
@@ -528,6 +562,7 @@ of some plugins:
 			// do something with the template and css here
 		}
 	);
+```
 
 Since plugins are just AMD modules, they would typically be referenced using
 their fully-pathed names. curl provides a pluginPath configuration option that
@@ -540,27 +575,31 @@ If one or more of your plugins does not reside in the folder specified by the
 pluginPath config option, you can use its full path or you can specify a path
 for it in curl's paths config object.
 
+```javascript
 	// example of a fully-pathed plugin under the cssx folder
 	define(['/css!myCssFile'], function (cssxDef) {
 		// do some awesome css stuff here
 	});
+```
 
 Plugins can also have configuration options. Global options can be specified
 on curl's configuration object. Options can also be supplied to plugins via
 suffixes. Suffixes are also delineated by the ! symbol. Here's an example of
 a plugin using options:
 
+```javascript
 	// don't try to repair IE6-8 opacity issues in my css file
 	define(['css!myCssFile!ignore:opacity'], function (cssxDef) {
 		// do some awesome css stuff here
 	});
+```
 
 ----------------------------------------
 
 How do I use curl.js?
 =====================
 
-1. Optional: Learn about AMD-formatted javascript modules if you don't already know how.
+1. Learn about AMD-formatted javascript modules if you don't already know how.
 2. Clone or download curl to your local machine or server.
 3. Figure out the baseUrl and paths configuration that makes sense for your project.
 4. Check out the "API at a glance" section above to figure out which loading methodology you want to use.
@@ -605,6 +644,7 @@ CommonJS Package Support
 cujo.js supports the CommonJS Packages 1.1 specification.  Packages are
 defined in the packages configuration parameter:
 
+```javascript
 	cujo = {
 		baseUrl: 'path/to/js',
 		packages: {
@@ -615,10 +655,11 @@ defined in the packages configuration parameter:
 			}
 		}
 	};
+```
 
 The path property describes where to find the package in relation to the
 baseUrl parameter.  The main and lib properties describe where to find modules
-inside the package.  The main property gives the relative path to the pacage's
+inside the package.  The main property gives the relative path to the package's
 main module.  The lib property reflects the path to all other modules in the
 package.
 
@@ -627,7 +668,9 @@ the package.  Essentially, the main module becomes an automatic dependency.
 
 In the example above, the main module of the package can be obtained as follows
 
+```javascript
 	curl(['my-package'], callback);
+```
 
 and will be fetched from the following path:
 
@@ -635,11 +678,13 @@ path/to/js/path/to/my-package/main/main-module-file.js
 
 Some other file in the package would be obtained as follows:
 
+```javascript
 	curl(['my-package/other-module'], callback);
+```
 
 and will be fetched from the following path:
 
-path/to/js/path/to/my-package/location/of/other/modules/other-module.js
+	path/to/js/path/to/my-package/location/of/other/modules/other-module.js
 
 ----------------------------------------
 
