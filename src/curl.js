@@ -133,7 +133,7 @@
 		// fix all paths
 		var cfgPaths = cfg['paths'];
 		for (p in cfgPaths) {
-			pStrip = removeEndSlash(p);
+			pStrip = removeEndSlash(p.replace('!', '!/'));
 			path = paths[pStrip] = { path: removeEndSlash(cfgPaths[p]) };
 			path.specificity = (path.path.match(findSlashRx) || []).length;
 			pathList.push(pStrip);
@@ -194,14 +194,21 @@
 		return ctx;
 	}
 
+	function Begetter () {}
+
+	function beget (parent) {
+		Begetter.prototype = parent;
+		var child = new Begetter();
+		Begetter.prototype = undef;
+		return child;
+	}
+
 	function begetCfg (absPluginId) {
 		var root;
-		noop.prototype = absPluginId ?
+		root = absPluginId ?
 			userCfg['plugins'] && userCfg['plugins'][absPluginId] :
 			userCfg;
-		var cfg = new noop();
-		noop.prototype = undef;
-		return cfg;
+		return beget(root);
 	}
 
 	function Promise () {
@@ -266,30 +273,41 @@
 		return endsWithSlash(path) ? path.substr(0, path.length - 1) : path;
 	}
 
-	function resolvePath (name) {
+	function resolvePath (name, prefix) {
 		// TODO: figure out why this gets called so often for the same file
 		// searches through the configured path mappings and packages
 		// if the resulting module is part of a package, also return the main
 		// module so it can be loaded.
+		var pathInfo, path, found;
 
-		var pathInfo, path;
-		path = name.replace(pathSearchRx, function (match) {
+		function fixPath (name) {
+			path = name.replace(pathSearchRx, function (match) {
 
-			pathInfo = paths[match] || {};
+				pathInfo = paths[match] || {};
+				found = true;
 
-			// if pathInfo.main and match == name, this is a main module
-			if (pathInfo.main && match == name) {
-				return pathInfo.main;
-			}
-			// if pathInfo.lib return pathInfo.lib
-			else if (pathInfo.lib) {
-				return pathInfo.lib;
-			}
-			else {
-				return pathInfo.path || '';
-			}
+				// if pathInfo.main and match == name, this is a main module
+				if (pathInfo.main && match == name) {
+					return pathInfo.main;
+				}
+				// if pathInfo.lib return pathInfo.lib
+				else if (pathInfo.lib) {
+					return pathInfo.lib;
+				}
+				else {
+					return pathInfo.path || '';
+				}
 
-		});
+			});
+		}
+
+		// if this is a plugin-specific path to resolve
+		if (prefix) {
+			fixPath(prefix + '!/' + name);
+		}
+		if (!found) {
+			fixPath(name);
+		}
 
 		return path;
 	}
@@ -507,6 +525,19 @@
 					// the spec is unclear, so we're using the full name (prefix + name) to id resources
 					// so multiple plugins could each process the same resource
 					name = prefix + '!' + resName;
+
+					// alter the toUrl passed into the plugin so that it can
+					// also find plugin-prefixed path specifiers. e.g.:
+					// "js!resourceId": "path/to/js/resource"
+					// TODO: make this more efficient by allowing toUrl to be
+					// overridden more easily and detecting if there's a
+					// plugin-specific path more efficiently
+					ctx = begetCtx(ctx.baseName);
+					ctx.require['toUrl'] = function toUrl (absId) {
+						var prefixed, path;
+						path = resolvePath(absId, prefix);
+						return resolveUrl(path, baseUrl);
+					};
 
 					// if this is our first time fetching this (normalized) def
 					if (!cache[name]) {
