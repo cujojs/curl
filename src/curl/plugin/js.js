@@ -143,7 +143,8 @@
 				url: require['toUrl'](name),
 				async: !order,
 				order: order,
-				test: test
+				test: test,
+				timeout: config.timeout
 			};
 			promise = callback['resolve'] ? callback : {
 				'resolve': function (o) { callback(o); },
