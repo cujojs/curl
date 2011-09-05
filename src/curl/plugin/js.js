@@ -22,6 +22,7 @@
 	var queue = [],
 		supportsAsyncFalse = doc.createElement('script').async == true,
 		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
+		orsc = 'onreadystatechange',
 		head = doc['head'] || doc.getElementsByTagName('head')[0],
 		waitForOrderedScript;
 
@@ -29,33 +30,64 @@
 	function loadScript (def, success, failure) {
 		// script processing rules learned from RequireJS
 
+		var deadline, el;
+
+		// default deadline is very far in the future (5 min)
+		// devs should set something reasonable if they want to use it
+		deadline = new Date().valueOf() + (def.timeout || 300) * 1000;
+
 		// insert script
-		var el = doc.createElement('script');
+		el = doc.createElement('script');
 
 		// initial script processing
 		function process (ev) {
 			ev = ev || global.event;
 			// detect when it's done loading
-			if (ev.type == 'load' || readyStates[this.readyState]) {
+			if (ev.type == 'load' || readyStates[el.readyState]) {
 				// release event listeners
-				this.onload = this.onreadystatechange = this.onerror = null;
-				success(el);
+				el.onload = el[orsc] = el.onerror = "";
+				if (!def.test || testGlobalVar(def.test)) {
+					success(el);
+				}
+				else {
+					fail();
+				}
 			}
 		}
 
 		function fail (e) {
 			// some browsers send an event, others send a string,
 			// but none of them send anything useful, so just say we failed:
+			el.onload = el[orsc] = el.onerror = "";
 			if (failure) {
 				failure(new Error('Script error or http error: ' + def.url));
 			}
 		}
 
+		// some browsers (Opera and IE6-8) don't support onerror and don't fire
+		// readystatechange if the script fails to load so we need to poll.
+		// this poller only runs if def.test is specified and failure callback
+		// is defined (see below)
+		function poller () {
+			// if the script loaded
+			if (el.onload && readyStates[el.readyState]) {
+				process({});
+			}
+			// if neither process or fail as run and our deadline is in the past
+			else if (el.onload && deadline < new Date()) {
+				fail();
+			}
+			else {
+				setTimeout(poller, 10);
+			}
+		}
+		if (failure && def.test) setTimeout(poller, 10);
+
 		// set type first since setting other properties could
 		// prevent us from setting this later
 		el.type = def.mimetype || 'text/javascript';
 		// using dom0 event handlers instead of wordy w3c/ms
-		el.onload = el.onreadystatechange = process;
+		el.onload = el[orsc] = process;
 		el.onerror = fail;
 		el.charset = def.charset || 'utf-8';
 		el.async = def.async;
@@ -86,19 +118,32 @@
 
 	}
 
+	function testGlobalVar (varName) {
+		try {
+			eval('global.' + varName);
+			return true;
+		}
+		catch (ex) {
+			return false;
+		}
+	}
+
 	define(/*=='js',==*/ {
 		'load': function (name, require, callback, config) {
 
-			var order, prefetch, def, promise;
+			var order, testPos, test, prefetch, def, promise;
 
-			order = name.indexOf('!order') >= 0;
+			order = name.indexOf('!order') > 0; // can't be zero
+			testPos = name.indexOf('!test=');
+			test = testPos > 0 && name.substr(testPos + 6); // must be last option!
 			prefetch = 'prefetch' in config ? config['prefetch'] : true;
-			name = order ? name.substr(0, name.indexOf('!')) : name;
+			name = order || testPos ? name.substr(0, name.indexOf('!')) : name;
 			def = {
 				name: name,
 				url: require['toUrl'](name),
 				async: !order,
-				order: order
+				order: order,
+				test: test
 			};
 			promise = callback['resolve'] ? callback : {
 				'resolve': function (o) { callback(o); },
@@ -117,7 +162,8 @@
 					def.mimetype = 'text/cache';
 					loadScript(def,
 						// remove the fake script when loaded
-						function (el) { el.parentNode.removeChild(el); }
+						function (el) { el.parentNode.removeChild(el); },
+						false
 					);
 					def.mimetype = '';
 				}
