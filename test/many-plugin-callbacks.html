@@ -31,10 +31,15 @@
 <script type="text/javascript">
 
 	function logger () {
-		for (var i = 0; i < arguments.length; i++) {
-			document.body.appendChild(document.createTextNode(arguments[i]));
-			document.body.appendChild(document.createElement('hr'));
-		}
+		var args = arguments;
+		curl('curl/domReady', function (ready) {
+			ready(function () {
+				for (var i = 0; i < args.length; i++) {
+					document.body.appendChild(document.createTextNode(args[i]));
+					document.body.appendChild(document.createElement('hr'));
+				}
+			});
+		});
 	}
 
 	// to repro issue #14

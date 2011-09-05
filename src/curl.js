@@ -480,6 +480,7 @@
 		if (delPos >= 0) {
 
 			prefix = depName.substr(0, delPos);
+			resName = depName.substr(delPos + 1);
 
 			// prepend plugin folder path, if it's missing and path isn't in paths
 			var prefixPath = resolvePath(prefix);
@@ -497,6 +498,19 @@
 				fetchResDef(pluginDef, ctx);
 			}
 
+			// alter the toUrl passed into the plugin so that it can
+			// also find plugin-prefixed path specifiers. e.g.:
+			// "js!resourceId": "path/to/js/resource"
+			// TODO: make this more efficient by allowing toUrl to be
+			// overridden more easily and detecting if there's a
+			// plugin-specific path more efficiently
+			ctx = begetCtx(ctx.baseName);
+			ctx.require['toUrl'] = function toUrl (absId) {
+				var prefixed, path;
+				path = resolvePath(absId, prefix);
+				return resolveUrl(path, baseUrl);
+			};
+
 			// get plugin config
 			cfg = begetCfg(prefix) || {};
 
@@ -507,11 +521,11 @@
 			// we need to use depName until plugin tells us normalized name
 			// if the plugin may changes the name, we need to consolidate
 			// def promises below
-			def = cache[depName] || new ResourceDef(depName);
+			def = new ResourceDef(depName);
 
 			pluginDef.then(
 				function (plugin) {
-					var firstDef;
+					var normalizedDef;
 
 					resName = depName.substr(delPos + 1);
 					// check if plugin supports the normalize method
@@ -525,45 +539,35 @@
 					// the spec is unclear, so we're using the full name (prefix + name) to id resources
 					// so multiple plugins could each process the same resource
 					name = prefix + '!' + resName;
-
-					// alter the toUrl passed into the plugin so that it can
-					// also find plugin-prefixed path specifiers. e.g.:
-					// "js!resourceId": "path/to/js/resource"
-					// TODO: make this more efficient by allowing toUrl to be
-					// overridden more easily and detecting if there's a
-					// plugin-specific path more efficiently
-					ctx = begetCtx(ctx.baseName);
-					ctx.require['toUrl'] = function toUrl (absId) {
-						var prefixed, path;
-						path = resolvePath(absId, prefix);
-						return resolveUrl(path, baseUrl);
-					};
+					normalizedDef = cache[name];
 
 					// if this is our first time fetching this (normalized) def
-					if (!cache[name]) {
-						// if resource name changed, we need to consolidate the defs
-						if (depName != name) {
-							firstDef = def;
-							// create a common def for all normalized and non-normalized to share
-							def = cache[name] || new ResourceDef(name);
-							// join previous def onto common def
-							firstDef.then(def.resolve, def.reject);
-						}
+					if (!normalizedDef) {
+
+						normalizedDef = new ResourceDef(name);
+
 						// resName could be blank if the plugin doesn't specify a name (e.g. "domReady!")
 						// don't cache non-determinate "dynamic" resources (or non-existent resources)
 						if (resName && !plugin['dynamic']) {
-							cache[name] = def;
+							cache[name] = normalizedDef;
 						}
+
 						// curl's plugins prefer to receive the back-side of a promise,
 						// but to be compatible with commonjs's specification, we have to
 						// piggy-back on the callback function parameter:
-						var loaded = def.resolve;
+						var loaded = normalizedDef.resolve;
 						// using bracket property notation so closure won't clobber name
 						loaded['resolve'] = loaded;
-						loaded['reject'] = def.reject;
+						loaded['reject'] = normalizedDef.reject;
+
 						// load the resource!
 						plugin.load(resName, ctx.require, loaded, cfg);
+
 					}
+
+					// chain defs (resolve when plugin.load executes)
+					normalizedDef.then(def.resolve, def.reject);
+
 				},
 				def.reject
 			);
