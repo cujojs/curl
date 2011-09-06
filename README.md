@@ -10,6 +10,9 @@ What's New?
 		* protocol-relative urls fixed
 		* plugin-specific paths (for segmenting by file type)
 		* robust 404 detection for non-module js resources
+	* better AMD plugin compliance
+		* new `dynamic: true` to prevent resource caching
+		* `normalize()` API for non-module-like resource names
 	* faster domReady detection in non-IE browsers
 	* link! plugin for ultra-simple css loading (no waiting, no embedding)
 	* new apiContext config param to keep curl API off global object
