@@ -91,7 +91,7 @@ API at a glance
 For a complete description, check out the [wiki](https://github.com/unscriptable/curl/wiki).
 
 ```javascript
-	curl(['dep1', 'dep2', 'dep3' /* etc */], callback);
+curl(['dep1', 'dep2', 'dep3' /* etc */], callback);
 ```
 
 Loads dependencies and the executes callback.
@@ -103,8 +103,8 @@ Loads dependencies and the executes callback.
 ---------
 
 ```javascript
-	curl(['dep1', 'dep2', 'dep3' /* etc */])
-		.then(callback, errorback);
+curl(['dep1', 'dep2', 'dep3' /* etc */])
+	.then(callback, errorback);
 ```
 
 Promises-based API for executing callbacks.
@@ -116,7 +116,7 @@ Promises-based API for executing callbacks.
 ---------
 
 ```javascript
-	curl(config, ['dep1', 'dep2', 'dep3' /* etc */], callback);
+curl(config, ['dep1', 'dep2', 'dep3' /* etc */], callback);
 ```
 Specify configuration options, load dependencies, and execute callback.
 
@@ -127,14 +127,14 @@ Specify configuration options, load dependencies, and execute callback.
 ---------
 
 ```javascript
-	curl(['domReady!', 'dep2', 'dep3' /* etc */])
-		.then(
-			callback,
-			errorback
-		);
-	curl(['dep1', 'dep2', 'domReady!' /* etc */], function (dep1, dep2) {
-		// do something here
-	});
+curl(['domReady!', 'dep2', 'dep3' /* etc */])
+	.then(
+		callback,
+		errorback
+	);
+curl(['dep1', 'dep2', 'domReady!' /* etc */], function (dep1, dep2) {
+	// do something here
+});
 ```
 
 Executes the callback when the dom is ready for manipulation AND
@@ -146,9 +146,9 @@ all dependencies have loaded.
 ---------
 
 ```javascript
-	curl(['domReady!', 'js!nonAMD.js!order', 'js!another.js!order']), function () {
-		/* do something cool here */
-	});
+curl(['domReady!', 'js!nonAMD.js!order', 'js!another.js!order']), function () {
+	/* do something cool here */
+});
 ```
 
 Executes the function when the non-AMD javascript files are loaded and
@@ -158,19 +158,19 @@ before executing.
 ---------
 
 ```javascript
-	curl(['js!nonAMD.js'])
-		.next(['dep1', 'dep2', 'dep3'], function (dep1, dep2, dep3) {
-			// do something before the dom is ready
-		})
-		.next(['domReady!'])
-		.then(
-			function () {
-				// do something after the dom is ready
-			},
-			function (ex) {
-				// show an error to the user
-			}
-		);
+curl(['js!nonAMD.js'])
+	.next(['dep1', 'dep2', 'dep3'], function (dep1, dep2, dep3) {
+		// do something before the dom is ready
+	})
+	.next(['domReady!'])
+	.then(
+		function () {
+			// do something after the dom is ready
+		},
+		function (ex) {
+			// show an error to the user
+		}
+	);
 ```
 
 Executes callbacks in stages using `.next(deps, callback)`.
@@ -178,16 +178,16 @@ Executes callbacks in stages using `.next(deps, callback)`.
 ---------
 
 ```javascript
-	curl = {
-		baseUrl: '/path/to/my/js',
-		pluginPath: 'for/some/reason/plugins/r/here',
-		paths: {
-			curl: 'curl/src/curl',
-			cssx: 'cssx/src/cssx'
-			my: '../../my-lib/'
-		},
-		apiName: 'someOtherName'
-	};
+curl = {
+	baseUrl: '/path/to/my/js',
+	pluginPath: 'for/some/reason/plugins/r/here',
+	paths: {
+		curl: 'curl/src/curl',
+		cssx: 'cssx/src/cssx'
+		my: '../../my-lib/'
+	},
+	apiName: 'someOtherName'
+};
 ```
 
 If called before the `<script>` that loads curl.js, configures curl.js.  All of
@@ -207,14 +207,14 @@ mapping that applies.
 ---------
 
 ```javascript
-	define(['dep1', 'dep2', 'dep3' /* etc */], definition);
-	define(['dep1', 'dep2', 'dep3' /* etc */], module);
-	define(['dep1', 'dep2', 'dep3' /* etc */], promise);
-	define(module);
-	define(name, ['dep1', 'dep2', 'dep3' /* etc */], definition);
-	define(name, ['dep1', 'dep2', 'dep3' /* etc */], module);
-	define(name, ['dep1', 'dep2', 'dep3' /* etc */], promise);
-	define(name, module);
+define(['dep1', 'dep2', 'dep3' /* etc */], definition);
+define(['dep1', 'dep2', 'dep3' /* etc */], module);
+define(['dep1', 'dep2', 'dep3' /* etc */], promise);
+define(module);
+define(name, ['dep1', 'dep2', 'dep3' /* etc */], definition);
+define(name, ['dep1', 'dep2', 'dep3' /* etc */], module);
+define(name, ['dep1', 'dep2', 'dep3' /* etc */], promise);
+define(name, module);
 ```
 
 Defines a module per the CommonJS AMD proposed specification.
@@ -232,50 +232,50 @@ Very Simple Example
 ===================
 
 ```html
-	<script>
+<script>
 
-		// configure curl
-		curl = {
-			paths: {
-				cssx: 'cssx/src/cssx/',
-				stuff: 'my/stuff/
+	// configure curl
+	curl = {
+		paths: {
+			cssx: 'cssx/src/cssx/',
+			stuff: 'my/stuff/
+		}
+	};
+
+</script>
+<script src="../js/curl.js" type="text/javascript"></script>
+<script type="text/javascript">
+
+	curl(
+		// fetch all of these resources ("dependencies")
+		[
+			'stuff/three', // an AMD module
+			'cssx/css!stuff/base', // a css file
+			'i18n!stuff/nls/strings', // a translation file
+			'text!stuff/template.html', // an html template
+			'domReady!'
+		]
+	)
+	// when they are loaded
+	.then(
+		// execute this callback, passing all dependencies as params
+		function (three, link, strings, template) {
+			var body = document.body;
+			if (body) {
+				body.appendChild(document.createTextNode('three == ' + three.toString() + ' '));
+				body.appendChild(document.createElement('br'));
+				body.appendChild(document.createTextNode(strings.hello));
+				body.appendChild(document.createElement('div')).innerHTML = template;
 			}
-		};
+		},
+		// execute this callback if there was a problem
+		function (ex) {
+			var msg = 'OH SNAP: ' + ex.message;
+			alert(msg);
+		}
+	);
 
-	</script>
-	<script src="../js/curl.js" type="text/javascript"></script>
-	<script type="text/javascript">
-
-		curl(
-			// fetch all of these resources ("dependencies")
-			[
-				'stuff/three', // an AMD module
-				'cssx/css!stuff/base', // a css file
-				'i18n!stuff/nls/strings', // a translation file
-				'text!stuff/template.html', // an html template
-				'domReady!'
-			]
-		)
-		// when they are loaded
-		.then(
-			// execute this callback, passing all dependencies as params
-			function (three, link, strings, template) {
-				var body = document.body;
-				if (body) {
-					body.appendChild(document.createTextNode('three == ' + three.toString() + ' '));
-					body.appendChild(document.createElement('br'));
-					body.appendChild(document.createTextNode(strings.hello));
-					body.appendChild(document.createElement('div')).innerHTML = template;
-				}
-			},
-			// execute this callback if there was a problem
-			function (ex) {
-				var msg = 'OH SNAP: ' + ex.message;
-				alert(msg);
-			}
-		);
-
-	</script>
+</script>
 ```
 
 The file structure for this example would look as follows:
@@ -416,19 +416,19 @@ curl.js will also return a promise from `curl()` calls. This allows you to
 write code like this:
 
 ```javascript
-	curl(
-		[
-			'myApp/moduleA',
-			'myApp/moduleB'
-		],
-	).then(
-		function success (A, B) {
-			// load myApp here!
-		},
-		function failure (ex) {
-			alert('myApp didn't load. reason: ' + ex.message);
-		}
-	);
+curl(
+	[
+		'myApp/moduleA',
+		'myApp/moduleB'
+	],
+).then(
+	function success (A, B) {
+		// load myApp here!
+	},
+	function failure (ex) {
+		alert('myApp didn't load. reason: ' + ex.message);
+	}
+);
 ```
 
 (When using `require` as a dependency, it does not return a promise.
@@ -445,19 +445,19 @@ You may use non-AMD javascript files by specifying the js! plugin prefix
 like this:
 
 ```javascript
-	curl(
-		[
-			'js!plainOldJsFile1.js!order',
-			'js!anotherPlainOldJsFile.js!order'
-		]
-	).then(
-		function () {
-			/* do something with your plain, boring javascript files */
-		},
-		function () {
-			/* do something if any fail to load */
-		}
-	);
+curl(
+	[
+		'js!plainOldJsFile1.js!order',
+		'js!anotherPlainOldJsFile.js!order'
+	]
+).then(
+	function () {
+		/* do something with your plain, boring javascript files */
+	},
+	function () {
+		/* do something if any fail to load */
+	}
+);
 ```
 
 The !order suffix instructs curl.js to wait for previous scripts to execute
@@ -523,12 +523,12 @@ individual paths for each of your libraries.  For example, if you specify a base
 `/resources/` and the following paths:
 
 ```javascript
-	paths: {
-		dojo: "third-party/dojo",
-		css: "third-party/cssmojo/css",
-		my: "my-cool-app-v1.3",
-		"my/lib/js": "old-js-libs"
-	}
+paths: {
+	dojo: "third-party/dojo",
+	css: "third-party/cssmojo/css",
+	my: "my-cool-app-v1.3",
+	"my/lib/js": "old-js-libs"
+}
 ```
 
 Then the modules listed above will be sought in the following locations:
@@ -560,15 +560,15 @@ loaded. They are delineated by a ! symbol. The following example shows the use
 of some plugins:
 
 ```javascript
-	define(
-		[
-			'text!myTemplate.html',
-			'css!myCssFile'
-		],
-		function (templateString, cssLinkNode) {
-			// do something with the template and css here
-		}
-	);
+define(
+	[
+		'text!myTemplate.html',
+		'css!myCssFile'
+	],
+	function (templateString, cssLinkNode) {
+		// do something with the template and css here
+	}
+);
 ```
 
 Since plugins are just AMD modules, they would typically be referenced using
@@ -583,10 +583,10 @@ pluginPath config option, you can use its full path or you can specify a path
 for it in curl's paths config object.
 
 ```javascript
-	// example of a fully-pathed plugin under the cssx folder
-	define(['/css!myCssFile'], function (cssxDef) {
-		// do some awesome css stuff here
-	});
+// example of a fully-pathed plugin under the cssx folder
+define(['/css!myCssFile'], function (cssxDef) {
+	// do some awesome css stuff here
+});
 ```
 
 Plugins can also have configuration options. Global options can be specified
@@ -595,10 +595,10 @@ suffixes. Suffixes are also delineated by the ! symbol. Here's an example of
 a plugin using options:
 
 ```javascript
-	// don't try to repair IE6-8 opacity issues in my css file
-	define(['css!myCssFile!ignore:opacity'], function (cssxDef) {
-		// do some awesome css stuff here
-	});
+// don't try to repair IE6-8 opacity issues in my css file
+define(['css!myCssFile!ignore:opacity'], function (cssxDef) {
+	// do some awesome css stuff here
+});
 ```
 
 ----------------------------------------
@@ -653,16 +653,16 @@ cujo.js supports the CommonJS Packages 1.1 specification.  Packages are
 defined in the packages configuration parameter:
 
 ```javascript
-	cujo = {
-		baseUrl: 'path/to/js',
-		packages: {
-			'my-package': {
-				path: 'path/to/my-package',
-				main: 'main/main-module-file',
-				lib: 'location/of/other/modules'
-			}
+cujo = {
+	baseUrl: 'path/to/js',
+	packages: {
+		'my-package': {
+			path: 'path/to/my-package',
+			main: 'main/main-module-file',
+			lib: 'location/of/other/modules'
 		}
-	};
+	}
+};
 ```
 
 The path property describes where to find the package in relation to the
@@ -674,7 +674,7 @@ package.
 In the example above, the main module of the package can be obtained as follows
 
 ```javascript
-	curl(['my-package'], callback);
+curl(['my-package'], callback);
 ```
 
 and will be fetched from the following path:
@@ -684,7 +684,7 @@ path/to/js/path/to/my-package/main/main-module-file.js
 Some other file in the package would be obtained as follows:
 
 ```javascript
-	curl(['my-package/other-module'], callback);
+curl(['my-package/other-module'], callback);
 ```
 
 and will be fetched from the following path:
