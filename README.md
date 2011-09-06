@@ -13,7 +13,7 @@ What's New?
 	* faster domReady detection in non-IE browsers
 	* link! plugin for ultra-simple css loading (no waiting, no embedding)
 	* new apiContext config param to keep curl API off global object
-	* curl() allows a single dependency to be specified without an array
+	* `curl()` allows a single dependency to be specified without an array
 	* removed broken !noexec option for js! plugin since it no longer worked
 	  in the current browsers
 * 0.5.1:
