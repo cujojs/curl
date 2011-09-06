@@ -7,10 +7,12 @@ What's New?
 
 * 0.5.2
 	* better CDN support!
+		* protocol-relative urls fixed
+		* plugin-specific paths (for segmenting by file type)
+		* robust 404 detection for non-module js resources
 	* faster domReady detection in non-IE browsers
 	* link! plugin for ultra-simple css loading (no waiting, no embedding)
 	* new apiContext config param to keep curl API off global object
-	* protocol-relative urls fixed
 	* curl() allows a single dependency to be specified without an array
 	* removed broken !noexec option for js! plugin since it no longer worked
 	  in the current browsers
@@ -85,6 +87,8 @@ script loaders.
 
 API at a glance
 ===============
+
+For a complete description, check out the [wiki](https://github.com/unscriptable/curl/wiki).
 
 ```javascript
 	curl(['dep1', 'dep2', 'dep3' /* etc */], callback);
@@ -197,6 +201,8 @@ in their absence. :)
 mapping that applies.
 * apiName: an alternate name to `curl` and `require` for curl.js's global
   variable
+* apiContext: an object, rather than `window`, to place curl on when using
+  `apiName`
 
 ---------
 
@@ -205,12 +211,10 @@ mapping that applies.
 	define(['dep1', 'dep2', 'dep3' /* etc */], module);
 	define(['dep1', 'dep2', 'dep3' /* etc */], promise);
 	define(module);
-	define(promise);
 	define(name, ['dep1', 'dep2', 'dep3' /* etc */], definition);
 	define(name, ['dep1', 'dep2', 'dep3' /* etc */], module);
 	define(name, ['dep1', 'dep2', 'dep3' /* etc */], promise);
 	define(name, module);
-	define(name, promise);
 ```
 
 Defines a module per the CommonJS AMD proposed specification.
@@ -220,8 +224,6 @@ Dependencies may be named 'require', 'exports', or 'module' and will behave
 as defined in the CommonJS Modules 1.1 proposal.
 * definition: Function called to define the module
 * module: Any javascript object, function, constructor, or primitive
-* promise: Object compatible with CommonJS Promises/A. Useful for further
-deferring resolution of the module.
 * name: String used to name a module (not necessary nor recommended)
 
 ----------------------------------------
@@ -354,28 +356,32 @@ specification and eventual implementation in browsers.
 If you don't want to wait for official javascript modules, then don't.  The future 
 is now.  AMD works now -- and it's awesome.
 
-AMD's API focuses on two globally-available functions: require() and define().
-require() specifies a list of dependent modules or resources that must be
+AMD's API focuses on one globally-available function: `define()` and some
+CommonJS-inspired variables, `require()`, `exports`, and `module`.
+`require()` specifies a list of dependent modules or resources that must be
 loaded before running a set of code. This code resides in a callback function
 that is executed asynchronously, i.e. it runs later, not in the current
 "thread".  Specifically, it executes when all of the dependencies are loaded
 and ready.  
 
-Actually, the proposal says that the public require() function could have a
-different name -- or could even be implemented differently.  To keep confusion to
-a minimum curl.js uses `curl()` for the public API.  You may rename this API
-back to `require()` by supplying the `apiName` config param (apiName: "require").
+The proposal does not mandate that `require()` be specified globally.  In fact,
+at a global level, the concerns of a loader are about application bootstrapping
+and not about finding dependencies. To keep the confusion about these two
+concepts to a minimum, curl.js uses `curl()` for the public API.  You may rename
+this API back to `require()` by supplying the `apiName` config param
+(`apiName: "require"`), but this is not receommended.
 
-It's only important that the define() method be consistent.  This is the method
-that tells the loader what modules have been loaded by a script. define() also
-specifies a list of dependencies and a callback function that defines and/or
-creates the resource when the dependencies are ready.  Optionally, define()
-also takes a name parameter, but this is mainly for build tools and optimizers.
+It's more important that the `define()` method be consistent.  This is the
+method that tells the loader what modules have been loaded by a script.
+`define()`  also specifies a list of dependencies and a callback function that
+defines and/or creates the resource when the dependencies are ready.
+Optionally, `define()` also takes a name parameter, but this is mainly for build
+tools and optimizers.
 
 Inside the `define()`, the `require()` method acts like other AMD loaders.
 
 AMD's API also helps code reuse by providing compatibility with CommonJS
-server modules. AMD-compliant loaders support the same require() syntax and
+(server) modules. AMD-compliant loaders support the same `require()` syntax and
 argument signatures as server-side javascript (ssjs) modules.
 
 Not all async loaders are AMD-compliant. Of the list above, only the following
@@ -406,7 +412,7 @@ callback function. This allows proactive error handling, rather than detecting
 problems via a timeout, which can be tricky to set correctly. curl does this in
 a backwards-compatible way so AMD-compliant plugins will still work in curl.
 
-curl.js will also return a promise from curl() calls. This allows you to
+curl.js will also return a promise from `curl()` calls. This allows you to
 write code like this:
 
 ```javascript
@@ -456,10 +462,9 @@ like this:
 
 The !order suffix instructs curl.js to wait for previous scripts to execute
 before executing the current script. All scripts download in parallel, though,
-unless you specify jsPrefetch:false in the config.  Be sure to have proper
-cache headers set if you plan to use jsPrefetch:true or scripts will get
-downloaded twice in browsers that don't support async=false (only Firefox 4
-supports it so far).
+unless you specify `prefetch: false` in the config.  Be sure to have proper
+cache headers set if you plan to use `prefetch: true` or scripts will get
+downloaded twice in browsers that don't support `async="false"`.
 
 ----------------------------------------
 
@@ -469,7 +474,7 @@ Can curl.js load non-javascript files?
 Yes, curl.js follows the CommonJS Loader Plugin specification, so you can use
 any compatible plugin. The following plugins are included:
 
-js! -- loads non-AMD javascript files
+js! -- loads non-AMD javascript files. more info on the [wiki](https://github.com/unscriptable/curl/wiki/js)
 
 text! -- loads text files
 
@@ -485,15 +490,17 @@ The following plugins are in progress:
 
 i18n! -- loads text strings and other locale-specific constants
 
+Complete plugin docs are on the [wiki](https://github.com/unscriptable/curl/wiki/Plugins).
+
 ----------------------------------------
 
 How are modules loaded?
 =======================
 
-curl.js uses `<script>` element injection rather than XHR.  This allows curl.js to
-load cross-domain scripts as well as local scripts.  
+curl.js uses `<script>` element injection rather than XHR/eval.  This allows
+curl.js to load cross-domain scripts as well as local scripts.
 
-To find scripts and other resources, curl uses module names.  A module name
+To find scripts and other resources, curl.js uses module names.  A module name
 looks just like a file path, but typically without the file extension.  If a
 module requires a plugin in order to load correctly, it will have a prefix
 delimited by a "!" and will also often have a file extension when a plugin
@@ -518,7 +525,7 @@ individual paths for each of your libraries.  For example, if you specify a base
 ```javascript
 	paths: {
 		dojo: "third-party/dojo",
-		css: "third-party/cssx/css",
+		css: "third-party/cssmojo/css",
 		my: "my-cool-app-v1.3",
 		"my/lib/js": "old-js-libs"
 	}
@@ -532,11 +539,9 @@ Then the modules listed above will be sought in the following locations:
 * /resources/my-cool-app-v1.3/styles/reset.css
 * http://some-cdn/uber/module.js
 
-Note: you will need to create a path to curl's plugins and other modules if the
-curl folder isn't directly under the same folder as your web page. curl.js uses
-the same mechanism to find its own modules.
-
-TODO: explain the pluginPath configuration parameter.
+Note: you will need to create a path to curl.js's plugins and other modules if
+the curl folder isn't directly under the same folder as your web page. curl.js
+uses the same mechanism to find its own modules.
 
 ----------------------------------------
 
@@ -546,9 +551,9 @@ What are AMD plugins?
 AMD supports the notion of plugins. Plugins are AMD modules that can be used to
 load javascript modules -- or other types of resources. curl comes with several
 plugins already, including a text plugin (for templates or other text
-resources), a css plugin, a sync plugin (for loading modules synchronously),
-and a debug plugin (for collecting and logging details of the inner workings of
-curl).
+resources), two different css plugins, a dojo 1.6 compatibility plugin,
+a dom-ready plugin and a debug plugin (for collecting and logging details of the
+inner workings of curl).
 
 Plugins are designated by a prefix on the name of the module or resource to be
 loaded. They are delineated by a ! symbol. The following example shows the use
@@ -603,8 +608,10 @@ How do I use curl.js?
 
 1. Learn about AMD-formatted javascript modules if you don't already know how.
 2. Clone or download curl to your local machine or server.
-3. Figure out the baseUrl and paths configuration that makes sense for your project.
-4. Check out the "API at a glance" section above to figure out which loading methodology you want to use.
+3. Figure out the baseUrl and paths configuration that makes sense for your
+   project.
+4. Check out the "API at a glance" section above to figure out which loading
+   methodology you want to use.
 5. Study the "Very Simple Example" and some of the test files.
 6. Try it on your own files.
 
@@ -634,9 +641,8 @@ After the build tool creates the concatenated files, the files can be passed
 into a compiler (also called a shrinker or compressor).
 
 We're writing curl to be compatible with RequireJS's build tool, but there's
-also another cujo project in the pipeline: cram. Cram is the Cujo Resource
-Assembler. cram will be ready by mid 2011, so use another build tool or a
-custom shell script in the mean time.
+also another cujo project in the pipeline: [cram](https://github.com/unscriptable/cram).
+Cram is the Cujo Resource Assembler.
 
 ----------------------------------------
 
@@ -664,9 +670,6 @@ baseUrl parameter.  The main and lib properties describe where to find modules
 inside the package.  The main property gives the relative path to the package's
 main module.  The lib property reflects the path to all other modules in the
 package.
-
-The main module is always executed before any other modules are executed in
-the package.  Essentially, the main module becomes an automatic dependency.
 
 In the example above, the main module of the package can be obtained as follows
 
@@ -701,7 +704,8 @@ libs include:
 
 * [canhaz](https://github.com/briancavalier/canhaz): a project and code bootstrapping tool that will save you tons of typing.
 * [wire](https://github.com/briancavalier/wire): A light, fast, flexible Javascript IOC container
-* [cram](https://github.com/unscriptable/cram): a [forthcoming] javascript compressor, concatenator, and optimizer meant to be used with curl.js
+* [when.js](https://github.com/briancavalier/when.js): A small, fast Promises/A compliant promises implementation
+* [cram](https://github.com/unscriptable/cram): a javascript compressor, concatenator, and optimizer meant to be used with curl.js
 
 Kudos
 =================
