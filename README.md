@@ -186,7 +186,7 @@ curl = {
 	pluginPath: 'for/some/reason/plugins/r/here',
 	paths: {
 		curl: 'curl/src/curl',
-		cssx: 'cssx/src/cssx'
+		cssx: 'cssx/src/cssx',
 		my: '../../my-lib/'
 	},
 	apiName: 'someOtherName'
@@ -241,7 +241,7 @@ Very Simple Example
 	curl = {
 		paths: {
 			cssx: 'cssx/src/cssx/',
-			stuff: 'my/stuff/
+			stuff: 'my/stuff/'
 		}
 	};
 
