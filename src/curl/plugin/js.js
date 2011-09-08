@@ -137,7 +137,7 @@
 			testPos = name.indexOf('!test=');
 			test = testPos > 0 && name.substr(testPos + 6); // must be last option!
 			prefetch = 'prefetch' in config ? config['prefetch'] : true;
-			name = order || testPos ? name.substr(0, name.indexOf('!')) : name;
+			name = order || testPos > 0 ? name.substr(0, name.indexOf('!')) : name;
 			def = {
 				name: name,
 				url: require['toUrl'](name),
