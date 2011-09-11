@@ -780,6 +780,7 @@
 	apiContext = userCfg['apiContext'] || global;
 
 	apiContext[apiName] = _curl;
+	define(apiName, _curl);
 
 	// using bracket property notation so closure won't clobber name
 	global['define'] = _curl['define'] = _define;
