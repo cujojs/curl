@@ -1,10 +1,12 @@
 curl (cujo resource loader)
 =====================
 
-version 0.5.2
+version 0.5.3
 
 What's New?
 
+* 0.5.3
+	* fix to js! plugin (now works without !order option)
 * 0.5.2
 	* better CDN support!
 		* protocol-relative urls fixed
@@ -34,10 +36,6 @@ What's New?
 	  `apiName` config param to "require"
 	* configuration parameters for plugins are now defined in a sub-object
 	  of the main config object: { css: { cssOption: true } }
-* earlier:
-	* Fixed !order option for js! plugin in non-Firefox browsers (0.4.3)
-	* Fixed the compiled version in 0.4.2 (dist/ folder)
-	* Several fixes to path and package mapping were made in 0.4.1
 
 TODO:
 
