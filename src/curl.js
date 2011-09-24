@@ -780,7 +780,8 @@
 	apiContext = userCfg['apiContext'] || global;
 
 	apiContext[apiName] = _curl;
-	define(apiName, _curl);
+	cache[apiName] = new ResourceDef(apiName);
+	cache[apiName].resolve(_curl);
 
 	// using bracket property notation so closure won't clobber name
 	global['define'] = _curl['define'] = _define;
