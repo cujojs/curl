@@ -79,21 +79,7 @@
 		return toString.call(obj).indexOf('[object ' + type) == 0;
 	}
 
-	function normalizePkgDescriptor (descriptor, nameOrIndex) {
-		// TODO: remove nameOrIndex param
-		// we need to use strings for prop names to account for google closure
-
-		// check for string shortcuts
-		if (isType(descriptor, 'String')) {
-			descriptor = removeEndSlash(descriptor);
-			// fill in defaults
-			descriptor = {
-				id: descriptor,
-				'path': descriptor,
-				'main': defaultDescriptor.main,
-				'lib': defaultDescriptor.lib
-			};
-		}
+	function normalizePkgDescriptor (descriptor) {
 
 		descriptor.path = descriptor['path'] || ''; // (isNaN(nameOrIndex) ? nameOrIndex : descriptor.id);
 
