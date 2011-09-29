@@ -5,11 +5,12 @@
  * Licensed under the MIT License at:
  * 		http://www.opensource.org/licenses/mit-license.php
  *
- * Do not use this file! curl.js will work with dojo 1.6 already. I mistakenly
- * committed this file as a potential external shim so curl.js stays lightweight.
- * 
+ * Until AMD becomes well established, there will be issues with the various
+ * libs.  This one overcomes some minor issues with dojo 1.6's initial
+ * foray into AMD territory. :)
+ *
  * usage:
- *  require(['curl/dojo16Compat', 'curl/domReady'])
+ *  curl(['curl/dojo16Compat', 'curl/domReady'])
  *  	.next(['dojo/parser'])
  *  	.then(function (parser) {
  *  		parser.parse();
@@ -19,12 +20,11 @@
 (function (global) {
 
 	// satisfy loader:
-	define(/*=='curl/dojo16Compat',==*/ ['./domReady'], function (domReady) {
+	define(/*=='curl/dojo16Compat',==*/ ['curl', './domReady'], function (curl, domReady) {
 
 		// TODO: figure out a better way to grab global curl
 		// we should probably just add "curl" as a dependency (???)
-		var curl = global['curl'] || global['require'],
-			define = global['define'];
+		var define = global['define'];
 
 		function duckPunchRequire (req) {
 			if (!req['ready']){
