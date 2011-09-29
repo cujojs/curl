@@ -22,9 +22,10 @@
 	// satisfy loader:
 	define(/*=='curl/dojo16Compat',==*/ ['curl', './domReady'], function (curl, domReady) {
 
-		// TODO: figure out a better way to grab global curl
-		// we should probably just add "curl" as a dependency (???)
-		var define = global['define'];
+		// TODO: capture define.amd
+		var _define = global['define'],
+			amd = _define.amd
+			define;
 
 		function duckPunchRequire (req) {
 			if (!req['ready']){
@@ -45,7 +46,7 @@
 		// as a dependency
 		duckPunchRequire(curl);
 
-		global['define'] = function () {
+		define = global['define'] = function () {
 			var args, len, names, reqPos = [], defFunc, i, needsDomReady;
 			// find dependency array
 			args = [].slice.call(arguments);
@@ -78,8 +79,9 @@
 //					names.push('domReady!');
 //				}
 			}
-			return define.apply(null, args);
+			return _define.apply(null, args);
 		};
+		define.amd = amd;
 
 		return true;
 
