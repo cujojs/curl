@@ -17,74 +17,32 @@
  *  	});
  *
  */
-(function (global) {
+define(/*=='curl/dojo16Compat',==*/ ['curl_privileged', './domReady'], function (priv, domReady) {
 
-	// satisfy loader:
-	define(/*=='curl/dojo16Compat',==*/ ['curl', './domReady'], function (curl, domReady) {
+	var _curl = priv.core._curl,
+		_require = priv.core._require,
+		define;
 
-		// TODO: capture define.amd
-		var _define = global['define'],
-			amd = _define.amd
-			define;
-
-		function duckPunchRequire (req) {
-			if (!req['ready']){
-				req['ready'] = function (cb) {
-					domReady(cb);
-				};
-			}
-			if (!req['nameToUrl']) {
-				req['nameToUrl'] = function (name, ext) {
-					// map non-standard nameToUrl to toUrl
-					return req['toUrl'](name + (ext || ''));
-				};
-			}
-			return req;
+	function duckPunchRequire (req) {
+		if (!req['ready']){
+			req['ready'] = function (cb) {
+				domReady(cb);
+			};
 		}
+		if (!req['nameToUrl']) {
+			req['nameToUrl'] = function (name, ext) {
+				// map non-standard nameToUrl to toUrl
+				return req['toUrl'](name + (ext || ''));
+			};
+		}
+		return req;
+	}
 
-		// modify global curl cuz dojo doesn't always use standard `require`
-		// as a dependency
-		duckPunchRequire(curl);
+	// modify global curl cuz dojo doesn't always use standard `require`
+	// as a dependency
+	duckPunchRequire(_curl);
+	duckPunchRequire(_require);
 
-		define = global['define'] = function () {
-			var args, len, names, reqPos = [], defFunc, i, needsDomReady;
-			// find dependency array
-			args = [].slice.call(arguments);
-			len = args.length;
-			names = args[len - 2];
-			defFunc = typeof args[len - 1] == 'function' ? args[len - 1] : null;
-			// if we have dependencies and a definition function
-			if (names && defFunc) {
-				// find all "require" dependencies
-				for (i = names.length - 1; i >= 0; i--) {
-					if (names[i] == 'require') {
-						reqPos.push(i);
-					}
-//					needsDomReady = needsDomReady || names[i] == 'dojo/_base/html';
-				}
-				// if there are any
-				if (reqPos.length > 0) {
-					// replace the definition function with one that replaces
-					// the "require" deps with duck-punched ones
-					args[len - 1] = function () {
-						var deps = [].slice.call(arguments);
-						for (i = 0; i < reqPos.length; i++) {
-							deps[reqPos[i]] = duckPunchRequire(deps[reqPos[i]]);
-						}
-						return defFunc.apply(this, deps);
-					};
-				}
-				// if we need to fix dojo's domReady bugs
-//				if (needsDomReady) {
-//					names.push('domReady!');
-//				}
-			}
-			return _define.apply(null, args);
-		};
-		define.amd = amd;
+	return true;
 
-		return true;
-
-	});
-
-}(this));
+});
