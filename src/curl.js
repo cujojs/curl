@@ -13,13 +13,13 @@
 	 * Overall operation:
 	 * When a dependency is encountered and it already exists, it's returned.
 	 * If it doesn't already exist, it is created and the dependency's script
-	 * is loaded. If there is a define call in the loaded script with a name,
+	 * is loaded. If there is a define call in the loaded script with a id,
 	 * it is resolved asap (i.e. as soon as the dependency's dependencies are
-	 * resolved). If there is a (single) define call with no name (anonymous),
+	 * resolved). If there is a (single) define call with no id (anonymous),
 	 * the resource in the resNet is resolved after the script's onload fires.
 	 * IE requires a slightly different tactic. IE marks the readyState of the
 	 * currently executing script to 'interactive'. If we can find this script
-	 * while a define() is being called, we can match the define() to its name.
+	 * while a define() is being called, we can match the define() to its id.
 	 * Opera marks scripts as 'interactive' but at inopportune times so we
 	 * have to handle it specifically.
 	 */
@@ -73,7 +73,6 @@
 			main: './lib/main',
 			lib: './lib'
 		},
-		debug,
 		core;
 
 	function isType (obj, type) {
@@ -89,14 +88,14 @@
 			descriptor = removeEndSlash(descriptor);
 			// fill in defaults
 			descriptor = {
-				name: descriptor,
+				id: descriptor,
 				'path': descriptor,
 				'main': defaultDescriptor.main,
 				'lib': defaultDescriptor.lib
 			};
 		}
 
-		descriptor.path = descriptor['path'] || ''; // (isNaN(nameOrIndex) ? nameOrIndex : descriptor.name);
+		descriptor.path = descriptor['path'] || ''; // (isNaN(nameOrIndex) ? nameOrIndex : descriptor.id);
 
 		function normalizePkgPart (partName) {
 			var path;
@@ -107,7 +106,7 @@
 				}
 				else {
 					// use normal . and .. path processing
-					path = core['normalizeName'](descriptor[partName], descriptor.path);
+					path = core.normalizeName(descriptor[partName], descriptor.path);
 				}
 				return removeEndSlash(path);
 			}
@@ -186,25 +185,17 @@
 
 	}
 
-	function ResourceDef (name) {
+	function ResourceDef (id) {
 		Promise.apply(this);
-		this.name = name;
+		this.id = id;
 	}
 
 	core = {
 
-		'extractCfg': function extractCfg (cfg) {
+		extractCfg: function extractCfg (cfg) {
 			var p, pStrip, path, pathList = [];
 
 			baseUrl = cfg['baseUrl'] || '';
-
-			if (cfg['debug']) {
-				debug = true;
-				// add debugging aides
-				_curl['cache'] = cache;
-				_curl['cfg'] = cfg;
-				_curl['undefine'] = function (moduleId) { delete cache[moduleId]; };
-			}
 
 			// fix all paths
 			var cfgPaths = cfg['paths'];
@@ -217,7 +208,7 @@
 
 			var cfgPackages = cfg['packages'];
 			for (p in cfgPackages) {
-				pStrip = removeEndSlash(cfgPackages[p]['name'] || p);
+				pStrip = removeEndSlash(cfgPackages[p]['id'] || p);
 				path = paths[pStrip] = normalizePkgDescriptor(cfgPackages[p], pStrip);
 				path.specificity = (path.path.match(findSlashRx) || []).length;
 				pathList.push(pStrip);
@@ -235,15 +226,15 @@
 
 		},
 
-		'begetCtx': function (name) {
+		begetCtx: function (id) {
 
 			function toUrl (n) {
-				return core['resolveUrl'](core['resolvePath'](core['normalizeName'](n, baseName)), baseUrl);
+				return core.resolveUrl(core.resolvePath(core.normalizeName(n, baseId)), baseUrl);
 			}
 
-			var baseName = name.substr(0, name.lastIndexOf('/')),
+			var baseId = id.substr(0, id.lastIndexOf('/')),
 				ctx = {
-					baseName: baseName
+					baseId: baseId
 				},
 				exports = {},
 				require = function (deps, callback) {
@@ -253,22 +244,20 @@
 			ctx.vars = {
 				'exports': exports,
 				'module': {
-					'id': core['normalizeName'](name, baseName),
-					'uri': toUrl(name),
+					'id': core.normalizeName(id, baseId),
+					'uri': toUrl(id),
 					'exports': exports
 				}
 			};
-			if (debug) {
-				require['curl'] = _curl;
-			}
+
 			ctx.require = ctx.vars['require'] = require;
-			// using bracket property notation so closure won't clobber name
+			// using bracket property notation so closure won't clobber id
 			require['toUrl'] = toUrl;
 
 			return ctx;
 		},
 
-		'begetCfg': function  (absPluginId) {
+		begetCfg: function  (absPluginId) {
 			var root;
 			root = absPluginId ?
 				userCfg['plugins'] && userCfg['plugins'][absPluginId] :
@@ -276,21 +265,21 @@
 			return beget(root);
 		},
 
-		'resolvePath': function (name, prefix) {
+		resolvePath: function (id, prefix) {
 			// TODO: figure out why this gets called so often for the same file
 			// searches through the configured path mappings and packages
 			// if the resulting module is part of a package, also return the main
 			// module so it can be loaded.
 			var pathInfo, path, found;
 
-			function fixPath (name) {
-				path = name.replace(pathSearchRx, function (match) {
+			function fixPath (id) {
+				path = id.replace(pathSearchRx, function (match) {
 
 					pathInfo = paths[match] || {};
 					found = true;
 
-					// if pathInfo.main and match == name, this is a main module
-					if (pathInfo.main && match == name) {
+					// if pathInfo.main and match == id, this is a main module
+					if (pathInfo.main && match == id) {
 						return pathInfo.main;
 					}
 					// if pathInfo.lib return pathInfo.lib
@@ -306,20 +295,20 @@
 
 			// if this is a plugin-specific path to resolve
 			if (prefix) {
-				fixPath(prefix + '!/' + name);
+				fixPath(prefix + '!/' + id);
 			}
 			if (!found) {
-				fixPath(name);
+				fixPath(id);
 			}
 
 			return path;
 		},
 
-		'resolveUrl': function (path, baseUrl, addExt) {
+		resolveUrl: function (path, baseUrl, addExt) {
 			return (baseUrl && !absUrlRx.test(path) ? joinPath(baseUrl, path) : path) + (addExt && !dontAddExtRx.test(path) ? '.js' : '');
 		},
 
-		'loadScript': function (def, success, failure) {
+		loadScript: function (def, success, failure) {
 			// script processing rules learned from RequireJS
 
 			// insert script
@@ -330,7 +319,7 @@
 				ev = ev || global.event;
 				// detect when it's done loading
 				if (ev.type === 'load' || readyStates[this.readyState]) {
-					delete activeScripts[def.name];
+					delete activeScripts[def.id];
 					// release event listeners
 					this.onload = this[orsc] = this.onerror = null;
 					success(el);
@@ -356,13 +345,13 @@
 			// loading will start when the script is inserted into the dom.
 			// IE will load the script sync if it's in the cache, so
 			// indicate the current resource definition if this happens.
-			activeScripts[def.name] = el;
+			activeScripts[def.id] = el;
 			// use insertBefore to keep IE from throwing Operation Aborted (thx Bryan Forbes!)
 			head.insertBefore(el, head.firstChild);
 
 		},
 
-		'fixArgs': function (args) {
+		fixArgs: function (args) {
 			// resolve args
 			// valid combinations for define:
 			// (string, array, object|function) sax|saf
@@ -370,7 +359,7 @@
 			// (string, object|function) sx|sf
 			// (object|function) x|f
 
-			var name, deps, definition, isDefFunc, len = args.length;
+			var id, deps, definition, isDefFunc, len = args.length;
 
 			definition = args[len - 1];
 			isDefFunc = isType(definition, 'Function');
@@ -380,11 +369,11 @@
 					deps = args[0];
 				}
 				else {
-					name = args[0];
+					id = args[0];
 				}
 			}
 			else if (len == 3) {
-				name = args[0];
+				id = args[0];
 				deps = args[1];
 			}
 
@@ -395,31 +384,24 @@
 			}
 
 			return {
-				name: name,
+				id: id,
 				deps: deps || [],
 				res: isDefFunc ? definition : function () { return definition; }
 			};
 		},
 
-		'resolveResDef': function (def, args, ctx) {
+		resolveResDef: function (def, args, ctx) {
 
-			if (debug && console) {
-				console.log('curl: resolving', def.name);
-			}
-
-			// if a module id has been remapped, it will have a baseName
-			var childCtx = core['begetCtx'](def.baseName || def.name);
+			// if a module id has been remapped, it will have a baseId
+			var childCtx = core.begetCtx(def.baseId || def.id);
 
 			// get the dependencies and then resolve/reject
-			core['getDeps'](def, args.deps, childCtx,
+			core.getDeps(def, args.deps, childCtx,
 				function (deps) {
 					try {
 						// node.js assumes `this` === exports
 						// anything returned overrides exports
 						var res = args.res.apply(childCtx.vars['exports'], deps) || childCtx.vars['exports'];
-						if (debug && console) {
-							console.log('curl: defined', def.name, res.toString().substr(0, 50).replace(/\n/, ' '));
-						}
 					}
 					catch (ex) {
 						def.reject(ex);
@@ -431,16 +413,16 @@
 
 		},
 
-		'fetchResDef': function (def, ctx) {
+		fetchResDef: function (def, ctx) {
 
-			core['loadScript'](def,
+			core.loadScript(def,
 
 				function () {
 					var args = argsNet;
 					argsNet = undef; // reset it before we get deps
 
-					// if our resource was not explicitly defined with a name (anonymous)
-					// Note: if it did have a name, it will be resolved in the define()
+					// if our resource was not explicitly defined with a id (anonymous)
+					// Note: if it did have a id, it will be resolved in the define()
 					if (def.useNet !== false) {
 
 						if (!args) {
@@ -449,11 +431,11 @@
 						}
 						else if (args.ex) {
 							// the resNet resource was already rejected, but it didn't know
-							// its name, so reject this def now with better information
+							// its id, so reject this def now with better information
 							def.reject(new Error(args.ex.replace('${url}', def.url)));
 						}
 						else {
-							core['resolveResDef'](def, args, ctx);
+							core.resolveResDef(def, args, ctx);
 						}
 					}
 
@@ -467,16 +449,16 @@
 
 		},
 
-		'normalizeName': function (name, baseName) {
-			// if name starts with . then use parent's name as a base
-			// if name starts with .. then use parent's parent
-			return name.replace(normalizeRx, function (match, dot1, dot2) {
-				return (dot2 ? baseName.substr(0, baseName.lastIndexOf('/')) : baseName) + '/';
+		normalizeName: function (id, baseId) {
+			// if id starts with . then use parent's id as a base
+			// if id starts with .. then use parent's parent
+			return id.replace(normalizeRx, function (match, dot1, dot2) {
+				return (dot2 ? baseId.substr(0, baseId.lastIndexOf('/')) : baseId) + '/';
 			});
 		},
 
-		'fetchDep': function (depName, ctx) {
-			var name, delPos, prefix, resName, def, cfg;
+		fetchDep: function (depName, ctx) {
+			var id, delPos, prefix, resName, def, cfg;
 
 			// check for plugin prefix
 			delPos = depName.indexOf('!');
@@ -486,19 +468,19 @@
 				resName = depName.substr(delPos + 1);
 
 				// prepend plugin folder path, if it's missing and path isn't in paths
-				var prefixPath = core['resolvePath'](prefix);
+				var prefixPath = core.resolvePath(prefix);
 				var slashPos = prefixPath.indexOf('/');
 				if (slashPos < 0) {
-					prefixPath = core['resolvePath'](joinPath(pluginPath, prefixPath));
+					prefixPath = core.resolvePath(joinPath(pluginPath, prefixPath));
 				}
 
 				// fetch plugin
 				var pluginDef = cache[prefix];
 				if (!pluginDef) {
 					pluginDef = cache[prefix] = new ResourceDef(prefix);
-					pluginDef.url = core['resolveUrl'](prefixPath, baseUrl, true);
-					pluginDef.baseName = prefixPath;
-					core['fetchResDef'](pluginDef, ctx);
+					pluginDef.url = core.resolveUrl(prefixPath, baseUrl, true);
+					pluginDef.baseId = prefixPath;
+					core.fetchResDef(pluginDef, ctx);
 				}
 
 				// alter the toUrl passed into the plugin so that it can
@@ -507,22 +489,22 @@
 				// TODO: make this more efficient by allowing toUrl to be
 				// overridden more easily and detecting if there's a
 				// plugin-specific path more efficiently
-				ctx = core['begetCtx'](ctx.baseName);
+				ctx = core.begetCtx(ctx.baseId);
 				ctx.require['toUrl'] = function toUrl (absId) {
 					var prefixed, path;
-					path = core['resolvePath'](absId, prefix);
-					return core['resolveUrl'](path, baseUrl);
+					path = core.resolvePath(absId, prefix);
+					return core.resolveUrl(path, baseUrl);
 				};
 
 				// get plugin config
-				cfg = core['begetCfg'](prefix) || {};
+				cfg = core.begetCfg(prefix) || {};
 
 				function toAbsId (id) {
-					return core['normalizeName'](id, ctx.baseName);
+					return core.normalizeName(id, ctx.baseId);
 				}
 
-				// we need to use depName until plugin tells us normalized name
-				// if the plugin may changes the name, we need to consolidate
+				// we need to use depName until plugin tells us normalized id
+				// if the plugin may changes the id, we need to consolidate
 				// def promises below
 				def = new ResourceDef(depName);
 
@@ -539,27 +521,27 @@
 							resName = toAbsId(resName);
 						}
 
-						// the spec is unclear, so we're using the full name (prefix + name) to id resources
+						// the spec is unclear, so we're using the full id (prefix + id) to id resources
 						// so multiple plugins could each process the same resource
-						name = prefix + '!' + resName;
-						normalizedDef = cache[name];
+						id = prefix + '!' + resName;
+						normalizedDef = cache[id];
 
 						// if this is our first time fetching this (normalized) def
 						if (!normalizedDef) {
 
-							normalizedDef = new ResourceDef(name);
+							normalizedDef = new ResourceDef(id);
 
-							// resName could be blank if the plugin doesn't specify a name (e.g. "domReady!")
+							// resName could be blank if the plugin doesn't specify a id (e.g. "domReady!")
 							// don't cache non-determinate "dynamic" resources (or non-existent resources)
 							if (resName && !plugin['dynamic']) {
-								cache[name] = normalizedDef;
+								cache[id] = normalizedDef;
 							}
 
 							// curl's plugins prefer to receive the back-side of a promise,
 							// but to be compatible with commonjs's specification, we have to
 							// piggy-back on the callback function parameter:
 							var loaded = normalizedDef.resolve;
-							// using bracket property notation so closure won't clobber name
+							// using bracket property notation so closure won't clobber id
 							loaded['resolve'] = loaded;
 							loaded['reject'] = normalizedDef.reject;
 
@@ -577,13 +559,13 @@
 
 			}
 			else {
-				resName = name = core['normalizeName'](depName, ctx.baseName);
+				resName = id = core.normalizeName(depName, ctx.baseId);
 
 				def = cache[resName];
 				if (!def) {
 					def = cache[resName] = new ResourceDef(resName);
-					def.url = core['resolveUrl'](core['resolvePath'](resName), baseUrl, true);
-					core['fetchResDef'](def, ctx);
+					def.url = core.resolveUrl(core.resolvePath(resName), baseUrl, true);
+					core.fetchResDef(def, ctx);
 				}
 
 			}
@@ -591,7 +573,7 @@
 			return def;
 		},
 
-		'getDeps': function (def, names, ctx, success, failure) {
+		getDeps: function (def, names, ctx, success, failure) {
 
 			var deps = [],
 				count = names.length,
@@ -607,7 +589,7 @@
 				}
 				else {
 					// hook into promise callbacks
-					core['fetchDep'](depName, ctx).then(
+					core.fetchDep(depName, ctx).then(
 						function (dep) {
 							deps[index] = dep; // got it!
 							if (--count == 0) {
@@ -630,7 +612,7 @@
 
 		},
 
-		'getCurrentDefName': function () {
+		getCurrentDefName: function () {
 			// Note: Opera lies about which scripts are "interactive", so we
 			// just have to test for it. Opera provides a true browser test, not
 			// a UA sniff thankfully.
@@ -664,7 +646,7 @@
 		}
 
 		// resolve dependencies
-		core['getDeps'](null, deps, ctx,
+		core.getDeps(null, deps, ctx,
 			function (deps) {
 				// Note: deps are passed to a promise as an array, not as individual arguments
 				callback.resolve ? callback.resolve(deps) : callback.apply(null, deps);
@@ -684,7 +666,7 @@
 		// extract config, if it's specified
 		if (isType(args[0], 'Object')) {
 			userCfg = args.shift();
-			core['extractCfg'](userCfg);
+			core.extractCfg(userCfg);
 		}
 
 		// extract dependencies
@@ -692,13 +674,13 @@
 		callback = args[1];
 
 		// this must be after extractCfg
-		ctx = core['begetCtx']('');
+		ctx = core.begetCtx('');
 
 		var promise = new Promise(),
 			api = {};
 
 			// return the dependencies as arguments, not an array
-			// using bracket property notation so closure won't clobber name
+			// using bracket property notation so closure won't clobber id
 			api['then'] = function (resolved, rejected) {
 				promise.then(
 					function (deps) { if (resolved) resolved.apply(null, deps); },
@@ -737,32 +719,32 @@
 
 	function _define (/* various */) {
 
-		var args = core['fixArgs'](arguments),
-			name = args.name;
+		var args = core.fixArgs(arguments),
+			id = args.id;
 
-		if (name == null) {
+		if (id == null) {
 			if (argsNet !== undef) {
 				argsNet = {ex: 'Multiple anonymous defines found in ${url}.'};
 			}
-			else if (!(name = core['getCurrentDefName']())/* intentional assignment */) {
+			else if (!(id = core.getCurrentDefName())/* intentional assignment */) {
 				// anonymous define(), defer processing until after script loads
 				argsNet = args;
 			}
 		}
-		if (name != null) {
+		if (id != null) {
 			// named define(), it is in the cache if we are loading a dependency
 			// (could also be a secondary define() appearing in a built file, etc.)
 			// if it's a secondary define(), grab the current def's context
-			var def = cache[name];
+			var def = cache[id];
 			if (!def) {
-				def = cache[name] = new ResourceDef(name);
+				def = cache[id] = new ResourceDef(id);
 			}
 			def.useNet = false;
 			// check if this resource has already been resolved (can happen if
 			// a module was defined inside a built file and outside of it and
 			// dev didn't coordinate it explicitly)
 			if (!('resolved' in def)) {
-				core['resolveResDef'](def, args, core['begetCtx'](name));
+				core.resolveResDef(def, args, core.begetCtx(id));
 			}
 		}
 
@@ -773,7 +755,7 @@
 	// if userCfg is a function, assume curl() exists already
 	var conflict = isType(userCfg, 'Function');
 	if (!conflict) {
-		core['extractCfg'](userCfg);
+		core.extractCfg(userCfg);
 	}
 
 	/***** define public API *****/
@@ -794,17 +776,20 @@
 	_curl['version'] = version;
 
 	// this is to comply with the AMD CommonJS proposal:
-	define['amd'] = { plugins: true, curl: version };
+	define['amd'] = { 'plugins': true, 'curl': version };
 
-	// expose curl inner workings for special plugins and modules
-	// TODO: remove debug code throughout this file and hook into this from
-	// debug module instead
+	// expose curl core for special plugins and modules
+	// Note: core overrides will only work in either of two scenarios:
+	// 1. the files are running un-compressed (Google Closure or Uglify)
+	// 2. the overriding module was compressed with curl.js
+	// Compiling curl and the overriding module separately won't work.
 	define('curl/_privileged', {
 		'core': core,
 		'cache': cache,
 		'cfg': userCfg,
 		'_require': _require,
 		'_define': _define,
+		'_curl': _curl,
 		'global': global
 	});
 
