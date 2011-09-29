@@ -68,11 +68,6 @@
 		// script ready states that signify it's loaded
 		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
 		orsc = 'onreadystatechange',
-		// the defaults for a typical package descriptor
-		defaultDescriptor = {
-			main: './lib/main',
-			lib: './lib'
-		},
 		core;
 
 	function isType (obj, type) {
