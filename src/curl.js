@@ -41,7 +41,7 @@
 	 */
 
 	var
-		version = '0.5.3',
+		version = '0.5.4dev',
 		head = doc['head'] || doc.getElementsByTagName('head')[0],
 		// configuration information
 		baseUrl,
@@ -193,26 +193,29 @@
 	core = {
 
 		extractCfg: function extractCfg (cfg) {
-			var p, pStrip, path, pathList = [];
+			var pathList = [];
 
 			baseUrl = cfg['baseUrl'] || '';
 
-			// fix all paths
-			var cfgPaths = cfg['paths'];
-			for (p in cfgPaths) {
-				pStrip = removeEndSlash(p.replace('!', '!/'));
-				path = paths[pStrip] = { path: removeEndSlash(cfgPaths[p]) };
-				path.specificity = (path.path.match(findSlashRx) || []).length;
-				pathList.push(pStrip);
+			function fixAndPushPaths (coll, isPkg) {
+				var pStrip, info;
+				for (var name in coll) {
+					pStrip = removeEndSlash(coll[name]['id'] || name.replace('!', '!/'));
+					if (isPkg) {
+						info = normalizePkgDescriptor(coll[name], pStrip);
+					}
+					else {
+						info = { path: removeEndSlash(coll[name]) };
+					}
+					info.specificity = (info.path.match(findSlashRx) || []).length;
+					paths[pStrip] = info;
+					pathList.push(pStrip);
+				}
 			}
 
-			var cfgPackages = cfg['packages'];
-			for (p in cfgPackages) {
-				pStrip = removeEndSlash(cfgPackages[p]['id'] || p);
-				path = paths[pStrip] = normalizePkgDescriptor(cfgPackages[p], pStrip);
-				path.specificity = (path.path.match(findSlashRx) || []).length;
-				pathList.push(pStrip);
-			}
+			// fix all paths and packages
+			fixAndPushPaths(cfg['paths'], false);
+			fixAndPushPaths(cfg['packages'], true);
 
 			// create path matcher
 			pathSearchRx = new RegExp('^(' +
@@ -583,6 +586,7 @@
 			// obtain each dependency
 			// Note: IE may have obtained the dependencies sync (stooooopid!) thus the completed flag
 			for (var i = 0; i < len && !completed; i++) (function (index, depName) {
+				// look for commonjs free vars
 				if (depName in ctx.vars) {
 					deps[index] = ctx.vars[depName];
 					count--;
@@ -615,7 +619,7 @@
 		getCurrentDefName: function () {
 			// Note: Opera lies about which scripts are "interactive", so we
 			// just have to test for it. Opera provides a true browser test, not
-			// a UA sniff thankfully.
+			// a UA sniff, thankfully.
 			// TODO: find a way to remove this browser test
 			var def;
 			if (!isType(global.opera, 'Opera')) {
