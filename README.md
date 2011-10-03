@@ -86,6 +86,18 @@ script loaders.
 
 ----------------------------------------
 
+How to get support
+===============
+
+1. Go to the issues section of the curl repo (https://github.com/unscriptable/curl/issues)
+	and search for an answer to your question or problem.
+2. If no answer exists, file a new ticket!  Somebody will typically respond within a 
+	few hours.
+
+It's that easy. 
+
+----------------------------------------
+
 API at a glance
 ===============
 
