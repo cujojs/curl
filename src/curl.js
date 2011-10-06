@@ -213,7 +213,8 @@
 		begetCtx: function (id) {
 
 			function toUrl (n) {
-				return core.resolveUrl(core.resolvePath(core.normalizeName(n, baseId)), baseUrl);
+				var path = core.resolvePathInfo(core.normalizeName(n, baseId)).path;
+				return core.resolveUrl(path, baseUrl);
 			}
 
 			var baseId = id.substr(0, id.lastIndexOf('/')),
@@ -224,7 +225,7 @@
 				require = function (deps, callback) {
 					return _require(deps, callback || noop, ctx);
 				};
-			// CommonJS Modules 1.1.1 compliance
+			// CommonJS Modules 1.1.1 mimicry
 			ctx.vars = {
 				'exports': exports,
 				'module': {
@@ -241,26 +242,19 @@
 			return ctx;
 		},
 
-		begetCfg: function  (absPluginId) {
-			var root;
-			root = absPluginId ?
-				userCfg['plugins'] && userCfg['plugins'][absPluginId] :
-				userCfg;
-			return beget(root);
-		},
-
-		resolvePath: function (id, prefix) {
+		resolvePathInfo: function (id, prefix) {
 			// TODO: figure out why this gets called so often for the same file
 			// searches through the configured path mappings and packages
 			// if the resulting module is part of a package, also return the main
 			// module so it can be loaded.
-			var pathInfo, path, found;
+			var pathInfo, path, config, found;
 
 			function fixPath (id) {
 				path = id.replace(pathSearchRx, function (match) {
 
 					pathInfo = paths[match] || {};
 					found = true;
+					config = pathInfo.config;
 
 					// if pathInfo.main and match == id, this is a main module
 					if (pathInfo.main && match == id) {
@@ -285,7 +279,10 @@
 				fixPath(id);
 			}
 
-			return path;
+			return {
+				path: path,
+				config: config || {}
+			};
 		},
 
 		resolveUrl: function (path, baseUrl, addExt) {
@@ -447,39 +444,40 @@
 		},
 
 		fetchDep: function (depName, ctx) {
-			var id, delPos, prefix, resName, def, cfg;
+			var id, delPos, loaderId, resName, pathInfo, def, cfg;
 
-			// check for plugin prefix
+			// check for plugin loaderId
 			delPos = depName.indexOf('!');
 			if (delPos >= 0) {
-				prefix = depName.substr(0, delPos);
+				loaderId = depName.substr(0, delPos);
 				// prepend plugin folder path, if it's missing and path isn't in paths
-				var prefixPath = core.resolvePath(prefix);
-				var slashPos = prefixPath.indexOf('/');
+				var loaderInfo = core.resolvePathInfo(loaderId);
+				var slashPos = loaderInfo.path.indexOf('/');
 				if (slashPos < 0) {
-					prefixPath = core.resolvePath(joinPath(pluginPath, prefixPath));
+					loaderInfo = core.resolvePathInfo(joinPath(pluginPath, loaderInfo.path));
 				}
+				cfg = userCfg['plugins'] && userCfg['plugins'][loaderId] || {};
+			}
+			else {
+				// get path information for this resource
+				resName = id = core.normalizeName(depName, ctx.baseId);
+				pathInfo = core.resolvePathInfo(resName);
+				// get custom module loader from package config
+				cfg = pathInfo.cfg || {};
+				loaderId = cfg.moduleLoader;
 			}
 
-			// TODO: get loader from package config
-			var loaderId; // ...?
 			if (loaderId) {
-				prefix = loaderId;
-			}
-
-			cfg = core.begetCfg(prefix) || {};
-
-			if (prefix) {
 
 				resName = depName.substr(delPos + 1);
 
-				// fetch plugin
-				var pluginDef = cache[prefix];
-				if (!pluginDef) {
-					pluginDef = cache[prefix] = new ResourceDef(prefix);
-					pluginDef.url = core.resolveUrl(prefixPath, baseUrl, true);
-					pluginDef.baseId = prefixPath;
-					core.fetchResDef(pluginDef, ctx);
+				// fetch plugin or loader
+				var loaderDef = cache[loaderId];
+				if (!loaderDef) {
+					loaderDef = cache[loaderId] = new ResourceDef(loaderId);
+					loaderDef.url = core.resolveUrl(loaderInfo.path, baseUrl, true);
+					loaderDef.baseId = loaderInfo.path;
+					core.fetchResDef(loaderDef, ctx);
 				}
 
 				// alter the toUrl passed into the plugin so that it can
@@ -490,9 +488,9 @@
 				// plugin-specific path more efficiently
 				ctx = core.begetCtx(ctx.baseId);
 				ctx.require['toUrl'] = function toUrl (absId) {
-					var prefixed, path;
-					path = core.resolvePath(absId, prefix);
-					return core.resolveUrl(path, baseUrl);
+					var prefixed, pathInfo;
+					pathInfo = core.resolvePathInfo(absId, loaderId);
+					return core.resolveUrl(pathInfo.path, baseUrl);
 				};
 
 				function toAbsId (id) {
@@ -504,7 +502,7 @@
 				// def promises below
 				def = new ResourceDef(depName);
 
-				pluginDef.then(
+				loaderDef.then(
 					function (plugin) {
 						var normalizedDef;
 
@@ -517,9 +515,9 @@
 							resName = toAbsId(resName);
 						}
 
-						// the spec is unclear, so we're using the full id (prefix + id) to id resources
+						// the spec is unclear, so we're using the full id (loaderId + id) to id resources
 						// so multiple plugins could each process the same resource
-						id = prefix + '!' + resName;
+						id = loaderId + '!' + resName;
 						normalizedDef = cache[id];
 
 						// if this is our first time fetching this (normalized) def
@@ -527,7 +525,7 @@
 
 							normalizedDef = new ResourceDef(id);
 
-							// resName could be blank if the plugin doesn't specify a id (e.g. "domReady!")
+							// resName could be blank if the plugin doesn't specify an id (e.g. "domReady!")
 							// don't cache non-determinate "dynamic" resources (or non-existent resources)
 							if (resName && !plugin['dynamic']) {
 								cache[id] = normalizedDef;
@@ -555,12 +553,10 @@
 
 			}
 			else {
-				resName = id = core.normalizeName(depName, ctx.baseId);
-
 				def = cache[resName];
 				if (!def) {
 					def = cache[resName] = new ResourceDef(resName);
-					def.url = core.resolveUrl(core.resolvePath(resName), baseUrl, true);
+					def.url = core.resolveUrl(pathInfo.path, baseUrl, true);
 					core.fetchResDef(def, ctx);
 				}
 
