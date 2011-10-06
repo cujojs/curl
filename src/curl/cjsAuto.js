@@ -45,16 +45,21 @@
 	}
 
 	function wrapSource (source, resourceId, moduleIds) {
-		var depsString, argsList = [];
-		depsString = "['" + moduleIds.join("','") + "']";
+		var depsString = '', argsList = [], argsString = '';
+		if (moduleIds.length > 0) {
+			depsString = ", '" + moduleIds.join("', '") + "'";
+		}
 		for (var i = 0, len = moduleIds.length; i < len; i++) {
 			// pull out variable name from hashmap part of moduleIds
 			argsList.push(moduleIds[moduleIds[i]]);
 		}
-		return "define(" + resourceId +
-			"['require', 'exports', 'module', '" +
-			depsString + "'], function (require, exports, module, " +
-			argsList.join(',') + ") {" + source + "})";
+		if (argsList.length > 0) {
+			argsString = ', ' + argsList.join(', ');
+		}
+		return "define('" + resourceId + "', " +
+			"['require', 'exports', 'module'" +
+			depsString + "], function (require, exports, module" +
+			argsString + ") {" + source + ";});\n";
 	}
 
 	function injectScript (source) {
@@ -67,7 +72,7 @@ define({
 
 	'load': function (resourceId, require, loaded, config) {
 		// TODO: extract xhr from text! plugin and use that instead?
-		require('text!' + resourceId, function (source) {
+		require(['text!' + resourceId + '.js'], function (source) {
 			var globalEval = eval, moduleMap = []; // array and hashmap
 			// find (and replace?) dependencies
 			source = parseDepModuleIds(source, moduleMap, config.replaceRequires);
@@ -82,7 +87,7 @@ define({
 				globalEval(source);
 			}
 			// don't call loaded since the injected define(id, deps, func)
-			// will have resolved promise when it executed
+			// will have resolved the promise when it executed
 		});
 	}
 
@@ -92,6 +97,6 @@ define({
 
 /*
 define(<resourceId>, [<deps>], function (<args>) {
-	<source>
+<source>
 });
  */
