@@ -37,18 +37,17 @@
 			// test modules:
 			'commonjs/exports',
 			'commonjs/this',
-			'commonjs/module',
 			'domReady!'
 		]
 	).then(
-		function (exports, thisModule, module) {
+		function (exports, thisModule) {
 			console.log('********* loaded');
 			if (document.body) {
 				document.body.appendChild(document.createTextNode('A module that exports properties loaded successfully if "it works" == ' + exports.testMessage + '.'));
 				document.body.appendChild(document.createElement('br'));
 				document.body.appendChild(document.createTextNode('A module that exports as `this` loaded successfully if "it works" == ' + thisModule.testMessage + '.'));
 				document.body.appendChild(document.createElement('br'));
-				document.body.appendChild(document.createTextNode('A module that exposes its module info loaded successfully if this module name is here: ' + module.testMessage + '.'));
+				document.body.appendChild(document.createTextNode('A module that exposes its module info loaded successfully if this "commonjs/module" name is here: ' + thisModule._module.testMessage + '.'));
 			}
 		}
 	);

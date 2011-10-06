@@ -210,14 +210,14 @@
 
 		},
 
-		begetCtx: function (id) {
+		begetCtx: function (absId) {
 
 			function toUrl (n) {
 				var path = core.resolvePathInfo(core.normalizeName(n, baseId)).path;
 				return core.resolveUrl(path, baseUrl);
 			}
 
-			var baseId = id.substr(0, id.lastIndexOf('/')),
+			var baseId = absId.substr(0, absId.lastIndexOf('/')),
 				ctx = {
 					baseId: baseId
 				},
@@ -229,8 +229,8 @@
 			ctx.vars = {
 				'exports': exports,
 				'module': {
-					'id': core.normalizeName(id, baseId),
-					'uri': toUrl(id),
+					'id': absId,
+					'uri': toUrl(absId),
 					'exports': exports
 				}
 			};
@@ -476,7 +476,7 @@
 				if (!loaderDef) {
 					loaderDef = cache[loaderId] = new ResourceDef(loaderId);
 					loaderDef.url = core.resolveUrl(loaderInfo.path, baseUrl, true);
-					loaderDef.baseId = loaderInfo.path;
+					loaderDef.baseId = loaderInfo.path; // TODO: does baseId have to be normalized?
 					core.fetchResDef(loaderDef, ctx);
 				}
 
