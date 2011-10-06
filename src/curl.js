@@ -382,10 +382,15 @@
 			// get the dependencies and then resolve/reject
 			core.getDeps(def, args.deps, childCtx,
 				function (deps) {
+					var res;
 					try {
 						// node.js assumes `this` === exports
 						// anything returned overrides exports
-						var res = args.res.apply(childCtx.vars['exports'], deps) || childCtx.vars['exports'];
+						// uses module.exports if nothing returned (node.js
+						// convention). exports === module.exports unless
+						// module.exports was reassigned.
+						res = args.res.apply(childCtx.vars['exports'], deps) ||
+							childCtx.vars['module']['exports'];
 					}
 					catch (ex) {
 						def.reject(ex);
@@ -447,16 +452,26 @@
 			// check for plugin prefix
 			delPos = depName.indexOf('!');
 			if (delPos >= 0) {
-
 				prefix = depName.substr(0, delPos);
-				resName = depName.substr(delPos + 1);
-
 				// prepend plugin folder path, if it's missing and path isn't in paths
 				var prefixPath = core.resolvePath(prefix);
 				var slashPos = prefixPath.indexOf('/');
 				if (slashPos < 0) {
 					prefixPath = core.resolvePath(joinPath(pluginPath, prefixPath));
 				}
+			}
+
+			// TODO: get loader from package config
+			var loaderId; // ...?
+			if (loaderId) {
+				prefix = loaderId;
+			}
+
+			cfg = core.begetCfg(prefix) || {};
+
+			if (prefix) {
+
+				resName = depName.substr(delPos + 1);
 
 				// fetch plugin
 				var pluginDef = cache[prefix];
@@ -479,9 +494,6 @@
 					path = core.resolvePath(absId, prefix);
 					return core.resolveUrl(path, baseUrl);
 				};
-
-				// get plugin config
-				cfg = core.begetCfg(prefix) || {};
 
 				function toAbsId (id) {
 					return core.normalizeName(id, ctx.baseId);
