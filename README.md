@@ -692,7 +692,7 @@ curl(['my-package'], callback);
 
 and will be fetched from the following path:
 
-path/to/js/path/to/my-package/main/main-module-file.js
+	path/to/js/path/to/my-package/main/main-module-file.js
 
 Some other file in the package would be obtained as follows:
 
