@@ -62,7 +62,7 @@
 		// RegExp's used later, "cached" here
 		absUrlRx = /^\/|^[^:]+:\/\//,
 		normalizeRx = /^(\.)(\.)?(\/|$)/,
-		findSlashRx = /\//,
+		findSlashRx = /\//g,
 		dontAddExtRx = /\?/,
 		pathSearchRx,
 		// script ready states that signify it's loaded
@@ -188,7 +188,7 @@
 					else {
 						info = { path: removeEndSlash(coll[name]) };
 					}
-					info.specificity = (info.path.match(findSlashRx) || []).length;
+					info.specificity = (pStrip.match(findSlashRx) || []).length;
 					paths[pStrip] = info;
 					pathList.push(pStrip);
 				}
@@ -260,24 +260,24 @@
 					if (pathInfo.main && match == id) {
 						return pathInfo.main;
 					}
-					// if pathInfo.lib return pathInfo.lib
-					else if (pathInfo.lib) {
-						return pathInfo.lib;
-					}
-					else {
-						return pathInfo.path || '';
-					}
+				// if pathInfo.lib return pathInfo.lib
+				else if (pathInfo.lib) {
+					return pathInfo.lib;
+				}
+				else {
+					return pathInfo.path || '';
+				}
 
-				});
-			}
+			});
+		}
 
-			// if this is a plugin-specific path to resolve
-			if (prefix) {
+		// if this is a plugin-specific path to resolve
+		if (prefix) {
 				fixPath(prefix + '!/' + id);
-			}
-			if (!found) {
+		}
+		if (!found) {
 				fixPath(id);
-			}
+		}
 
 			return {
 				path: path,
@@ -286,89 +286,89 @@
 		},
 
 		resolveUrl: function (path, baseUrl, addExt) {
-			return (baseUrl && !absUrlRx.test(path) ? joinPath(baseUrl, path) : path) + (addExt && !dontAddExtRx.test(path) ? '.js' : '');
+		return (baseUrl && !absUrlRx.test(path) ? joinPath(baseUrl, path) : path) + (addExt && !dontAddExtRx.test(path) ? '.js' : '');
 		},
 
 		loadScript: function (def, success, failure) {
-			// script processing rules learned from RequireJS
+		// script processing rules learned from RequireJS
 
-			// insert script
-			var el = doc.createElement('script');
+		// insert script
+		var el = doc.createElement('script');
 
-			// initial script processing
-			function process (ev) {
-				ev = ev || global.event;
-				// detect when it's done loading
-				if (ev.type === 'load' || readyStates[this.readyState]) {
+		// initial script processing
+		function process (ev) {
+			ev = ev || global.event;
+			// detect when it's done loading
+			if (ev.type === 'load' || readyStates[this.readyState]) {
 					delete activeScripts[def.id];
-					// release event listeners
-					this.onload = this[orsc] = this.onerror = null;
-					success(el);
-				}
+				// release event listeners
+				this.onload = this[orsc] = this.onerror = null;
+				success(el);
 			}
+		}
 
-			function fail (e) {
-				// some browsers send an event, others send a string,
-				// but none of them send anything useful, so just say we failed:
-				failure(new Error('Syntax error or http error: ' + def.url));
-			}
+		function fail (e) {
+			// some browsers send an event, others send a string,
+			// but none of them send anything useful, so just say we failed:
+			failure(new Error('Syntax error or http error: ' + def.url));
+		}
 
-			// set type first since setting other properties could
-			// prevent us from setting this later
-			el.type = 'text/javascript';
-			// using dom0 event handlers instead of wordy w3c/ms
-			el.onload = el[orsc] = process;
-			el.onerror = fail;
-			el.charset = def.charset || 'utf-8';
-			el.async = true;
-			el.src = def.url;
+		// set type first since setting other properties could
+		// prevent us from setting this later
+		el.type = 'text/javascript';
+		// using dom0 event handlers instead of wordy w3c/ms
+		el.onload = el[orsc] = process;
+		el.onerror = fail;
+		el.charset = def.charset || 'utf-8';
+		el.async = true;
+		el.src = def.url;
 
-			// loading will start when the script is inserted into the dom.
-			// IE will load the script sync if it's in the cache, so
-			// indicate the current resource definition if this happens.
+		// loading will start when the script is inserted into the dom.
+		// IE will load the script sync if it's in the cache, so
+		// indicate the current resource definition if this happens.
 			activeScripts[def.id] = el;
-			// use insertBefore to keep IE from throwing Operation Aborted (thx Bryan Forbes!)
-			head.insertBefore(el, head.firstChild);
+		// use insertBefore to keep IE from throwing Operation Aborted (thx Bryan Forbes!)
+		head.insertBefore(el, head.firstChild);
 
 		},
 
 		fixArgs: function (args) {
-			// resolve args
-			// valid combinations for define:
-			// (string, array, object|function) sax|saf
-			// (array, object|function) ax|af
-			// (string, object|function) sx|sf
-			// (object|function) x|f
+		// resolve args
+		// valid combinations for define:
+		// (string, array, object|function) sax|saf
+		// (array, object|function) ax|af
+		// (string, object|function) sx|sf
+		// (object|function) x|f
 
 			var id, deps, definition, isDefFunc, len = args.length;
 
-			definition = args[len - 1];
-			isDefFunc = isType(definition, 'Function');
+		definition = args[len - 1];
+		isDefFunc = isType(definition, 'Function');
 
-			if (len == 2) {
-				if (isType(args[0], 'Array')) {
-					deps = args[0];
-				}
-				else {
+		if (len == 2) {
+			if (isType(args[0], 'Array')) {
+				deps = args[0];
+			}
+			else {
 					id = args[0];
-				}
 			}
-			else if (len == 3) {
+		}
+		else if (len == 3) {
 				id = args[0];
-				deps = args[1];
-			}
+			deps = args[1];
+		}
 
-			// mimic RequireJS's assumption that a definition function with zero
-			// dependencies and non-zero arity is a wrapped CommonJS module
-			if (!deps && isDefFunc && definition.length > 0) {
-				deps = ['require', 'exports', 'module'];
-			}
+		// mimic RequireJS's assumption that a definition function with zero
+		// dependencies and non-zero arity is a wrapped CommonJS module
+		if (!deps && isDefFunc && definition.length > 0) {
+			deps = ['require', 'exports', 'module'];
+		}
 
-			return {
+		return {
 				id: id,
-				deps: deps || [],
-				res: isDefFunc ? definition : function () { return definition; }
-			};
+			deps: deps || [],
+			res: isDefFunc ? definition : function () { return definition; }
+		};
 		},
 
 		resolveResDef: function (def, args, ctx) {
@@ -376,26 +376,26 @@
 			// if a module id has been remapped, it will have a baseId
 			var childCtx = core.begetCtx(def.baseId || def.id);
 
-			// get the dependencies and then resolve/reject
+		// get the dependencies and then resolve/reject
 			core.getDeps(def, args.deps, childCtx,
-				function (deps) {
+			function (deps) {
 					var res;
-					try {
-						// node.js assumes `this` === exports
-						// anything returned overrides exports
+				try {
+					// node.js assumes `this` === exports
+					// anything returned overrides exports
 						// uses module.exports if nothing returned (node.js
 						// convention). exports === module.exports unless
 						// module.exports was reassigned.
 						res = args.res.apply(childCtx.vars['exports'], deps) ||
 							childCtx.vars['module']['exports'];
 					}
-					catch (ex) {
-						def.reject(ex);
-					}
-					def.resolve(res);
-				},
-				def.reject
-			);
+				catch (ex) {
+					def.reject(ex);
+				}
+				def.resolve(res);
+			},
+			def.reject
+		);
 
 		},
 
@@ -403,35 +403,35 @@
 
 			core.loadScript(def,
 
-				function () {
-					var args = argsNet;
-					argsNet = undef; // reset it before we get deps
+			function () {
+				var args = argsNet;
+				argsNet = undef; // reset it before we get deps
 
 					// if our resource was not explicitly defined with a id (anonymous)
 					// Note: if it did have a id, it will be resolved in the define()
-					if (def.useNet !== false) {
+				if (def.useNet !== false) {
 
-						if (!args) {
-							// uh oh, nothing was added to the resource net
-							def.reject(new Error('define() not found or duplicates found: ' + def.url));
-						}
-						else if (args.ex) {
-							// the resNet resource was already rejected, but it didn't know
-							// its id, so reject this def now with better information
-							def.reject(new Error(args.ex.replace('${url}', def.url)));
-						}
-						else {
-							core.resolveResDef(def, args, ctx);
-						}
+					if (!args) {
+						// uh oh, nothing was added to the resource net
+						def.reject(new Error('define() not found or duplicates found: ' + def.url));
 					}
+					else if (args.ex) {
+						// the resNet resource was already rejected, but it didn't know
+							// its id, so reject this def now with better information
+						def.reject(new Error(args.ex.replace('${url}', def.url)));
+					}
+					else {
+							core.resolveResDef(def, args, ctx);
+					}
+				}
 
-				},
+			},
 
-				def.reject
+			def.reject
 
-			);
+		);
 
-			return def;
+		return def;
 
 		},
 
@@ -440,15 +440,15 @@
 			// if id starts with .. then use parent's parent
 			return id.replace(normalizeRx, function (match, dot1, dot2) {
 				return (dot2 ? baseId.substr(0, baseId.lastIndexOf('/')) : baseId) + '/';
-			});
+		});
 		},
 
 		fetchDep: function (depName, ctx) {
 			var id, delPos, loaderId, resName, loaderInfo, pathInfo, def, cfg;
 
 			// check for plugin loaderId
-			delPos = depName.indexOf('!');
-			if (delPos >= 0) {
+		delPos = depName.indexOf('!');
+		if (delPos >= 0) {
 				loaderId = depName.substr(0, delPos);
 				// prepend plugin folder path, if it's missing and path isn't in paths
 				loaderInfo = core.resolvePathInfo(loaderId);
@@ -469,7 +469,7 @@
 
 			if (loaderId) {
 
-				resName = depName.substr(delPos + 1);
+			resName = depName.substr(delPos + 1);
 
 				// fetch plugin or loader
 				var loaderDef = cache[loaderId];
@@ -478,149 +478,149 @@
 					loaderDef.url = core.resolveUrl(loaderInfo.path, baseUrl, true);
 					loaderDef.baseId = loaderInfo.path; // TODO: does baseId have to be normalized?
 					core.fetchResDef(loaderDef, ctx);
-				}
+			}
 
-				// alter the toUrl passed into the plugin so that it can
-				// also find plugin-prefixed path specifiers. e.g.:
-				// "js!resourceId": "path/to/js/resource"
-				// TODO: make this more efficient by allowing toUrl to be
-				// overridden more easily and detecting if there's a
-				// plugin-specific path more efficiently
+			// alter the toUrl passed into the plugin so that it can
+			// also find plugin-prefixed path specifiers. e.g.:
+			// "js!resourceId": "path/to/js/resource"
+			// TODO: make this more efficient by allowing toUrl to be
+			// overridden more easily and detecting if there's a
+			// plugin-specific path more efficiently
 				ctx = core.begetCtx(ctx.baseId);
-				ctx.require['toUrl'] = function toUrl (absId) {
-					var prefixed, pathInfo;
+			ctx.require['toUrl'] = function toUrl (absId) {
+					var pathInfo;
 					pathInfo = core.resolvePathInfo(absId, loaderId);
 					return core.resolveUrl(pathInfo.path, baseUrl);
-				};
+			};
 
-				function toAbsId (id) {
+			function toAbsId (id) {
 					return core.normalizeName(id, ctx.baseId);
-				}
+			}
 
 				// we need to use depName until plugin tells us normalized id
 				// if the plugin may changes the id, we need to consolidate
-				// def promises below
-				def = new ResourceDef(depName);
+			// def promises below
+			def = new ResourceDef(depName);
 
 				loaderDef.then(
-					function (plugin) {
-						var normalizedDef;
+				function (plugin) {
+					var normalizedDef;
 
-						resName = depName.substr(delPos + 1);
-						// check if plugin supports the normalize method
-						if ('normalize' in plugin) {
-							resName = plugin['normalize'](resName, toAbsId, cfg);
-						}
-						else {
-							resName = toAbsId(resName);
-						}
+					resName = depName.substr(delPos + 1);
+					// check if plugin supports the normalize method
+					if ('normalize' in plugin) {
+						resName = plugin['normalize'](resName, toAbsId, cfg);
+					}
+					else {
+						resName = toAbsId(resName);
+					}
 
 						// the spec is unclear, so we're using the full id (loaderId + id) to id resources
-						// so multiple plugins could each process the same resource
+					// so multiple plugins could each process the same resource
 						id = loaderId + '!' + resName;
 						normalizedDef = cache[id];
 
-						// if this is our first time fetching this (normalized) def
-						if (!normalizedDef) {
+					// if this is our first time fetching this (normalized) def
+					if (!normalizedDef) {
 
 							normalizedDef = new ResourceDef(id);
 
 							// resName could be blank if the plugin doesn't specify an id (e.g. "domReady!")
-							// don't cache non-determinate "dynamic" resources (or non-existent resources)
-							if (resName && !plugin['dynamic']) {
+						// don't cache non-determinate "dynamic" resources (or non-existent resources)
+						if (resName && !plugin['dynamic']) {
 								cache[id] = normalizedDef;
-							}
-
-							// curl's plugins prefer to receive the back-side of a promise,
-							// but to be compatible with commonjs's specification, we have to
-							// piggy-back on the callback function parameter:
-							var loaded = normalizedDef.resolve;
-							// using bracket property notation so closure won't clobber id
-							loaded['resolve'] = loaded;
-							loaded['reject'] = normalizedDef.reject;
-
-							// load the resource!
-							plugin.load(resName, ctx.require, loaded, cfg);
-
 						}
 
-						// chain defs (resolve when plugin.load executes)
-						normalizedDef.then(def.resolve, def.reject);
+						// curl's plugins prefer to receive the back-side of a promise,
+						// but to be compatible with commonjs's specification, we have to
+						// piggy-back on the callback function parameter:
+						var loaded = normalizedDef.resolve;
+							// using bracket property notation so closure won't clobber id
+						loaded['resolve'] = loaded;
+						loaded['reject'] = normalizedDef.reject;
 
-					},
-					def.reject
-				);
+						// load the resource!
+						plugin.load(resName, ctx.require, loaded, cfg);
 
-			}
-			else {
-				def = cache[resName];
-				if (!def) {
-					def = cache[resName] = new ResourceDef(resName);
+					}
+
+					// chain defs (resolve when plugin.load executes)
+					normalizedDef.then(def.resolve, def.reject);
+
+				},
+				def.reject
+			);
+
+		}
+		else {
+			def = cache[resName];
+			if (!def) {
+				def = cache[resName] = new ResourceDef(resName);
 					def.url = core.resolveUrl(pathInfo.path, baseUrl, true);
 					core.fetchResDef(def, ctx);
-				}
-
 			}
 
-			return def;
+		}
+
+		return def;
 		},
 
 		getDeps: function (def, names, ctx, success, failure) {
 
-			var deps = [],
-				count = names.length,
-				len = count,
-				completed = false;
+		var deps = [],
+			count = names.length,
+			len = count,
+			completed = false;
 
-			// obtain each dependency
-			// Note: IE may have obtained the dependencies sync (stooooopid!) thus the completed flag
-			for (var i = 0; i < len && !completed; i++) (function (index, depName) {
+		// obtain each dependency
+		// Note: IE may have obtained the dependencies sync (stooooopid!) thus the completed flag
+		for (var i = 0; i < len && !completed; i++) (function (index, depName) {
 				// look for commonjs free vars
-				if (depName in ctx.vars) {
-					deps[index] = ctx.vars[depName];
-					count--;
-				}
-				else {
-					// hook into promise callbacks
-					core.fetchDep(depName, ctx).then(
-						function (dep) {
-							deps[index] = dep; // got it!
-							if (--count == 0) {
-								completed = true;
-								success(deps);
-							}
-						},
-						function (ex) {
-							completed = true;
-							failure(ex);
-						}
-					);
-				}
-			}(i, names[i]));
-
-			// were there none to fetch and did we not already complete the promise?
-			if (count == 0 && !completed) {
-				success(deps);
+			if (depName in ctx.vars) {
+				deps[index] = ctx.vars[depName];
+				count--;
 			}
+			else {
+				// hook into promise callbacks
+					core.fetchDep(depName, ctx).then(
+					function (dep) {
+						deps[index] = dep; // got it!
+						if (--count == 0) {
+							completed = true;
+							success(deps);
+						}
+					},
+					function (ex) {
+						completed = true;
+						failure(ex);
+					}
+				);
+			}
+		}(i, names[i]));
+
+		// were there none to fetch and did we not already complete the promise?
+		if (count == 0 && !completed) {
+			success(deps);
+		}
 
 		},
 
 		getCurrentDefName: function () {
-			// Note: Opera lies about which scripts are "interactive", so we
-			// just have to test for it. Opera provides a true browser test, not
+		// Note: Opera lies about which scripts are "interactive", so we
+		// just have to test for it. Opera provides a true browser test, not
 			// a UA sniff, thankfully.
-			// TODO: find a way to remove this browser test
-			var def;
-			if (!isType(global.opera, 'Opera')) {
-				for (var d in activeScripts) {
-					if (activeScripts[d].readyState == 'interactive') {
-						def = d;
-						break;
-					}
+		// TODO: find a way to remove this browser test
+		var def;
+		if (!isType(global.opera, 'Opera')) {
+			for (var d in activeScripts) {
+				if (activeScripts[d].readyState == 'interactive') {
+					def = d;
+					break;
 				}
 			}
-			return def;
 		}
+		return def;
+	}
 
 	};
 
