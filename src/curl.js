@@ -444,16 +444,15 @@
 		},
 
 		fetchDep: function (depName, ctx) {
-			var id, delPos, loaderId, resName, pathInfo, def, cfg;
+			var id, delPos, loaderId, resName, loaderInfo, pathInfo, def, cfg;
 
 			// check for plugin loaderId
 			delPos = depName.indexOf('!');
 			if (delPos >= 0) {
 				loaderId = depName.substr(0, delPos);
 				// prepend plugin folder path, if it's missing and path isn't in paths
-				var loaderInfo = core.resolvePathInfo(loaderId);
-				var slashPos = loaderInfo.path.indexOf('/');
-				if (slashPos < 0) {
+				loaderInfo = core.resolvePathInfo(loaderId);
+				if (loaderInfo.path.indexOf('/') < 0) {
 					loaderInfo = core.resolvePathInfo(joinPath(pluginPath, loaderInfo.path));
 				}
 				cfg = userCfg['plugins'] && userCfg['plugins'][loaderId] || {};
@@ -463,8 +462,9 @@
 				resName = id = core.normalizeName(depName, ctx.baseId);
 				pathInfo = core.resolvePathInfo(resName);
 				// get custom module loader from package config
-				cfg = pathInfo.cfg || {};
+				cfg = pathInfo.config || {};
 				loaderId = cfg.moduleLoader;
+				loaderInfo = loaderId && core.resolvePathInfo(loaderId);
 			}
 
 			if (loaderId) {
