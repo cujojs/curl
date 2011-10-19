@@ -1,7 +1,7 @@
 <!DOCTYPE HTML>
 <html>
 <head>
-<title>protocol-relative-urls</title>
+<title>plugin-specific-paths</title>
 
 <script>
 
@@ -10,7 +10,8 @@
 			curl: '../src/curl/',
 			'css!': 'stuff/',
 			'text!': 'stuff/',
-			'link!': 'http://ajax.googleapis.com/ajax/libs/dojo/1.6/dojo/resources/'
+			'link!': 'http://ajax.googleapis.com/ajax/libs/dojo/1.6/dojo/resources/',
+			'link!resources/': 'http://ajax.googleapis.com/ajax/libs/dojo/1.6/dojo/resources/'
 		}
 	};
 
@@ -38,7 +39,7 @@
 			'stuff/three',
 			'css!base.css',
 			'text!template.html',
-			'link!dojo.css',
+			'link!resources/dojo.css',
 			'js!stuff/plain_old.js'
 		]
 	).then(

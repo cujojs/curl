@@ -62,7 +62,7 @@
 		// RegExp's used later, "cached" here
 		absUrlRx = /^\/|^[^:]+:\/\//,
 		normalizeRx = /^(\.)(\.)?(\/|$)/,
-		findSlashRx = /\//,
+		findSlashRx = /\//g,
 		dontAddExtRx = /\?/,
 		pathSearchRx,
 		// script ready states that signify it's loaded
@@ -135,7 +135,7 @@
 		for (p in cfgPaths) {
 			pStrip = removeEndSlash(p.replace('!', '!/'));
 			path = paths[pStrip] = { path: removeEndSlash(cfgPaths[p]) };
-			path.specificity = (path.path.match(findSlashRx) || []).length;
+			path.specificity = (pStrip.match(findSlashRx) || []).length;
 			pathList.push(pStrip);
 		}
 
@@ -143,7 +143,7 @@
 		for (p in cfgPackages) {
 			pStrip = removeEndSlash(cfgPackages[p]['name'] || p);
 			path = paths[pStrip] = normalizePkgDescriptor(cfgPackages[p], pStrip);
-			path.specificity = (path.path.match(findSlashRx) || []).length;
+			path.specificity = (pStrip.match(findSlashRx) || []).length;
 			pathList.push(pStrip);
 		}
 
@@ -274,8 +274,8 @@
 	}
 
 	function resolvePath (name, prefix) {
-		// TODO: figure out why this gets called so often for the same file
-		// searches through the configured path mappings and packages
+		// TODO: cache/memoize results from this method
+		// searches through the configured path mappings and packages.
 		// if the resulting module is part of a package, also return the main
 		// module so it can be loaded.
 		var pathInfo, path, found;
@@ -506,7 +506,7 @@
 			// plugin-specific path more efficiently
 			ctx = begetCtx(ctx.baseName);
 			ctx.require['toUrl'] = function toUrl (absId) {
-				var prefixed, path;
+				var path;
 				path = resolvePath(absId, prefix);
 				return resolveUrl(path, baseUrl);
 			};
