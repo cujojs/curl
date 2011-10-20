@@ -260,24 +260,24 @@
 					if (pathInfo.main && match == id) {
 						return pathInfo.main;
 					}
-				// if pathInfo.lib return pathInfo.lib
-				else if (pathInfo.lib) {
-					return pathInfo.lib;
-				}
-				else {
-					return pathInfo.path || '';
-				}
+					// if pathInfo.lib return pathInfo.lib
+					else if (pathInfo.lib) {
+						return pathInfo.lib;
+					}
+					else {
+						return pathInfo.path || '';
+					}
 
-			});
-		}
+				});
+			}
 
-		// if this is a plugin-specific path to resolve
-		if (prefix) {
-				fixPath(prefix + '!/' + id);
-		}
-		if (!found) {
-				fixPath(id);
-		}
+			// if this is a plugin-specific path to resolve
+			if (prefix) {
+					fixPath(prefix + '!/' + id);
+			}
+			if (!found) {
+					fixPath(id);
+			}
 
 			return {
 				path: path,
@@ -286,89 +286,89 @@
 		},
 
 		resolveUrl: function (path, baseUrl, addExt) {
-		return (baseUrl && !absUrlRx.test(path) ? joinPath(baseUrl, path) : path) + (addExt && !dontAddExtRx.test(path) ? '.js' : '');
+			return (baseUrl && !absUrlRx.test(path) ? joinPath(baseUrl, path) : path) + (addExt && !dontAddExtRx.test(path) ? '.js' : '');
 		},
 
 		loadScript: function (def, success, failure) {
 		// script processing rules learned from RequireJS
 
-		// insert script
-		var el = doc.createElement('script');
+			// insert script
+			var el = doc.createElement('script');
 
-		// initial script processing
-		function process (ev) {
-			ev = ev || global.event;
-			// detect when it's done loading
-			if (ev.type === 'load' || readyStates[this.readyState]) {
-					delete activeScripts[def.id];
-				// release event listeners
-				this.onload = this[orsc] = this.onerror = null;
-				success(el);
+			// initial script processing
+			function process (ev) {
+				ev = ev || global.event;
+				// detect when it's done loading
+				if (ev.type === 'load' || readyStates[this.readyState]) {
+						delete activeScripts[def.id];
+					// release event listeners
+					this.onload = this[orsc] = this.onerror = null;
+					success(el);
+				}
 			}
-		}
 
-		function fail (e) {
-			// some browsers send an event, others send a string,
-			// but none of them send anything useful, so just say we failed:
-			failure(new Error('Syntax error or http error: ' + def.url));
-		}
+			function fail (e) {
+				// some browsers send an event, others send a string,
+				// but none of them send anything useful, so just say we failed:
+				failure(new Error('Syntax error or http error: ' + def.url));
+			}
 
-		// set type first since setting other properties could
-		// prevent us from setting this later
-		el.type = 'text/javascript';
-		// using dom0 event handlers instead of wordy w3c/ms
-		el.onload = el[orsc] = process;
-		el.onerror = fail;
-		el.charset = def.charset || 'utf-8';
-		el.async = true;
-		el.src = def.url;
+			// set type first since setting other properties could
+			// prevent us from setting this later
+			el.type = 'text/javascript';
+			// using dom0 event handlers instead of wordy w3c/ms
+			el.onload = el[orsc] = process;
+			el.onerror = fail;
+			el.charset = def.charset || 'utf-8';
+			el.async = true;
+			el.src = def.url;
 
-		// loading will start when the script is inserted into the dom.
-		// IE will load the script sync if it's in the cache, so
-		// indicate the current resource definition if this happens.
-			activeScripts[def.id] = el;
-		// use insertBefore to keep IE from throwing Operation Aborted (thx Bryan Forbes!)
-		head.insertBefore(el, head.firstChild);
+			// loading will start when the script is inserted into the dom.
+			// IE will load the script sync if it's in the cache, so
+			// indicate the current resource definition if this happens.
+				activeScripts[def.id] = el;
+			// use insertBefore to keep IE from throwing Operation Aborted (thx Bryan Forbes!)
+			head.insertBefore(el, head.firstChild);
 
 		},
 
 		fixArgs: function (args) {
-		// resolve args
-		// valid combinations for define:
-		// (string, array, object|function) sax|saf
-		// (array, object|function) ax|af
-		// (string, object|function) sx|sf
-		// (object|function) x|f
+			// resolve args
+			// valid combinations for define:
+			// (string, array, object|function) sax|saf
+			// (array, object|function) ax|af
+			// (string, object|function) sx|sf
+			// (object|function) x|f
 
 			var id, deps, definition, isDefFunc, len = args.length;
 
-		definition = args[len - 1];
-		isDefFunc = isType(definition, 'Function');
+			definition = args[len - 1];
+			isDefFunc = isType(definition, 'Function');
 
-		if (len == 2) {
-			if (isType(args[0], 'Array')) {
-				deps = args[0];
+			if (len == 2) {
+				if (isType(args[0], 'Array')) {
+					deps = args[0];
+				}
+				else {
+						id = args[0];
+				}
 			}
-			else {
+			else if (len == 3) {
 					id = args[0];
+				deps = args[1];
 			}
-		}
-		else if (len == 3) {
-				id = args[0];
-			deps = args[1];
-		}
 
-		// mimic RequireJS's assumption that a definition function with zero
-		// dependencies and non-zero arity is a wrapped CommonJS module
-		if (!deps && isDefFunc && definition.length > 0) {
-			deps = ['require', 'exports', 'module'];
-		}
+			// mimic RequireJS's assumption that a definition function with zero
+			// dependencies and non-zero arity is a wrapped CommonJS module
+			if (!deps && isDefFunc && definition.length > 0) {
+				deps = ['require', 'exports', 'module'];
+			}
 
-		return {
-				id: id,
-			deps: deps || [],
-			res: isDefFunc ? definition : function () { return definition; }
-		};
+			return {
+					id: id,
+				deps: deps || [],
+				res: isDefFunc ? definition : function () { return definition; }
+			};
 		},
 
 		resolveResDef: function (def, args, ctx) {
@@ -376,26 +376,26 @@
 			// if a module id has been remapped, it will have a baseId
 			var childCtx = core.begetCtx(def.baseId || def.id);
 
-		// get the dependencies and then resolve/reject
+			// get the dependencies and then resolve/reject
 			core.getDeps(def, args.deps, childCtx,
-			function (deps) {
-					var res;
-				try {
-					// node.js assumes `this` === exports
-					// anything returned overrides exports
+				function (deps) {
+						var res;
+					try {
+						// node.js assumes `this` === exports
+						// anything returned overrides exports
 						// uses module.exports if nothing returned (node.js
 						// convention). exports === module.exports unless
 						// module.exports was reassigned.
 						res = args.res.apply(childCtx.vars['exports'], deps) ||
 							childCtx.vars['module']['exports'];
 					}
-				catch (ex) {
-					def.reject(ex);
-				}
-				def.resolve(res);
-			},
-			def.reject
-		);
+					catch (ex) {
+						def.reject(ex);
+					}
+					def.resolve(res);
+				},
+				def.reject
+			);
 
 		},
 
@@ -624,22 +624,22 @@
 
 	};
 
-	function _require (deps, callback, ctx) {
+	function _require (ids, callback, ctx) {
 		// Note: callback could be a promise
 
 		// RValue require
-		if (isType(deps, 'String')) {
+		if (isType(ids, 'String')) {
 			// return resource
-			var def = cache[deps],
+			var def = cache[ids],
 				res = def && def.resolved;
 			if (res === undef) {
-				throw new Error('Module is not already resolved: '  + deps);
+				throw new Error('Module is not already resolved: '  + ids);
 			}
 			return res;
 		}
 
 		// resolve dependencies
-		core.getDeps(null, deps, ctx,
+		core.getDeps(null, ids, ctx,
 			function (deps) {
 				// Note: deps are passed to a promise as an array, not as individual arguments
 				callback.resolve ? callback.resolve(deps) : callback.apply(null, deps);
