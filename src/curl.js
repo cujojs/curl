@@ -654,7 +654,7 @@
 
 	function _curl (/* various */) {
 
-		var args = aslice.call(arguments), callback, names, ctx;
+		var args = aslice.call(arguments), callback, ids, ctx;
 
 		// extract config, if it's specified
 		if (isType(args[0], 'Object')) {
@@ -662,51 +662,36 @@
 			core.extractCfg(userCfg);
 		}
 
-		// extract dependencies
-		names = [].concat(args[0]); // force to array TODO: create unit test when this is official
-		callback = args[1];
-
 		// this must be after extractCfg
 		ctx = core.begetCtx('');
 
-		var promise = new Promise(),
-			api = {};
-
-			// return the dependencies as arguments, not an array
-			// using bracket property notation so closure won't clobber id
-			api['then'] = function (resolved, rejected) {
+		// thanks to Joop Ringelberg for helping me troubleshoot the API
+		// which led me to totally rewrite it!
+		function CurlApi (ids, callback) {
+			var promise = new Promise();
+			this['then'] = function (resolved, rejected) {
 				promise.then(
-					function (deps) { if (resolved) resolved.apply(null, deps); },
+					// return the dependencies as arguments, not an array
+					function (deps) { if (resolved) resolved.apply(undef, deps); },
+					// just throw if the dev didn't specify an error handler
 					function (ex) { if (rejected) rejected(ex); else throw ex; }
 				);
-				return api;
+				return this;
 			};
-
-			// promise chaining
-			api['next'] = function (names, cb) {
-				var origPromise = promise;
-				promise = new Promise();
-				// wait for the previous promise
-				origPromise.then(
-					// get dependencies and then resolve the current promise
-					function () { ctx.require(names, promise, ctx); },
-					// fail the current promise
-					function (ex) { promise.reject(ex); }
-				);
-				// execute this callback after dependencies
-				if (cb) {
-					promise.then(function (deps) {
-						cb.apply(this, deps)
-					});
-				}
-				return api;
+			this['next'] = function (ids, cb) {
+				// chain api
+				return new CurlApi(ids, cb);
 			};
+			if (callback) this['then'](callback);
+			ctx.require(ids, promise, ctx);
+		}
 
-			if (callback) api['then'](callback);
+		// extract dependencies
+		ids = [].concat(args[0]); // force to array TODO: create unit test
+		callback = args[1];
 
-		ctx.require(names, promise, ctx);
+		return new CurlApi(ids, callback);
 
-		return api;
 
 	}
 
