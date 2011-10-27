@@ -290,7 +290,7 @@
 		},
 
 		loadScript: function (def, success, failure) {
-		// script processing rules learned from RequireJS
+			// script processing rules learned from RequireJS
 
 			// insert script
 			var el = doc.createElement('script');
@@ -365,7 +365,7 @@
 			}
 
 			return {
-					id: id,
+				id: id,
 				deps: deps || [],
 				res: isDefFunc ? definition : function () { return definition; }
 			};
@@ -403,35 +403,35 @@
 
 			core.loadScript(def,
 
-			function () {
-				var args = argsNet;
-				argsNet = undef; // reset it before we get deps
+				function () {
+					var args = argsNet;
+					argsNet = undef; // reset it before we get deps
 
-					// if our resource was not explicitly defined with a id (anonymous)
-					// Note: if it did have a id, it will be resolved in the define()
-				if (def.useNet !== false) {
+						// if our resource was not explicitly defined with a id (anonymous)
+						// Note: if it did have a id, it will be resolved in the define()
+					if (def.useNet !== false) {
 
-					if (!args) {
-						// uh oh, nothing was added to the resource net
-						def.reject(new Error('define() not found or duplicates found: ' + def.url));
+						if (!args) {
+							// uh oh, nothing was added to the resource net
+							def.reject(new Error('define() not found or duplicates found: ' + def.url));
+						}
+						else if (args.ex) {
+							// the resNet resource was already rejected, but it didn't know
+								// its id, so reject this def now with better information
+							def.reject(new Error(args.ex.replace('${url}', def.url)));
+						}
+						else {
+								core.resolveResDef(def, args, ctx);
+						}
 					}
-					else if (args.ex) {
-						// the resNet resource was already rejected, but it didn't know
-							// its id, so reject this def now with better information
-						def.reject(new Error(args.ex.replace('${url}', def.url)));
-					}
-					else {
-							core.resolveResDef(def, args, ctx);
-					}
-				}
 
-			},
+				},
 
-			def.reject
+				def.reject
 
-		);
+			);
 
-		return def;
+			return def;
 
 		},
 
@@ -440,15 +440,15 @@
 			// if id starts with .. then use parent's parent
 			return id.replace(normalizeRx, function (match, dot1, dot2) {
 				return (dot2 ? baseId.substr(0, baseId.lastIndexOf('/')) : baseId) + '/';
-		});
+			});
 		},
 
 		fetchDep: function (depName, ctx) {
 			var id, delPos, loaderId, resName, loaderInfo, pathInfo, def, cfg;
 
 			// check for plugin loaderId
-		delPos = depName.indexOf('!');
-		if (delPos >= 0) {
+			delPos = depName.indexOf('!');
+			if (delPos >= 0) {
 				loaderId = depName.substr(0, delPos);
 				// prepend plugin folder path, if it's missing and path isn't in paths
 				loaderInfo = core.resolvePathInfo(loaderId);
@@ -469,158 +469,157 @@
 
 			if (loaderId) {
 
-			resName = depName.substr(delPos + 1);
+				resName = depName.substr(delPos + 1);
 
-				// fetch plugin or loader
-				var loaderDef = cache[loaderId];
-				if (!loaderDef) {
-					loaderDef = cache[loaderId] = new ResourceDef(loaderId);
-					loaderDef.url = core.resolveUrl(loaderInfo.path, baseUrl, true);
-					loaderDef.baseId = loaderInfo.path; // TODO: does baseId have to be normalized?
-					core.fetchResDef(loaderDef, ctx);
-			}
+					// fetch plugin or loader
+					var loaderDef = cache[loaderId];
+					if (!loaderDef) {
+						loaderDef = cache[loaderId] = new ResourceDef(loaderId);
+						loaderDef.url = core.resolveUrl(loaderInfo.path, baseUrl, true);
+						loaderDef.baseId = loaderInfo.path; // TODO: does baseId have to be normalized?
+						core.fetchResDef(loaderDef, ctx);
+				}
 
-			// alter the toUrl passed into the plugin so that it can
-			// also find plugin-prefixed path specifiers. e.g.:
-			// "js!resourceId": "path/to/js/resource"
-			// TODO: make this more efficient by allowing toUrl to be
-			// overridden more easily and detecting if there's a
-			// plugin-specific path more efficiently
-				ctx = core.begetCtx(ctx.baseId);
-			ctx.require['toUrl'] = function toUrl (absId) {
-					var pathInfo;
-					pathInfo = core.resolvePathInfo(absId, loaderId);
-					return core.resolveUrl(pathInfo.path, baseUrl);
-			};
+				// alter the toUrl passed into the plugin so that it can
+				// also find plugin-prefixed path specifiers. e.g.:
+				// "js!resourceId": "path/to/js/resource"
+				// TODO: make this more efficient by allowing toUrl to be
+				// overridden more easily and detecting if there's a
+				// plugin-specific path more efficiently
+					ctx = core.begetCtx(ctx.baseId);
+				ctx.require['toUrl'] = function toUrl (absId) {
+						var pathInfo;
+						pathInfo = core.resolvePathInfo(absId, loaderId);
+						return core.resolveUrl(pathInfo.path, baseUrl);
+				};
 
-			function toAbsId (id) {
-					return core.normalizeName(id, ctx.baseId);
-			}
+				function toAbsId (id) {
+						return core.normalizeName(id, ctx.baseId);
+				}
 
-				// we need to use depName until plugin tells us normalized id
-				// if the plugin may changes the id, we need to consolidate
-			// def promises below
-			def = new ResourceDef(depName);
+					// we need to use depName until plugin tells us normalized id
+					// if the plugin may changes the id, we need to consolidate
+				// def promises below
+				def = new ResourceDef(depName);
 
 				loaderDef.then(
-				function (plugin) {
-					var normalizedDef;
+					function (plugin) {
+						var normalizedDef;
 
-					resName = depName.substr(delPos + 1);
-					// check if plugin supports the normalize method
-					if ('normalize' in plugin) {
-						resName = plugin['normalize'](resName, toAbsId, cfg);
-					}
-					else {
-						resName = toAbsId(resName);
-					}
-
-						// the spec is unclear, so we're using the full id (loaderId + id) to id resources
-					// so multiple plugins could each process the same resource
-						id = loaderId + '!' + resName;
-						normalizedDef = cache[id];
-
-					// if this is our first time fetching this (normalized) def
-					if (!normalizedDef) {
-
-							normalizedDef = new ResourceDef(id);
-
-							// resName could be blank if the plugin doesn't specify an id (e.g. "domReady!")
-						// don't cache non-determinate "dynamic" resources (or non-existent resources)
-						if (resName && !plugin['dynamic']) {
-								cache[id] = normalizedDef;
+						resName = depName.substr(delPos + 1);
+						// check if plugin supports the normalize method
+						if ('normalize' in plugin) {
+							resName = plugin['normalize'](resName, toAbsId, cfg);
+						}
+						else {
+							resName = toAbsId(resName);
 						}
 
-						// curl's plugins prefer to receive the back-side of a promise,
-						// but to be compatible with commonjs's specification, we have to
-						// piggy-back on the callback function parameter:
-						var loaded = normalizedDef.resolve;
-							// using bracket property notation so closure won't clobber id
-						loaded['resolve'] = loaded;
-						loaded['reject'] = normalizedDef.reject;
+							// the spec is unclear, so we're using the full id (loaderId + id) to id resources
+						// so multiple plugins could each process the same resource
+							id = loaderId + '!' + resName;
+							normalizedDef = cache[id];
 
-						// load the resource!
-						plugin.load(resName, ctx.require, loaded, cfg);
+						// if this is our first time fetching this (normalized) def
+						if (!normalizedDef) {
 
-					}
+								normalizedDef = new ResourceDef(id);
 
-					// chain defs (resolve when plugin.load executes)
-					normalizedDef.then(def.resolve, def.reject);
+								// resName could be blank if the plugin doesn't specify an id (e.g. "domReady!")
+							// don't cache non-determinate "dynamic" resources (or non-existent resources)
+							if (resName && !plugin['dynamic']) {
+									cache[id] = normalizedDef;
+							}
 
-				},
-				def.reject
-			);
+							// curl's plugins prefer to receive the back-side of a promise,
+							// but to be compatible with commonjs's specification, we have to
+							// piggy-back on the callback function parameter:
+							var loaded = normalizedDef.resolve;
+								// using bracket property notation so closure won't clobber id
+							loaded['resolve'] = loaded;
+							loaded['reject'] = normalizedDef.reject;
 
-		}
-		else {
-			def = cache[resName];
-			if (!def) {
-				def = cache[resName] = new ResourceDef(resName);
+							// load the resource!
+							plugin.load(resName, ctx.require, loaded, cfg);
+
+						}
+
+						// chain defs (resolve when plugin.load executes)
+						normalizedDef.then(def.resolve, def.reject);
+
+					},
+					def.reject
+				);
+
+			}
+			else {
+				def = cache[resName];
+				if (!def) {
+					def = cache[resName] = new ResourceDef(resName);
 					def.url = core.resolveUrl(pathInfo.path, baseUrl, true);
 					core.fetchResDef(def, ctx);
+				}
+
 			}
 
-		}
-
-		return def;
+			return def;
 		},
 
 		getDeps: function (def, names, ctx, success, failure) {
+			var deps = [],
+				count = names.length,
+				len = count,
+				completed = false;
 
-		var deps = [],
-			count = names.length,
-			len = count,
-			completed = false;
-
-		// obtain each dependency
-		// Note: IE may have obtained the dependencies sync (stooooopid!) thus the completed flag
-		for (var i = 0; i < len && !completed; i++) (function (index, depName) {
-				// look for commonjs free vars
-			if (depName in ctx.vars) {
-				deps[index] = ctx.vars[depName];
-				count--;
-			}
-			else {
-				// hook into promise callbacks
-					core.fetchDep(depName, ctx).then(
-					function (dep) {
-						deps[index] = dep; // got it!
-						if (--count == 0) {
+			// obtain each dependency
+			// Note: IE may have obtained the dependencies sync (stooooopid!) thus the completed flag
+			for (var i = 0; i < len && !completed; i++) (function (index, depName) {
+					// look for commonjs free vars
+				if (depName in ctx.vars) {
+					deps[index] = ctx.vars[depName];
+					count--;
+				}
+				else {
+					// hook into promise callbacks
+						core.fetchDep(depName, ctx).then(
+						function (dep) {
+							deps[index] = dep; // got it!
+							if (--count == 0) {
+								completed = true;
+								success(deps);
+							}
+						},
+						function (ex) {
 							completed = true;
-							success(deps);
+							failure(ex);
 						}
-					},
-					function (ex) {
-						completed = true;
-						failure(ex);
-					}
-				);
-			}
-		}(i, names[i]));
+					);
+				}
+			}(i, names[i]));
 
-		// were there none to fetch and did we not already complete the promise?
-		if (count == 0 && !completed) {
-			success(deps);
-		}
+			// were there none to fetch and did we not already complete the promise?
+			if (count == 0 && !completed) {
+				success(deps);
+			}
 
 		},
 
 		getCurrentDefName: function () {
-		// Note: Opera lies about which scripts are "interactive", so we
-		// just have to test for it. Opera provides a true browser test, not
+			// Note: Opera lies about which scripts are "interactive", so we
+			// just have to test for it. Opera provides a true browser test, not
 			// a UA sniff, thankfully.
-		// TODO: find a way to remove this browser test
-		var def;
-		if (!isType(global.opera, 'Opera')) {
-			for (var d in activeScripts) {
-				if (activeScripts[d].readyState == 'interactive') {
-					def = d;
-					break;
+			// TODO: find a way to remove this browser test
+			var def;
+			if (!isType(global.opera, 'Opera')) {
+				for (var d in activeScripts) {
+					if (activeScripts[d].readyState == 'interactive') {
+						def = d;
+						break;
+					}
 				}
 			}
+			return def;
 		}
-		return def;
-	}
 
 	};
 
@@ -688,13 +687,11 @@
 
 		return new CurlApi(args[0], args[1]);
 
-
 	}
 
-	function _define (/* various */) {
+	function _define (args) {
 
-		var args = core.fixArgs(arguments),
-			id = args.id;
+		var id = args.id;
 
 		if (id == null) {
 			if (argsNet !== undef) {
@@ -746,7 +743,10 @@
 	cache['curl'].resolve(_curl);
 
 	// wrap inner _define so it can be replaced without losing define.amd
-	define = global['define'] = function () { _define.apply(this, arguments); };
+	define = global['define'] = function () {
+		var args = core.fixArgs(arguments);
+		_define(args);
+	};
 	_curl['version'] = version;
 
 	// this is to comply with the AMD CommonJS proposal:
@@ -764,7 +764,8 @@
 		'_require': _require,
 		'_define': _define,
 		'_curl': _curl,
-		'global': global
+		'global': global,
+		'ResourceDef': ResourceDef
 	});
 
 }(
