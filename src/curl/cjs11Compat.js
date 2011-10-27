@@ -1,8 +1,9 @@
 /**
- @license
- (c) copyright 2011 unscriptable.com / John Hann
+ @license (c) copyright 2011 unscriptable.com / John Hann
  */
-(function () {
+/**
+ * @experimental
+ */
 define(function () {
 
 
@@ -105,11 +106,3 @@ define(function () {
 	};
 
 });
-
-}());
-
-/*
-define(<resourceId>, [<deps>], function (<args>) {
-<source>
-});
- */
