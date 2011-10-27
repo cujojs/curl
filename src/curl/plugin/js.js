@@ -109,7 +109,7 @@
 					// go get it (from cache hopefully)
 					fetch.apply(null, next);
 				}
-				promise['resolve'](el);
+				promise['resolve'](true); // TODO: return test value
 			},
 			function (ex) {
 				promise['reject'](ex);
