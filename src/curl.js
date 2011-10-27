@@ -654,7 +654,7 @@
 
 	function _curl (/* various */) {
 
-		var args = aslice.call(arguments), callback, ids, ctx;
+		var args = aslice.call(arguments), ctx;
 
 		// extract config, if it's specified
 		if (isType(args[0], 'Object')) {
@@ -683,14 +683,10 @@
 				return new CurlApi(ids, cb);
 			};
 			if (callback) this['then'](callback);
-			ctx.require(ids, promise, ctx);
+			ctx.require([].concat(ids), promise, ctx);
 		}
 
-		// extract dependencies
-		ids = [].concat(args[0]); // force to array TODO: create unit test
-		callback = args[1];
-
-		return new CurlApi(ids, callback);
+		return new CurlApi(args[0], args[1]);
 
 
 	}
