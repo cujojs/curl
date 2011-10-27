@@ -171,6 +171,16 @@
 		this.id = id;
 	}
 
+	function when (promiseOrValue, callback, errback) {
+		if (promiseOrValue && promiseOrValue.then) {
+			promiseOrValue.then(callback, errback);
+		}
+		else {
+			callback(promiseOrValue);
+			return promiseOrValue;
+		}
+	}
+
 	core = {
 
 		extractCfg: function extractCfg (cfg) {
@@ -379,7 +389,7 @@
 			// get the dependencies and then resolve/reject
 			core.getDeps(def, args.deps, childCtx,
 				function (deps) {
-						var res;
+					var res;
 					try {
 						// node.js assumes `this` === exports
 						// anything returned overrides exports
@@ -392,6 +402,7 @@
 					catch (ex) {
 						def.reject(ex);
 					}
+					cache[def.id] = res; // replace ResourceDef with actual value
 					def.resolve(res);
 				},
 				def.reject
@@ -471,13 +482,13 @@
 
 				resName = depName.substr(delPos + 1);
 
-					// fetch plugin or loader
-					var loaderDef = cache[loaderId];
-					if (!loaderDef) {
-						loaderDef = cache[loaderId] = new ResourceDef(loaderId);
-						loaderDef.url = core.resolveUrl(loaderInfo.path, baseUrl, true);
-						loaderDef.baseId = loaderInfo.path; // TODO: does baseId have to be normalized?
-						core.fetchResDef(loaderDef, ctx);
+				// fetch plugin or loader
+				var loaderDef = cache[loaderId];
+				if (!loaderDef) {
+					loaderDef = cache[loaderId] = new ResourceDef(loaderId);
+					loaderDef.url = core.resolveUrl(loaderInfo.path, baseUrl, true);
+					loaderDef.baseId = loaderInfo.path; // TODO: does baseId have to be normalized?
+					core.fetchResDef(loaderDef, ctx);
 				}
 
 				// alter the toUrl passed into the plugin so that it can
@@ -486,15 +497,15 @@
 				// TODO: make this more efficient by allowing toUrl to be
 				// overridden more easily and detecting if there's a
 				// plugin-specific path more efficiently
-					ctx = core.begetCtx(ctx.baseId);
+				ctx = core.begetCtx(ctx.baseId);
 				ctx.require['toUrl'] = function toUrl (absId) {
-						var pathInfo;
-						pathInfo = core.resolvePathInfo(absId, loaderId);
-						return core.resolveUrl(pathInfo.path, baseUrl);
+					var pathInfo;
+					pathInfo = core.resolvePathInfo(absId, loaderId);
+					return core.resolveUrl(pathInfo.path, baseUrl);
 				};
 
 				function toAbsId (id) {
-						return core.normalizeName(id, ctx.baseId);
+					return core.normalizeName(id, ctx.baseId);
 				}
 
 					// we need to use depName until plugin tells us normalized id
@@ -502,7 +513,7 @@
 				// def promises below
 				def = new ResourceDef(depName);
 
-				loaderDef.then(
+				when(loaderDef,
 					function (plugin) {
 						var normalizedDef;
 
@@ -515,27 +526,30 @@
 							resName = toAbsId(resName);
 						}
 
-							// the spec is unclear, so we're using the full id (loaderId + id) to id resources
+						// the spec is unclear, so we're using the full id (loaderId + id) to id resources
 						// so multiple plugins could each process the same resource
-							id = loaderId + '!' + resName;
-							normalizedDef = cache[id];
+						id = loaderId + '!' + resName;
+						normalizedDef = cache[id];
 
 						// if this is our first time fetching this (normalized) def
 						if (!normalizedDef) {
 
-								normalizedDef = new ResourceDef(id);
+							normalizedDef = new ResourceDef(id);
 
-								// resName could be blank if the plugin doesn't specify an id (e.g. "domReady!")
+							// resName could be blank if the plugin doesn't specify an id (e.g. "domReady!")
 							// don't cache non-determinate "dynamic" resources (or non-existent resources)
 							if (resName && !plugin['dynamic']) {
-									cache[id] = normalizedDef;
+								cache[id] = normalizedDef;
 							}
 
 							// curl's plugins prefer to receive the back-side of a promise,
 							// but to be compatible with commonjs's specification, we have to
 							// piggy-back on the callback function parameter:
-							var loaded = normalizedDef.resolve;
-								// using bracket property notation so closure won't clobber id
+							var loaded = function (res) {
+								cache[id] = res;
+								normalizedDef.resolve(res);
+							};
+							// using bracket property notation so closure won't clobber id
 							loaded['resolve'] = loaded;
 							loaded['reject'] = normalizedDef.reject;
 
@@ -545,7 +559,7 @@
 						}
 
 						// chain defs (resolve when plugin.load executes)
-						normalizedDef.then(def.resolve, def.reject);
+						when(normalizedDef, def.resolve, def.reject);
 
 					},
 					def.reject
@@ -581,7 +595,7 @@
 				}
 				else {
 					// hook into promise callbacks
-						core.fetchDep(depName, ctx).then(
+						when(core.fetchDep(depName, ctx),
 						function (dep) {
 							deps[index] = dep; // got it!
 							if (--count == 0) {
@@ -629,12 +643,11 @@
 		// RValue require
 		if (isType(ids, 'String')) {
 			// return resource
-			var def = cache[ids],
-				res = def && def.resolved;
-			if (res === undef) {
+			var def = cache[ids];
+			if (def instanceof ResourceDef) {
 				throw new Error('Module is not already resolved: '  + ids);
 			}
-			return res;
+			return def;
 		}
 
 		// resolve dependencies
@@ -664,12 +677,11 @@
 		// this must be after extractCfg
 		ctx = core.begetCtx('');
 
-		// thanks to Joop Ringelberg for helping me troubleshoot the API
-		// which led me to totally rewrite it!
-		function CurlApi (ids, callback) {
+		// thanks to Joop Ringelberg for helping troubleshoot the API
+		function CurlApi (ids, callback, waitFor) {
 			var promise = new Promise();
 			this['then'] = function (resolved, rejected) {
-				promise.then(
+				when(promise,
 					// return the dependencies as arguments, not an array
 					function (deps) { if (resolved) resolved.apply(undef, deps); },
 					// just throw if the dev didn't specify an error handler
@@ -679,10 +691,12 @@
 			};
 			this['next'] = function (ids, cb) {
 				// chain api
-				return new CurlApi(ids, cb);
+				return new CurlApi(ids, cb, promise);
 			};
 			if (callback) this['then'](callback);
-			ctx.require([].concat(ids), promise, ctx);
+			when(waitFor, function () {
+				ctx.require([].concat(ids), promise, ctx);
+			});
 		}
 
 		return new CurlApi(args[0], args[1]);
@@ -738,10 +752,6 @@
 	apiContext = userCfg['apiContext'] || global;
 	apiContext[apiName] = _curl;
 
-	// allow curl to be a dependency
-	cache['curl'] = new ResourceDef(apiName);
-	cache['curl'].resolve(_curl);
-
 	// wrap inner _define so it can be replaced without losing define.amd
 	define = global['define'] = function () {
 		var args = core.fixArgs(arguments);
@@ -752,12 +762,15 @@
 	// this is to comply with the AMD CommonJS proposal:
 	define['amd'] = { 'plugins': true, 'curl': version };
 
+	// allow curl to be a dependency
+	cache['curl'] = _curl;
+
 	// expose curl core for special plugins and modules
 	// Note: core overrides will only work in either of two scenarios:
 	// 1. the files are running un-compressed (Google Closure or Uglify)
 	// 2. the overriding module was compressed with curl.js
 	// Compiling curl and the overriding module separately won't work.
-	define('curl/_privileged', {
+	cache['curl/_privileged'] = {
 		'core': core,
 		'cache': cache,
 		'cfg': userCfg,
@@ -766,7 +779,7 @@
 		'_curl': _curl,
 		'global': global,
 		'ResourceDef': ResourceDef
-	});
+	};
 
 }(
 	this,
