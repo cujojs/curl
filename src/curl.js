@@ -121,10 +121,12 @@
 		return child;
 	}
 
-	function Promise () {
+	function Promise (id) {
 
 		var self = this,
 			thens = [];
+
+		this.id = id; // for ResourceDefs
 
 		function then (resolved, rejected) {
 			// capture calls to callbacks
@@ -166,18 +168,16 @@
 
 	}
 
-	function ResourceDef (id) {
-		Promise.apply(this);
-		this.id = id;
-	}
+	var ResourceDef = Promise; // subclassing isn't worth the extra bytes
 
 	function when (promiseOrValue, callback, errback) {
-		if (promiseOrValue && promiseOrValue.then) {
+		// we can't just sniff for then() or resources that have a then()
+		// will make dependencies wait!
+		if (promiseOrValue instanceof Promise) {
 			promiseOrValue.then(callback, errback);
 		}
 		else {
 			callback(promiseOrValue);
-			return promiseOrValue;
 		}
 	}
 
