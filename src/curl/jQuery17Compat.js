@@ -31,56 +31,61 @@
  *  });
  *
  */
-define(/*=='curl/jQuery17Compat',==*/ ['curl/_privileged'], function (curl) {
-	var _define, fetchDep, ResourceDef, jqs, first;
-
-	// save original _define and fetchDep
-	_define = curl.core._define;
-	fetchDep = curl.core.fetchDep;
-	ResourceDef = curl.core.ResourceDef;
-
-	// TODO: allow packages to specify which jq they want
-	// cache all jQuery versions
-	jqs = {};
-
-	// duck-punch _define
-	curl.core._define = function (args) {
-		if ("jquery" == args.id && args.res) {
-			var jq;
-
-			// grab jquery
-			jq = args.res();
-
-			// remove it from global scope
-			jq = jq.noConflict(true);
-
-			// cache this version of jQuery as a ResourceDef
-			jqs[jq.fn.jquery] = jq;
-
-			// if this is the first jQuery, keep it
-			if (!first) first = jq;
-
-			// do we need to keep the id???
-			delete args.id;
-		}
-		_define(args);
-	};
-
-	// duck-punch fetchDep to look for jQuery
-	curl.core.fetchDep = function (id, ctx) {
-		// TODO: get package config
-		var jq, cfg = {};
-		if ('jquery' == id) {
-			jq = cfg.jQueryVersion ? jqs[cfg.jQueryVersion] : first;
-			if (!jq) {
-				throw new Error('jQuery version not found: ' + cfg.jQueryVersion);
-			}
-			return jq;
-		}
-	};
-
-	return true;
-});
 
 // add flag to let jQuery know we care! xoxo
 define['amd']['jQuery'] = {};
+
+// this is just a formality
+define(/*=='curl/jQuery17Compat',==*/ true);
+
+// TODO: implement package Mappings which will allow libs/modules to specify which jQuery they want
+
+//define(/*=='curl/jQuery17Compat',==*/ ['curl/_privileged'], function (curl) {
+//	var _define, fetchDep, ResourceDef, jqs, first;
+//
+//	// save original _define and fetchDep
+//	_define = curl.core._define;
+//	fetchDep = curl.core.fetchDep;
+//	ResourceDef = curl.core.ResourceDef;
+//
+//	// cache all jQuery versions
+//	jqs = {};
+//
+//	// duck-punch _define
+//	curl.core._define = function (args) {
+//		if ("jquery" == args.id && args.res) {
+//			var jq;
+//
+//			// grab jquery
+//			jq = args.res();
+//
+//			// remove it from global scope
+//			jq = jq.noConflict(true);
+//
+//			// cache this version of jQuery as a ResourceDef
+//			jqs[jq.fn.jquery] = jq;
+//
+//			// if this is the first jQuery, keep it
+//			if (!first) first = jq;
+//
+//			// do we need to keep the id???
+//			delete args.id;
+//		}
+//		_define(args);
+//	};
+//
+//	// duck-punch fetchDep to look for jQuery
+//	curl.core.fetchDep = function (id, ctx) {
+//		// TODO: get package config
+//		var jq, cfg = {};
+//		if ('jquery' == id) {
+//			jq = cfg.jQueryVersion ? jqs[cfg.jQueryVersion] : first;
+//			if (!jq) {
+//				throw new Error('jQuery version not found: ' + cfg.jQueryVersion);
+//			}
+//			return jq;
+//		}
+//	};
+//
+//	return true;
+//});
