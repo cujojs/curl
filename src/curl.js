@@ -497,7 +497,7 @@
 				// TODO: make this more efficient by allowing toUrl to be
 				// overridden more easily and detecting if there's a
 				// plugin-specific path more efficiently
-				ctx = core.begetCtx(ctx.baseId);
+				ctx = beget(ctx);
 				ctx.require['toUrl'] = function toUrl (absId) {
 					var pathInfo;
 					pathInfo = core.resolvePathInfo(absId, loaderId);
@@ -517,7 +517,6 @@
 					function (plugin) {
 						var normalizedDef;
 
-						resName = depName.substr(delPos + 1);
 						// check if plugin supports the normalize method
 						if ('normalize' in plugin) {
 							resName = plugin['normalize'](resName, toAbsId, cfg);
