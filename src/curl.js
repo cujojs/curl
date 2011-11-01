@@ -43,10 +43,6 @@
 	var
 		version = '0.5.4dev',
 		head = doc['head'] || doc.getElementsByTagName('head')[0],
-		// configuration information
-		baseUrl,
-		pluginPath = 'curl/plugin',
-		paths = {},
 		// local cache of resource definitions (lightweight promises)
 		cache = {},
 		// net to catch anonymous define calls' arguments (non-IE browsers)
@@ -64,7 +60,7 @@
 		normalizeRx = /^(\.)(\.)?(\/|$)/,
 		findSlashRx = /\//g,
 		dontAddExtRx = /\?/,
-		pathSearchRx,
+		//pathSearchRx,
 		// script ready states that signify it's loaded
 		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
 		orsc = 'onreadystatechange',
@@ -76,18 +72,20 @@
 
 	function normalizePkgDescriptor (descriptor) {
 
-		descriptor.path = descriptor['path'] || ''; // (isNaN(nameOrIndex) ? nameOrIndex : descriptor.id);
+		descriptor.path = descriptor['path'] || '';
+		descriptor.config = descriptor['config'];
 
 		function normalizePkgPart (partName) {
-			var path;
+			var path, part;
 			if (partName in descriptor) {
-				if (descriptor[partName].charAt(0) != '.') {
+				part = descriptor[partName];
+				if (part.charAt(0) != '.') {
 					// prefix with path
-					path = joinPath(descriptor.path, descriptor[partName]);
+					path = joinPath(descriptor.path, part);
 				}
 				else {
 					// use normal . and .. path processing
-					path = core.normalizeName(descriptor[partName], descriptor.path);
+					path = core.normalizeName(part, descriptor.path);
 				}
 				return removeEndSlash(path);
 			}
@@ -171,8 +169,8 @@
 	var ResourceDef = Promise; // subclassing isn't worth the extra bytes
 
 	function when (promiseOrValue, callback, errback) {
-		// we can't just sniff for then() or resources that have a then()
-		// will make dependencies wait!
+		// we can't just sniff for then(). if we do, resources that have a
+		// then() method will make dependencies wait!
 		if (promiseOrValue instanceof Promise) {
 			promiseOrValue.then(callback, errback);
 		}
@@ -184,47 +182,155 @@
 	core = {
 
 		extractCfg: function extractCfg (cfg) {
-			var pathList = [];
+			var pluginCfgs;
 
-			baseUrl = cfg['baseUrl'] || '';
+			// set defaults and convert from non-closure-safe names
+			cfg.baseUrl = cfg['baseUrl'] || '';
+			cfg.pluginPath = cfg['pluginPath'] || 'curl/plugin';
+			pluginCfgs = cfg.plugins = cfg['plugins'] || {};
 
+			// create object to hold path map.
+			// each plugin and package will have its own pathMap, too.
+			if (!cfg.pathMap) cfg.pathMap = {};
+			if (!userCfg.plugins) userCfg.plugins = userCfg['plugins'] || {};
+
+			// temporary arrays of paths. this will be converted to
+			// a regexp for fast path parsing.
+			cfg.pathList = [];
+
+			// normalizes path/package info and places info on either
+			// the global cfg.pathMap or on a plugin-specific altCfg.pathMap.
+			// also populates a pathList on cfg or plugin configs.
 			function fixAndPushPaths (coll, isPkg) {
-				var pStrip, info;
+				var id, prefixPos, prefix, currCfg, info;
 				for (var name in coll) {
-					pStrip = removeEndSlash(coll[name]['id'] || name.replace('!', '!/'));
+					currCfg = cfg;
+					// grab the package id, if specified. default to
+					// property name.
+					id = removeEndSlash(coll[name]['id'] || name);
+					prefixPos = id.indexOf('!');
+					if (prefixPos > 0) {
+						// plugin-specific path
+						prefix = id.substr(0, prefixPos);
+						if (!pluginCfgs[prefix]) {
+							currCfg = pluginCfgs[prefix] = beget(cfg);
+							currCfg.pathMap = beget(cfg.pathMap);
+							currCfg.pathList = [];
+						}
+						// remove prefix from id
+						id = id.substr(prefixPos + 1);
+					}
 					if (isPkg) {
-						info = normalizePkgDescriptor(coll[name], pStrip);
+						info = normalizePkgDescriptor(coll[name]);
 					}
 					else {
 						info = { path: removeEndSlash(coll[name]) };
 					}
-					info.specificity = (pStrip.match(findSlashRx) || []).length;
-					paths[pStrip] = info;
-					pathList.push(pStrip);
+					info.specificity = (id.match(findSlashRx) || []).length;
+					if (id) {
+						currCfg.pathMap[id] = info;
+						currCfg.pathList.push(id);
+					}
+					else {
+						// naked plugin name signifies baseUrl for plugin
+						// resources. baseUrl could be relative to global
+						// baseUrl.
+						currCfg.baseUrl = core.resolveUrl(coll[name], cfg);
+					}
 				}
+			}
+
+			// adds the path matching regexp ono the cfg or plugin cfgs.
+			function convertPathMatcher (cfg) {
+				var pathList = cfg.pathList, pathMap = cfg.pathMap;
+				cfg.pathRx = new RegExp('^(' +
+					pathList.sort(function (a, b) { return pathMap[a].specificity < pathMap[b].specificity; } )
+						.join('|')
+						.replace(/\//g, '\\/') +
+					')(?=\\/|$)'
+				);
+				delete cfg.pathList;
 			}
 
 			// fix all paths and packages
 			fixAndPushPaths(cfg['paths'], false);
 			fixAndPushPaths(cfg['packages'], true);
 
-			// create path matcher
-			pathSearchRx = new RegExp('^(' +
-				pathList.sort(function (a, b) { return paths[a].specificity < paths[b].specificity; } )
-					.join('|')
-					.replace(/\//g, '\\/') +
-				')(?=\\/|$)'
-			);
+			// create search regex for each path map
+			for (var p in pluginCfgs) {
+				pluginCfgs[p].pathList = pluginCfgs[p].pathList.concat(cfg.pathList);
+				convertPathMatcher(pluginCfgs[p]);
+			}
+			convertPathMatcher(cfg);
 
-			pluginPath = cfg['pluginPath'] || pluginPath;
-
+//			var pathMaps, i;
+//
+//			baseUrl = cfg['baseUrl'] || '';
+//			pluginPath = cfg['pluginPath'] || pluginPath;
+//
+//			// the list of path maps that we discover. each plugin can have
+//			// its own. packages will also have their own
+//			pathMaps = [paths];
+//
+//			// each path map will store its search regex as "$".
+//			// we're reusing this property to collect all paths and will
+//			// create the regex later.
+//			paths.$ = []; // TODO: will closure mangle this? if so, it could clash with user paths
+//
+//			function fixAndPushPaths (coll, isPkg) {
+//				var pStrip, prefixPos, prefix, currMap, info;
+//				for (var name in coll) {
+//					pStrip = removeEndSlash(coll[name]['id'] || name);
+//					prefixPos = pStrip.indexOf('!');
+//					if (prefixPos > 0) {
+//						prefix = pStrip.substr(0, prefixPos + 1);
+//						if (!paths[prefix]) {
+//							paths[prefix] = beget(paths);
+//							pathMaps.push(paths[prefix]);
+//						}
+//						currMap = paths[prefix];
+//						currMap.$ = [];
+//					}
+//					else {
+//						currMap = paths;
+//					}
+//					if (isPkg) {
+//						info = normalizePkgDescriptor(coll[name]);
+//					}
+//					else {
+//						info = { path: removeEndSlash(coll[name]) };
+//					}
+//					info.specificity = (pStrip.match(findSlashRx) || []).length;
+//					currMap[pStrip] = info;
+//					currMap.$.push(pStrip);
+//				}
+//			}
+//
+//			function addPathMatcher (pathList, pathMap) {
+//				pathMap.$ = new RegExp('^(' +
+//					pathList.sort(function (a, b) { return pathMap[a].specificity < pathMap[b].specificity; } )
+//						.join('|')
+//						.replace(/\//g, '\\/') +
+//					')(?=\\/|$)'
+//				);
+//			}
+//
+//			// fix all paths and packages
+//			fixAndPushPaths(cfg['paths'], false);
+//			fixAndPushPaths(cfg['packages'], true);
+//
+//			// create search regex for each path map
+//			for (i = 0; i < pathMaps.length; i++) {
+//				addPathMatcher(pathMaps[i].$, pathMaps[i]);
+//			}
+//
 		},
 
-		begetCtx: function (absId) {
+		begetCtx: function (absId, cfg) {
 
 			function toUrl (n) {
-				var path = core.resolvePathInfo(core.normalizeName(n, baseId)).path;
-				return core.resolveUrl(path, baseUrl);
+				var path = core.resolvePathInfo(core.normalizeName(n, baseId), cfg).path;
+				return core.resolveUrl(path, cfg);
 			}
 
 			var baseId = absId.substr(0, absId.lastIndexOf('/')),
@@ -235,8 +341,8 @@
 				require = function (deps, callback) {
 					return _require(deps, callback || noop, ctx);
 				};
-			// CommonJS Modules 1.1.1 mimicry
-			ctx.vars = {
+			// CommonJS Modules 1.1.1 and node.js helpers
+			ctx.cjsVars = {
 				'exports': exports,
 				'module': {
 					'id': absId,
@@ -245,57 +351,47 @@
 				}
 			};
 
-			ctx.require = ctx.vars['require'] = require;
+			ctx.require = ctx.cjsVars['require'] = require;
 			// using bracket property notation so closure won't clobber id
 			require['toUrl'] = toUrl;
 
 			return ctx;
 		},
 
-		resolvePathInfo: function (id, prefix) {
+		resolvePathInfo: function (id, cfg) {
 			// TODO: figure out why this gets called so often for the same file
 			// searches through the configured path mappings and packages
 			// if the resulting module is part of a package, also return the main
 			// module so it can be loaded.
-			var pathInfo, path, config, found;
+			var pathMap, pathInfo, path, config, found;
 
-			function fixPath (id) {
-				path = id.replace(pathSearchRx, function (match) {
+			pathMap = cfg.pathMap;
 
-					pathInfo = paths[match] || {};
-					found = true;
-					config = pathInfo.config;
+			path = id.replace(cfg.pathRx, function (match) {
 
-					// if pathInfo.main and match == id, this is a main module
-					if (pathInfo.main && match == id) {
-						return pathInfo.main;
-					}
-					// if pathInfo.lib return pathInfo.lib
-					else if (pathInfo.lib) {
-						return pathInfo.lib;
-					}
-					else {
-						return pathInfo.path || '';
-					}
+				pathInfo = pathMap[match] || {};
+				found = true;
+				config = pathInfo.config;
 
-				});
-			}
+				// if pathInfo.main and match == id, this is a main module
+				if (pathInfo.main && match == id) {
+					return pathInfo.main;
+				}
+				// if pathInfo.lib return pathInfo.lib
+				else {
+					return pathInfo.lib || pathInfo.path || '';
+				}
 
-			// if this is a plugin-specific path to resolve
-			if (prefix) {
-					fixPath(prefix + '!/' + id);
-			}
-			if (!found) {
-					fixPath(id);
-			}
+			});
 
 			return {
 				path: path,
-				config: config || {}
+				config: config
 			};
 		},
 
-		resolveUrl: function (path, baseUrl, addExt) {
+		resolveUrl: function (path, cfg, addExt) {
+			var baseUrl = cfg.baseUrl;
 			return (baseUrl && !absUrlRx.test(path) ? joinPath(baseUrl, path) : path) + (addExt && !dontAddExtRx.test(path) ? '.js' : '');
 		},
 
@@ -381,23 +477,24 @@
 			};
 		},
 
-		resolveResDef: function (def, args, ctx) {
+		resolveResDef: function (def, args) {
 
 			// if a module id has been remapped, it will have a baseId
-			var childCtx = core.begetCtx(def.baseId || def.id);
+			// TODO: does the context's config need to be passed in somehow?
+			var childCtx = core.begetCtx(def.baseId || def.id, userCfg);
 
 			// get the dependencies and then resolve/reject
 			core.getDeps(def, args.deps, childCtx,
 				function (deps) {
 					var res;
 					try {
-						// node.js assumes `this` === exports
-						// anything returned overrides exports
+						// node.js assumes `this` === exports.
+						// anything returned overrides exports.
 						// uses module.exports if nothing returned (node.js
 						// convention). exports === module.exports unless
 						// module.exports was reassigned.
-						res = args.res.apply(childCtx.vars['exports'], deps) ||
-							childCtx.vars['module']['exports'];
+						res = args.res.apply(childCtx.cjsVars['exports'], deps) ||
+							childCtx.cjsVars['module']['exports'];
 					}
 					catch (ex) {
 						def.reject(ex);
@@ -410,7 +507,7 @@
 
 		},
 
-		fetchResDef: function (def, ctx) {
+		fetchResDef: function (def) {
 
 			core.loadScript(def,
 
@@ -418,8 +515,8 @@
 					var args = argsNet;
 					argsNet = undef; // reset it before we get deps
 
-						// if our resource was not explicitly defined with a id (anonymous)
-						// Note: if it did have a id, it will be resolved in the define()
+					// if our resource was not explicitly defined with a id (anonymous)
+					// Note: if it did have a id, it will be resolved in the define()
 					if (def.useNet !== false) {
 
 						if (!args) {
@@ -428,11 +525,11 @@
 						}
 						else if (args.ex) {
 							// the resNet resource was already rejected, but it didn't know
-								// its id, so reject this def now with better information
+							// its id, so reject this def now with better information
 							def.reject(new Error(args.ex.replace('${url}', def.url)));
 						}
 						else {
-								core.resolveResDef(def, args, ctx);
+								core.resolveResDef(def, args);
 						}
 					}
 
@@ -446,36 +543,38 @@
 
 		},
 
-		normalizeName: function (id, baseId) {
+		normalizeName: function (id, basePath) {
 			// if id starts with . then use parent's id as a base
 			// if id starts with .. then use parent's parent
 			return id.replace(normalizeRx, function (match, dot1, dot2) {
-				return (dot2 ? baseId.substr(0, baseId.lastIndexOf('/')) : baseId) + '/';
+				return (dot2 ? basePath.substr(0, basePath.lastIndexOf('/')) : basePath) + '/';
 			});
 		},
 
 		fetchDep: function (depName, ctx) {
-			var id, delPos, loaderId, resName, loaderInfo, pathInfo, def, cfg;
+			var id, delPos, loaderId, pathMap, resName, loaderInfo, pathInfo, def, cfg;
 
+			pathMap = userCfg.pathMap;
 			// check for plugin loaderId
 			delPos = depName.indexOf('!');
 			if (delPos >= 0) {
 				loaderId = depName.substr(0, delPos);
-				// prepend plugin folder path, if it's missing and path isn't in paths
-				loaderInfo = core.resolvePathInfo(loaderId);
+				// allow plugin-specific path mappings
+				cfg = userCfg.plugins[loaderId] || userCfg;
+				// prepend plugin folder path, if it's missing and path isn't in pathMap
+				loaderInfo = core.resolvePathInfo(loaderId, userCfg);
 				if (loaderInfo.path.indexOf('/') < 0) {
-					loaderInfo = core.resolvePathInfo(joinPath(pluginPath, loaderInfo.path));
+					loaderInfo = core.resolvePathInfo(joinPath(userCfg.pluginPath, loaderInfo.path), userCfg);
 				}
-				cfg = userCfg['plugins'] && userCfg['plugins'][loaderId] || {};
 			}
 			else {
 				// get path information for this resource
 				resName = id = core.normalizeName(depName, ctx.baseId);
-				pathInfo = core.resolvePathInfo(resName);
+				pathInfo = core.resolvePathInfo(resName, userCfg);
 				// get custom module loader from package config
-				cfg = pathInfo.config || {};
+				cfg = pathInfo.config || userCfg;
 				loaderId = cfg.moduleLoader;
-				loaderInfo = loaderId && core.resolvePathInfo(loaderId);
+				loaderInfo = loaderId && core.resolvePathInfo(loaderId, cfg);
 			}
 
 			if (loaderId) {
@@ -486,30 +585,20 @@
 				var loaderDef = cache[loaderId];
 				if (!loaderDef) {
 					loaderDef = cache[loaderId] = new ResourceDef(loaderId);
-					loaderDef.url = core.resolveUrl(loaderInfo.path, baseUrl, true);
+					loaderDef.url = core.resolveUrl(loaderInfo.path, userCfg, true);
 					loaderDef.baseId = loaderInfo.path; // TODO: does baseId have to be normalized?
-					core.fetchResDef(loaderDef, ctx);
+					core.fetchResDef(loaderDef);
 				}
 
-				// alter the toUrl passed into the plugin so that it can
-				// also find plugin-prefixed path specifiers. e.g.:
-				// "js!resourceId": "path/to/js/resource"
-				// TODO: make this more efficient by allowing toUrl to be
-				// overridden more easily and detecting if there's a
-				// plugin-specific path more efficiently
-				ctx = beget(ctx);
-				ctx.require['toUrl'] = function toUrl (absId) {
-					var pathInfo;
-					pathInfo = core.resolvePathInfo(absId, loaderId);
-					return core.resolveUrl(pathInfo.path, baseUrl);
-				};
+				// plugin may have its own pathMap (plugin-specific paths)
+				ctx = core.begetCtx('', cfg);
 
 				function toAbsId (id) {
 					return core.normalizeName(id, ctx.baseId);
 				}
 
-					// we need to use depName until plugin tells us normalized id
-					// if the plugin may changes the id, we need to consolidate
+				// we need to use depName until plugin tells us normalized id
+				// if the plugin may changes the id, we need to consolidate
 				// def promises below
 				def = new ResourceDef(depName);
 
@@ -517,6 +606,7 @@
 					function (plugin) {
 						var normalizedDef;
 
+						//resName = depName.substr(delPos + 1);
 						// check if plugin supports the normalize method
 						if ('normalize' in plugin) {
 							resName = plugin['normalize'](resName, toAbsId, cfg);
@@ -569,8 +659,8 @@
 				def = cache[resName];
 				if (!def) {
 					def = cache[resName] = new ResourceDef(resName);
-					def.url = core.resolveUrl(pathInfo.path, baseUrl, true);
-					core.fetchResDef(def, ctx);
+					def.url = core.resolveUrl(pathInfo.path, cfg, true);
+					core.fetchResDef(def);
 				}
 
 			}
@@ -588,13 +678,13 @@
 			// Note: IE may have obtained the dependencies sync (stooooopid!) thus the completed flag
 			for (var i = 0; i < len && !completed; i++) (function (index, depName) {
 					// look for commonjs free vars
-				if (depName in ctx.vars) {
-					deps[index] = ctx.vars[depName];
+				if (depName in ctx.cjsVars) {
+					deps[index] = ctx.cjsVars[depName];
 					count--;
 				}
 				else {
 					// hook into promise callbacks
-						when(core.fetchDep(depName, ctx),
+					when(core.fetchDep(depName, ctx),
 						function (dep) {
 							deps[index] = dep; // got it!
 							if (--count == 0) {
@@ -674,7 +764,7 @@
 		}
 
 		// this must be after extractCfg
-		ctx = core.begetCtx('');
+		ctx = core.begetCtx('', userCfg);
 
 		// thanks to Joop Ringelberg for helping troubleshoot the API
 		function CurlApi (ids, callback, waitFor) {
@@ -728,7 +818,7 @@
 			// a module was defined inside a built file and outside of it and
 			// dev didn't coordinate it explicitly)
 			if (!('resolved' in def)) {
-				core.resolveResDef(def, args, core.begetCtx(id));
+				core.resolveResDef(def, args);
 			}
 		}
 
