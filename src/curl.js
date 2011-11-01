@@ -266,67 +266,6 @@
 			}
 			convertPathMatcher(cfg);
 
-//			var pathMaps, i;
-//
-//			baseUrl = cfg['baseUrl'] || '';
-//			pluginPath = cfg['pluginPath'] || pluginPath;
-//
-//			// the list of path maps that we discover. each plugin can have
-//			// its own. packages will also have their own
-//			pathMaps = [paths];
-//
-//			// each path map will store its search regex as "$".
-//			// we're reusing this property to collect all paths and will
-//			// create the regex later.
-//			paths.$ = []; // TODO: will closure mangle this? if so, it could clash with user paths
-//
-//			function fixAndPushPaths (coll, isPkg) {
-//				var pStrip, prefixPos, prefix, currMap, info;
-//				for (var name in coll) {
-//					pStrip = removeEndSlash(coll[name]['id'] || name);
-//					prefixPos = pStrip.indexOf('!');
-//					if (prefixPos > 0) {
-//						prefix = pStrip.substr(0, prefixPos + 1);
-//						if (!paths[prefix]) {
-//							paths[prefix] = beget(paths);
-//							pathMaps.push(paths[prefix]);
-//						}
-//						currMap = paths[prefix];
-//						currMap.$ = [];
-//					}
-//					else {
-//						currMap = paths;
-//					}
-//					if (isPkg) {
-//						info = normalizePkgDescriptor(coll[name]);
-//					}
-//					else {
-//						info = { path: removeEndSlash(coll[name]) };
-//					}
-//					info.specificity = (pStrip.match(findSlashRx) || []).length;
-//					currMap[pStrip] = info;
-//					currMap.$.push(pStrip);
-//				}
-//			}
-//
-//			function addPathMatcher (pathList, pathMap) {
-//				pathMap.$ = new RegExp('^(' +
-//					pathList.sort(function (a, b) { return pathMap[a].specificity < pathMap[b].specificity; } )
-//						.join('|')
-//						.replace(/\//g, '\\/') +
-//					')(?=\\/|$)'
-//				);
-//			}
-//
-//			// fix all paths and packages
-//			fixAndPushPaths(cfg['paths'], false);
-//			fixAndPushPaths(cfg['packages'], true);
-//
-//			// create search regex for each path map
-//			for (i = 0; i < pathMaps.length; i++) {
-//				addPathMatcher(pathMaps[i].$, pathMaps[i]);
-//			}
-//
 		},
 
 		begetCtx: function (absId, cfg) {
