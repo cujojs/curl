@@ -258,8 +258,11 @@
 
 			// create search regex for each path map
 			for (var p in pluginCfgs) {
-				pluginCfgs[p].pathList = pluginCfgs[p].pathList.concat(cfg.pathList);
-				convertPathMatcher(pluginCfgs[p]);
+				var pathList = pluginCfgs[p].pathList;
+				if (pathList) {
+					pluginCfgs[p].pathList = pathList.concat(cfg.pathList);
+					convertPathMatcher(pluginCfgs[p]);
+				}
 			}
 			convertPathMatcher(cfg);
 
@@ -552,12 +555,15 @@
 		},
 
 		fetchDep: function (depName, ctx) {
-			var id, delPos, loaderId, pathMap, resName, loaderInfo, pathInfo, def, cfg;
+			var fullId, delPos, loaderId, pathMap, resId, loaderInfo, pathInfo, def, cfg;
 
 			pathMap = userCfg.pathMap;
 			// check for plugin loaderId
 			delPos = depName.indexOf('!');
 			if (delPos >= 0) {
+				// obtain absolute id of resource
+				resId = core.normalizeName(depName.substr(delPos + 1), ctx.baseId);
+				// get plugin info
 				loaderId = depName.substr(0, delPos);
 				// allow plugin-specific path mappings
 				cfg = userCfg.plugins[loaderId] || userCfg;
@@ -569,8 +575,8 @@
 			}
 			else {
 				// get path information for this resource
-				resName = id = core.normalizeName(depName, ctx.baseId);
-				pathInfo = core.resolvePathInfo(resName, userCfg);
+				resId = core.normalizeName(depName, ctx.baseId);
+				pathInfo = core.resolvePathInfo(resId, userCfg);
 				// get custom module loader from package config
 				cfg = pathInfo.config || userCfg;
 				loaderId = cfg.moduleLoader;
@@ -578,8 +584,6 @@
 			}
 
 			if (loaderId) {
-
-				resName = depName.substr(delPos + 1);
 
 				// fetch plugin or loader
 				var loaderDef = cache[loaderId];
@@ -590,52 +594,49 @@
 					core.fetchResDef(loaderDef);
 				}
 
-				// plugin may have its own pathMap (plugin-specific paths)
-				ctx = core.begetCtx('', cfg);
-
 				function toAbsId (id) {
 					return core.normalizeName(id, ctx.baseId);
 				}
 
-				// we need to use depName until plugin tells us normalized id
-				// if the plugin may changes the id, we need to consolidate
-				// def promises below
+				// we need to use depName until plugin tells us normalized id.
+				// if the plugin changes the id, we need to consolidate
+				// def promises below.
 				def = new ResourceDef(depName);
 
 				when(loaderDef,
 					function (plugin) {
-						var normalizedDef;
+						var childCtx, normalizedDef;
 
 						//resName = depName.substr(delPos + 1);
 						// check if plugin supports the normalize method
 						if ('normalize' in plugin) {
-							resName = plugin['normalize'](resName, toAbsId, cfg);
+							resId = plugin['normalize'](resId, toAbsId, cfg);
 						}
-						else {
-							resName = toAbsId(resName);
-						}
+
+						// plugin may have its own pathMap (plugin-specific paths)
+						childCtx = core.begetCtx(resId, cfg);
 
 						// the spec is unclear, so we're using the full id (loaderId + id) to id resources
 						// so multiple plugins could each process the same resource
-						id = loaderId + '!' + resName;
-						normalizedDef = cache[id];
+						fullId = loaderId + '!' + resId;
+						normalizedDef = cache[fullId];
 
 						// if this is our first time fetching this (normalized) def
 						if (!normalizedDef) {
 
-							normalizedDef = new ResourceDef(id);
+							normalizedDef = new ResourceDef(fullId);
 
 							// resName could be blank if the plugin doesn't specify an id (e.g. "domReady!")
 							// don't cache non-determinate "dynamic" resources (or non-existent resources)
-							if (resName && !plugin['dynamic']) {
-								cache[id] = normalizedDef;
+							if (resId && !plugin['dynamic']) {
+								cache[fullId] = normalizedDef;
 							}
 
 							// curl's plugins prefer to receive the back-side of a promise,
 							// but to be compatible with commonjs's specification, we have to
 							// piggy-back on the callback function parameter:
 							var loaded = function (res) {
-								cache[id] = res;
+								cache[fullId] = res;
 								normalizedDef.resolve(res);
 							};
 							// using bracket property notation so closure won't clobber id
@@ -643,7 +644,7 @@
 							loaded['reject'] = normalizedDef.reject;
 
 							// load the resource!
-							plugin.load(resName, ctx.require, loaded, cfg);
+							plugin.load(resId, childCtx.require, loaded, cfg);
 
 						}
 
@@ -656,9 +657,9 @@
 
 			}
 			else {
-				def = cache[resName];
+				def = cache[resId];
 				if (!def) {
-					def = cache[resName] = new ResourceDef(resName);
+					def = cache[resId] = new ResourceDef(resId);
 					def.url = core.resolveUrl(pathInfo.path, cfg, true);
 					core.fetchResDef(def);
 				}
