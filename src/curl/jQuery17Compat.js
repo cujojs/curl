@@ -26,7 +26,7 @@
  * may be mangled.
  *
  * usage:
- *  curl(['curl/jQuery17Compat', 'jquery/jQuery'], function ($) {
+ *  curl(['curl/jQuery17Compat']).then(['jquery/jQuery'], function ($) {
  *  	$('P').append(' w00t!');
  *  });
  *
@@ -44,7 +44,7 @@ define(/*=='curl/jQuery17Compat',==*/ true);
 //	var _define, fetchDep, ResourceDef, jqs, first;
 //
 //	// save original _define and fetchDep
-//	_define = curl.core._define;
+//	_define = curl['_define'];
 //	fetchDep = curl.core.fetchDep;
 //	ResourceDef = curl.core.ResourceDef;
 //
