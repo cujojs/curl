@@ -5,6 +5,8 @@ version 0.5.3
 
 What's New?
 
+*Please note: jQuery 1.7 compatibility is coming in version 0.5.4 which will be released very, very soon!*
+
 * 0.5.3
 	* fix to js! plugin (now works without !order option)
 * 0.5.2
