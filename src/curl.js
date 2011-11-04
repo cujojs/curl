@@ -669,12 +669,15 @@
 	function _require (ids, callback, ctx) {
 		// Note: callback could be a promise
 
-		// RValue require
+		// RValue require (CommonJS)
 		if (isType(ids, 'String')) {
 			// return resource
 			var def = cache[ids];
-			if (def instanceof ResourceDef) {
+			if (!(ids in cache) || def instanceof ResourceDef) {
 				throw new Error('Module is not already resolved: '  + ids);
+			}
+			if (callback) {
+				throw new Error('require(<string>, callback) not allowed. use <array>.');
 			}
 			return def;
 		}
