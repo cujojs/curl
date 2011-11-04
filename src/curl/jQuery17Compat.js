@@ -19,23 +19,26 @@
  *
  * If you wish to use jQuery versions less than 1.7, just append the following
  * line to the end of the jQuery.js file:
- * define('jQuery', $);
+ * define('jquery', $);
  *
  * If optimizing/compressing files, be sure to process this file simultaneously
  * with the main curl file or references to curl.core methods in the code below
  * may be mangled.
  *
+ *  usage:
+ *  curl({ preloads: ['curl/jQuery17Compat'] }, ['js/jquery'], function ($) {
+ *  	$('P').append(' w00t!');
+ *  });
+ *
  * usage:
- *  curl(['curl/jQuery17Compat']).then(['jquery/jQuery'], function ($) {
+ *  curl(['curl/jQuery17Compat']).then(['jQuery/jquery'], function ($) {
  *  	$('P').append(' w00t!');
  *  });
  *
  */
 
-// add flag to let jQuery know we care! xoxo
-define['amd']['jQuery'] = {};
-
-// this is just a formality
+// this is just a formality until we have a better handle on what needs to be
+// patched for jQuery:
 define(/*=='curl/jQuery17Compat',==*/ true);
 
 // TODO: implement package Mappings which will allow libs/modules to specify which jQuery they want

@@ -45,6 +45,8 @@
 		head = doc['head'] || doc.getElementsByTagName('head')[0],
 		// local cache of resource definitions (lightweight promises)
 		cache = {},
+		// preloads are files that must be loaded before any others
+		preloads = [],
 		// net to catch anonymous define calls' arguments (non-IE browsers)
 		argsNet,
 		// this is the list of scripts that IE is loading. one of these will
@@ -188,6 +190,7 @@
 			cfg.baseUrl = cfg['baseUrl'] || '';
 			cfg.pluginPath = cfg['pluginPath'] || 'curl/plugin';
 			pluginCfgs = cfg.plugins = cfg['plugins'] || {};
+			if (cfg['preloads']) preloads = preloads.concat(cfg['preloads']);
 
 			// create object to hold path map.
 			// each plugin and package will have its own pathMap, too.
@@ -611,12 +614,35 @@
 		getDeps: function (def, names, ctx, success, failure) {
 			var deps = [],
 				count = names.length,
-				len = count,
-				completed = false;
+				completed = false,
+				preCtx,
+				len, i;
+
+			function doFailure (ex) {
+				completed = true;
+				failure(ex);
+			}
+
+			function checkDone () {
+				if (--count == 0) {
+					completed = true;
+					success(deps);
+				}
+			}
+
+			// get preloads, if any
+			len = preloads.length;
+			if (len) {
+				count += len;
+				preCtx = begetCtx('', userCfg);
+				for (i = 0; i < len; i++) {
+					when(core.fetchDep(preloads[i], preCtx), checkDone, doFailure);
+				}
+			}
 
 			// obtain each dependency
 			// Note: IE may have obtained the dependencies sync (stooooopid!) thus the completed flag
-			for (var i = 0; i < len && !completed; i++) (function (index, depName) {
+			for (i = 0, len = names.length; i < len && !completed; i++) (function (index, depName) {
 					// look for commonjs free vars
 				if (depName in ctx.cjsVars) {
 					deps[index] = ctx.cjsVars[depName];
@@ -627,15 +653,9 @@
 					when(core.fetchDep(depName, ctx),
 						function (dep) {
 							deps[index] = dep; // got it!
-							if (--count == 0) {
-								completed = true;
-								success(deps);
-							}
+							checkDone();
 						},
-						function (ex) {
-							completed = true;
-							failure(ex);
-						}
+						doFailure
 					);
 				}
 			}(i, names[i]));
@@ -791,8 +811,8 @@
 	};
 	_curl['version'] = version;
 
-	// this is to comply with the AMD CommonJS proposal:
-	define['amd'] = { 'plugins': true, 'curl': version };
+	// AMD flags
+	define['amd'] = { 'plugins': true, 'curl': version, 'jquery': true };
 
 	// allow curl to be a dependency
 	cache['curl'] = _curl;
