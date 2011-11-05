@@ -812,7 +812,7 @@
 	_curl['version'] = version;
 
 	// AMD flags
-	define['amd'] = { 'plugins': true, 'curl': version, 'jquery': true };
+	define['amd'] = { 'plugins': true, 'curl': version, 'jQuery': true };
 
 	// allow curl to be a dependency
 	cache['curl'] = _curl;
