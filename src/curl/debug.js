@@ -13,26 +13,36 @@
  * The debug module must be used in conjunction with the debug: true config param!
  *
  */
-(function (global) {
+(function (global, origDefine) {
 
 define(['require', 'curl/_privileged'], function (require, priv) {
+"use strict";
 
-	var cache, totalWaiting, prevTotal, resolveResDef;
+	var cache, totalWaiting, prevTotal;
 
 	if (typeof console == 'undefined') {
 		throw new Error('`console` object must be defined to use debug module.');
 	}
 
-	priv._curl.['undefine'] = function (moduleId) { delete cache[moduleId]; };
+	priv._curl['undefine'] = function (moduleId) { delete cache[moduleId]; };
 
-	cache = priv.cache;
+	cache = priv['cache'];
 
 	// add logging to core functions
-	// TODO: add more core functions
-	resolveResDef = priv.core.resolveResDef;
-	priv.core.resolveResDef = function () {
-		console.log('curl: resolving', def.name);
-		resolveResDef.apply(this, arguments);
+	for (var p in priv['core']) (function (name, orig) {
+		priv['core'][name] = function () {
+			var result;
+			console.log('curl ' + name + ' arguments:', arguments);
+			result = orig.apply(this, arguments);
+			console.log('curl ' + name + ' return:', result);
+			return result;
+		};
+	}(p, priv['core'][p]));
+
+	// add logging to define
+	global.define = function () {
+		console.log('curl define:', arguments);
+		return origDefine.apply(this, arguments);
 	};
 
 	// log cache stats periodically
@@ -41,7 +51,7 @@ define(['require', 'curl/_privileged'], function (require, priv) {
 	function count () {
 		totalWaiting = 0;
 		for (var p in cache) {
-			if ('resolved' in cache[p]) totalWaiting++;
+			if (cache[p] instanceof priv['ResourceDef']) totalWaiting++;
 		}
 	}
 	count();
@@ -56,8 +66,8 @@ define(['require', 'curl/_privileged'], function (require, priv) {
 	}
 	periodicLogger();
 
-
+	return true;
 
 });
 
-}(this));
+}(this, this.define));
