@@ -9,6 +9,11 @@
  * libs.  This one overcomes some minor issues with jQuery 1.7's initial
  * foray into AMD territory. :)
  *
+ * Problem #1 with jQuery-1.7: jQuery defines itself too soon. Code that uses
+ * anything after jQuery's call to define() is undefined! Examples:
+ * jQuery.Callbacks, jQuery.Deferred, jQuery.when, jQuery.support, etc.
+ * Almost all of jQuery is undefined at the time define() is called!
+ *
  * For this compatibility shim to work, the jquery file must declare itself
  * to AMD by calling `define('jquery', [], jQuery)`.  The id is mandatory
  * so that this shim can find any/all references to jQuery and organize them
@@ -22,7 +27,7 @@
  * define('jquery', $);
  *
  * If optimizing/compressing files, be sure to process this file simultaneously
- * with the main curl file or references to curl.core methods in the code below
+ * with the main curl file or references to privileged methods in the code below
  * may be mangled.
  *
  *  usage:
@@ -37,9 +42,27 @@
  *
  */
 
-// this is just a formality until we have a better handle on what needs to be
-// patched for jQuery:
-define(/*=='curl/jQuery17Compat',==*/ true);
+define(/*=='curl/jQuery17Compat',==*/ ['curl/_privileged'], function (priv) {
+	var origResolveResDef;
+
+	origResolveResDef = priv['core'].resolveResDef;
+
+	priv['core'].resolveResDef = function (def, args) {
+		var a = arguments;
+
+		// only delay if this is actually jquery
+		if ('jquery' == def.id) {
+			setTimeout(function () {
+				origResolveResDef.apply(this, a)
+			}, 0);
+		}
+		else {
+			origResolveResDef.apply(this, a);
+		}
+	};
+
+	return true;
+});
 
 // TODO: implement package Mappings which will allow libs/modules to specify which jQuery they want
 
