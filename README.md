@@ -5,6 +5,8 @@ version 0.5.3
 
 What's New?
 
+*Please note: jQuery 1.7 compatibility is coming in version 0.5.4 which will be released very, very soon!*
+
 * 0.5.3
 	* fix to js! plugin (now works without !order option)
 * 0.5.2
@@ -83,6 +85,18 @@ Features at a glance:
 
 Oh, did we mention?  It's fast!  It's even faster than the leading non-AMD
 script loaders.
+
+----------------------------------------
+
+How to get support
+===============
+
+1. Go to the issues section of the curl repo (https://github.com/unscriptable/curl/issues)
+	and search for an answer to your question or problem.
+2. If no answer exists, file a new ticket!  Somebody will typically respond within a 
+	few hours.
+
+It's that easy. 
 
 ----------------------------------------
 
@@ -680,7 +694,7 @@ curl(['my-package'], callback);
 
 and will be fetched from the following path:
 
-path/to/js/path/to/my-package/main/main-module-file.js
+	path/to/js/path/to/my-package/main/main-module-file.js
 
 Some other file in the package would be obtained as follows:
 
