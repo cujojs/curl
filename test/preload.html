@@ -1,0 +1,40 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>preload test file</title>
+
+<script src="../src/curl.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+
+	curl(
+		{
+			baseUrl: '',
+			paths: {
+				curl: '../src/curl',
+				'jquery': 'http://code.jquery.com/jquery-1.7'
+			},
+			preload: [
+				'curl/jQuery17Compat'
+			]
+		},
+		['jquery'],
+		function ($) {
+			$(function () {
+				document.body.appendChild(document.createTextNode('SUCCESS: jquery loaded correctly'));
+			});
+		},
+		function (ex) {
+			document.body.appendChild(document.createTextNode('ERROR: ' + ex.message));
+		}
+	);
+
+</script>
+
+</head>
+<body>
+
+<p>There should be text below if this page loaded.</p>
+
+</body>
+</html>

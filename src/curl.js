@@ -45,8 +45,8 @@
 		head = doc['head'] || doc.getElementsByTagName('head')[0],
 		// local cache of resource definitions (lightweight promises)
 		cache = {},
-		// preloads are files that must be loaded before any others
-		preloads = [],
+		// preload are files that must be loaded before any others
+		preload = false,
 		// net to catch anonymous define calls' arguments (non-IE browsers)
 		argsNet,
 		// this is the list of scripts that IE is loading. one of these will
@@ -182,19 +182,18 @@
 
 	core = {
 
-		extractCfg: function extractCfg (cfg) {
+		extractCfg: function (cfg) {
 			var pluginCfgs;
 
 			// set defaults and convert from non-closure-safe names
 			cfg.baseUrl = cfg['baseUrl'] || '';
 			cfg.pluginPath = cfg['pluginPath'] || 'curl/plugin';
 			pluginCfgs = cfg.plugins = cfg['plugins'] || {};
-			if (cfg['preloads']) preloads = preloads.concat(cfg['preloads']);
 
 			// create object to hold path map.
 			// each plugin and package will have its own pathMap, too.
 			if (!cfg.pathMap) cfg.pathMap = {};
-			if (!userCfg.plugins) userCfg.plugins = userCfg['plugins'] || {};
+			if (!cfg.plugins) cfg.plugins = cfg['plugins'] || {};
 
 			// temporary arrays of paths. this will be converted to
 			// a regexp for fast path parsing.
@@ -267,6 +266,19 @@
 				}
 			}
 			convertPathMatcher(cfg);
+
+			// handle preload:
+			// TODO: is this the right place to initiate the fetch of preloads?
+			if (cfg['preload']){
+				// chain from previous preload (for now. revisit when
+				// doing package-specific configs).	
+				when(preload, function () {
+					preload = new ResourceDef('*preload');
+					_require(cfg['preload'], preload, core.begetCtx('', cfg));
+				});
+			}
+
+			return cfg;
 
 		},
 
@@ -411,7 +423,7 @@
 					deps = args[0];
 				}
 				else {
-						id = args[0];
+					id = args[0];
 				}
 			}
 			else if (len == 3) {
@@ -625,7 +637,6 @@
 			var deps = [],
 				count = names.length,
 				completed = false,
-				preCtx,
 				len, i;
 
 			function doFailure (ex) {
@@ -640,15 +651,9 @@
 				}
 			}
 
-			// get preloads, if any
-			len = preloads.length;
-			if (len) {
-				count += len;
-				preCtx = begetCtx('', userCfg);
-				for (i = 0; i < len; i++) {
-					when(core.fetchDep(preloads[i], preCtx), checkDone, doFailure);
-				}
-			}
+			// get preload, if any
+			count++;
+			when(preload, checkDone, doFailure);
 
 			// obtain each dependency
 			// Note: IE may have obtained the dependencies sync (stooooopid!) thus the completed flag
@@ -656,7 +661,7 @@
 					// look for commonjs free vars
 				if (depName in ctx.cjsVars) {
 					deps[index] = ctx.cjsVars[depName];
-					count--;
+					checkDone();
 				}
 				else {
 					// hook into promise callbacks
@@ -733,8 +738,7 @@
 
 		// extract config, if it's specified
 		if (isType(args[0], 'Object')) {
-			userCfg = args.shift();
-			core.extractCfg(userCfg);
+			userCfg = core.extractCfg(args.shift());
 		}
 
 		// this must be after extractCfg
@@ -801,10 +805,9 @@
 	/***** grab any global configuration info *****/
 
 	// if userCfg is a function, assume curl() exists already
-	var conflict = isType(userCfg, 'Function');
-	if (!conflict) {
-		core.extractCfg(userCfg);
-	}
+	if (isType(userCfg, 'Function')) return;
+
+	userCfg = core.extractCfg(userCfg || {});
 
 	/***** define public API *****/
 
@@ -823,7 +826,7 @@
 	_curl['version'] = version;
 
 	// AMD flags
-	define['amd'] = { 'plugins': true, 'curl': version, 'jQuery': true };
+	define['amd'] = { 'plugins': true, 'curl': version };
 
 	// allow curl to be a dependency
 	cache['curl'] = _curl;
@@ -844,9 +847,10 @@
 		'ResourceDef': ResourceDef
 	};
 
+
 }(
 	this,
 	document,
 	// grab configuration
-	this['curl'] || {}
+	this['curl']
 ));
