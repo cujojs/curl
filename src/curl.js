@@ -99,8 +99,6 @@
 		return descriptor;
 	}
 
-	function noop () {}
-
 	function endsWithSlash (str) {
 		return str.charAt(str.length - 1) == '/';
 	}
@@ -285,7 +283,7 @@
 				},
 				exports = {},
 				require = function (deps, callback) {
-					return _require(deps, callback || noop, ctx);
+					return _require(deps, callback, ctx);
 				};
 			// CommonJS Modules 1.1.1 and node.js helpers
 			ctx.cjsVars = {
@@ -705,9 +703,9 @@
 		// RValue require (CommonJS)
 		if (isType(ids, 'String')) {
 			// return resource
-			var def = cache[ids];
-			if (!(ids in cache) || def instanceof ResourceDef) {
-				throw new Error('Module is not already resolved: '  + ids);
+			var id = core.normalizeName(ids, ctx.baseId), def = cache[id];
+			if (!(id in cache) || def instanceof ResourceDef) {
+				throw new Error('Module is not already resolved: '  + id);
 			}
 			if (callback) {
 				throw new Error('require(<string>, callback) not allowed. use <array>.');
