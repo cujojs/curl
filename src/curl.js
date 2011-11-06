@@ -62,7 +62,8 @@
 		normalizeRx = /^(\.)(\.)?(\/|$)/,
 		findSlashRx = /\//g,
 		dontAddExtRx = /\?/,
-		//pathSearchRx,
+		removeCommentsRx = /\/\*[\s\S]*?\*\/|(?:[^\\])\/\/.*?[\n\r]/g,
+		findRValueRequiresRx = /require\s*\(\s*["']([^"']+)["']\s*\)/,
 		// script ready states that signify it's loaded
 		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
 		orsc = 'onreadystatechange',
@@ -351,7 +352,7 @@
 				ev = ev || global.event;
 				// detect when it's done loading
 				if (ev.type === 'load' || readyStates[this.readyState]) {
-						delete activeScripts[def.id];
+					delete activeScripts[def.id];
 					// release event listeners
 					this.onload = this[orsc] = this.onerror = null;
 					success(el);
@@ -377,10 +378,21 @@
 			// loading will start when the script is inserted into the dom.
 			// IE will load the script sync if it's in the cache, so
 			// indicate the current resource definition if this happens.
-				activeScripts[def.id] = el;
+			activeScripts[def.id] = el;
 			// use insertBefore to keep IE from throwing Operation Aborted (thx Bryan Forbes!)
 			head.insertBefore(el, head.firstChild);
 
+		},
+
+		extractCjsDeps: function (defFunc) {
+			var source, ids = [];
+			// prefer toSource (FF) since it strips comments
+			source = defFunc.toSource ? defFunc.toSource() : defFunc.toString();
+			source.replace(removeCommentsRx, '').replace(findRValueRequiresRx, function (m, id) {
+				ids.push(id);
+				return m; // uses least RAM/CPU
+			});
+			return ids;
 		},
 
 		fixArgs: function (args) {
@@ -391,10 +403,10 @@
 			// (string, object|function) sx|sf
 			// (object|function) x|f
 
-			var id, deps, definition, isDefFunc, len = args.length;
+			var id, deps, defFunc, isDefFunc, len = args.length;
 
-			definition = args[len - 1];
-			isDefFunc = isType(definition, 'Function');
+			defFunc = args[len - 1];
+			isDefFunc = isType(defFunc, 'Function');
 
 			if (len == 2) {
 				if (isType(args[0], 'Array')) {
@@ -409,16 +421,16 @@
 				deps = args[1];
 			}
 
-			// mimic RequireJS's assumption that a definition function with zero
+			// Hybrid format: assume that a definition function with zero
 			// dependencies and non-zero arity is a wrapped CommonJS module
-			if (!deps && isDefFunc && definition.length > 0) {
-				deps = ['require', 'exports', 'module'];
+			if (!deps && isDefFunc && defFunc.length > 0) {
+				deps = ['require', 'exports', 'module'].concat(core.extractCjsDeps(defFunc));
 			}
 
 			return {
 				id: id,
 				deps: deps || [],
-				res: isDefFunc ? definition : function () { return definition; }
+				res: isDefFunc ? defFunc : function () { return defFunc; }
 			};
 		},
 
@@ -435,7 +447,7 @@
 					try {
 						// node.js assumes `this` === exports.
 						// anything returned overrides exports.
-						// uses module.exports if nothing returned (node.js
+						// use module.exports if nothing returned (node.js
 						// convention). exports === module.exports unless
 						// module.exports was reassigned.
 						res = args.res.apply(childCtx.cjsVars['exports'], deps) ||
@@ -460,21 +472,21 @@
 					var args = argsNet;
 					argsNet = undef; // reset it before we get deps
 
-					// if our resource was not explicitly defined with a id (anonymous)
-					// Note: if it did have a id, it will be resolved in the define()
+					// if our resource was not explicitly defined with an id (anonymous)
+					// Note: if it did have an id, it will be resolved in the define()
 					if (def.useNet !== false) {
 
 						if (!args) {
-							// uh oh, nothing was added to the resource net
+							// uh oh, nothing was added to the argsNet
 							def.reject(new Error('define() not found or duplicates found: ' + def.url));
 						}
 						else if (args.ex) {
-							// the resNet resource was already rejected, but it didn't know
+							// the argsNet resource was already rejected, but it didn't know
 							// its id, so reject this def now with better information
 							def.reject(new Error(args.ex.replace('${url}', def.url)));
 						}
 						else {
-								core.resolveResDef(def, args);
+							core.resolveResDef(def, args);
 						}
 					}
 
@@ -668,10 +680,11 @@
 		},
 
 		getCurrentDefName: function () {
+			// IE marks the currently executing thread as "interactive"
 			// Note: Opera lies about which scripts are "interactive", so we
 			// just have to test for it. Opera provides a true browser test, not
 			// a UA sniff, thankfully.
-			// TODO: find a way to remove this browser test
+			// learned this trick from James Burke's RequireJS
 			var def;
 			if (!isType(global.opera, 'Opera')) {
 				for (var d in activeScripts) {
