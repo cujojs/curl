@@ -42,25 +42,34 @@
  *
  */
 
-define['amd']['jQuery'] = true;
-
 define(/*=='curl/jQuery17Compat',==*/ ['curl/_privileged'], function (priv) {
 	var origResolveResDef;
 
 	origResolveResDef = priv['core'].resolveResDef;
 
+	// override resolveResDef to watch for jquery
 	priv['core'].resolveResDef = function (def, args) {
-		var a = arguments;
+		var origResolver;
 
 		// only delay if this is actually jquery
 		if ('jquery' == def.id) {
-			setTimeout(function () {
-				origResolveResDef.apply(this, a)
-			}, 0);
+			origResolver = def.resolve;
+			def.resolve = function ($) {
+				// jQuery 1.7.0 called define too early, omitting $.Callbacks,
+				// $.Deferred, and other parts of jQuery until later.
+				// We can just sniff for a few of these features to make a
+				// best guess that we need to delay callbacks.
+				if (!$.Callbacks && !$.Deferred) {
+					// wait until script is fully parsed
+					setTimeout(origResolver, 0);
+				}
+				else {
+					// must be a newer jQuery, proceed asap
+					origResolver();
+				}
+			};
 		}
-		else {
-			origResolveResDef.apply(this, a);
-		}
+		origResolveResDef.apply(this, arguments);
 	};
 
 	return true;
