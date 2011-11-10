@@ -185,15 +185,14 @@
 		extractCfg: function (cfg) {
 			var pluginCfgs;
 
-			// set defaults and convert from non-closure-safe names
+			// set defaults and convert from closure-safe names
 			cfg.baseUrl = cfg['baseUrl'] || '';
 			cfg.pluginPath = cfg['pluginPath'] || 'curl/plugin';
-			pluginCfgs = cfg.plugins = cfg['plugins'] || {};
 
 			// create object to hold path map.
 			// each plugin and package will have its own pathMap, too.
-			if (!cfg.pathMap) cfg.pathMap = {};
-			if (!cfg.plugins) cfg.plugins = cfg['plugins'] || {};
+			cfg.pathMap = {};
+			pluginCfgs = cfg.plugins = cfg['plugins'] || {};
 
 			// temporary arrays of paths. this will be converted to
 			// a regexp for fast path parsing.
@@ -268,13 +267,16 @@
 			convertPathMatcher(cfg);
 
 			// handle preload:
-			// TODO: is this the right place to initiate the fetch of preloads?
+			// TODO: move this to CurlApi
 			if (cfg['preload']){
 				// chain from previous preload (for now. revisit when
 				// doing package-specific configs).	
 				when(preload, function () {
-					preload = new ResourceDef('*preload');
-					_require(cfg['preload'], preload, core.begetCtx('', cfg));
+					var def = new ResourceDef('*preload');
+					_require(cfg['preload'], def, core.begetCtx('', cfg));
+					// assign preload after initial getDeps or we'll wait
+					// forever while preload waits for itself.
+					preload = def;
 				});
 			}
 
@@ -448,6 +450,7 @@
 
 			// if a module id has been remapped, it will have a baseId
 			// TODO: does the context's config need to be passed in somehow?
+			// TODO: resolve context outside this function
 			var childCtx = core.begetCtx(def.baseId || def.id, userCfg);
 
 			// get the dependencies and then resolve/reject
@@ -624,6 +627,7 @@
 				def = cache[resId];
 				if (!def) {
 					def = cache[resId] = new ResourceDef(resId);
+					// TODO: def.ctx = core.childCtx(ctx);
 					def.url = core.resolveUrl(pathInfo.path, cfg, true);
 					core.fetchResDef(def);
 				}
@@ -651,34 +655,38 @@
 				}
 			}
 
-			// get preload, if any
-			count++;
-			when(preload, checkDone, doFailure);
+			// wait for preload
+			// TODO: cascade context so this will work:
+			when(ctx.isPreload || preload, function () {
 
-			// obtain each dependency
-			// Note: IE may have obtained the dependencies sync (stooooopid!) thus the completed flag
-			for (i = 0, len = names.length; i < len && !completed; i++) (function (index, depName) {
-					// look for commonjs free vars
-				if (depName in ctx.cjsVars) {
-					deps[index] = ctx.cjsVars[depName];
-					checkDone();
-				}
-				else {
-					// hook into promise callbacks
-					when(core.fetchDep(depName, ctx),
-						function (dep) {
-							deps[index] = dep; // got it!
-							checkDone();
-						},
-						doFailure
-					);
-				}
-			}(i, names[i]));
+				preload = true;
 
-			// were there none to fetch and did we not already complete the promise?
-			if (count == 0 && !completed) {
-				success(deps);
-			}
+				// obtain each dependency
+				// Note: IE may have obtained the dependencies sync (stooooopid!) thus the completed flag
+				for (i = 0, len = names.length; i < len && !completed; i++) (function (index, depName) {
+						// look for commonjs free vars
+					if (depName in ctx.cjsVars) {
+						deps[index] = ctx.cjsVars[depName];
+						checkDone();
+					}
+					else {
+						// hook into promise callbacks
+						when(core.fetchDep(depName, ctx),
+							function (dep) {
+								deps[index] = dep; // got it!
+								checkDone();
+							},
+							doFailure
+						);
+					}
+				}(i, names[i]));
+
+				// were there none to fetch and did we not already complete the promise?
+				if (count == 0 && !completed) {
+					success(deps);
+				}
+
+			}, doFailure);
 
 		},
 
@@ -786,16 +794,15 @@
 		if (id != null) {
 			// named define(), it is in the cache if we are loading a dependency
 			// (could also be a secondary define() appearing in a built file, etc.)
-			// if it's a secondary define(), grab the current def's context
 			var def = cache[id];
 			if (!def) {
 				def = cache[id] = new ResourceDef(id);
 			}
-			def.useNet = false;
 			// check if this resource has already been resolved (can happen if
 			// a module was defined inside a built file and outside of it and
 			// dev didn't coordinate it explicitly)
-			if (!('resolved' in def)) {
+			if (def instanceof ResourceDef && def.ctx) { //} && !('resolved' in def)) {
+				def.useNet = false;
 				core.resolveResDef(def, args);
 			}
 		}
