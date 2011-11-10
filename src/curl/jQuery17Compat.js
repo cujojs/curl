@@ -42,6 +42,8 @@
  *
  */
 
+define['amd']['jQuery'] = true;
+
 define(/*=='curl/jQuery17Compat',==*/ ['curl/_privileged'], function (priv) {
 	var origResolveResDef;
 
