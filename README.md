@@ -1,12 +1,17 @@
 curl (cujo resource loader)
 =====================
 
-version 0.5.3
+version 0.5.4
 
 What's New?
 
-*Please note: jQuery 1.7 compatibility is coming in version 0.5.4 which will be released very, very soon!*
-
+* 0.5.4
+	* jQuery 1.7 support!!!
+	* AMD/CJSM Hybrid format (see Manual Conversion section of this
+	  page: http://requirejs.org/docs/commonjs.html)
+	* Now supports node's module.exports = x; export model
+	* bug fixes:
+		* multiple .next() calls now pass variables correctly
 * 0.5.3
 	* fix to js! plugin (now works without !order option)
 * 0.5.2
@@ -41,9 +46,9 @@ What's New?
 
 TODO:
 
-* configuration options per package
-* finish i18n plugin (eta: September)
-* create dojo 1.6 tests
+* configuration options per package (in progress)
+* finish i18n plugin (eta: early Nov)
+* create dojo 1.7 shim
 * document plugin configuration options and how to use plugins
 * notes about using JSONP (it works for objects, arrays, functions, numbers
   and strings! use ?callback=define)
