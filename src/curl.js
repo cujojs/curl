@@ -141,9 +141,10 @@
 			then = success ?
 				function (resolve, reject) { resolve && resolve(arg); } :
 				function (resolve, reject) { reject && reject(arg); };
-			// disallow multiple calls to resolve or reject
+			// we no longe throw during multiple calls to resolve or reject
+			// since we don't really provide useful information anyways.
 			resolve = reject =
-				function () { throw new Error('Promise already completed.'); };
+				function () { /*throw new Error('Promise already completed.');*/ };
 			// complete all callbacks
 			var aThen, cb, i = 0;
 			while ((aThen = thens[i++])) {
@@ -659,7 +660,7 @@
 			// TODO: cascade context so this will work:
 			when(ctx.isPreload || preload, function () {
 
-				preload = true;
+				preload = true; // indicate we've preloaded everything
 
 				// obtain each dependency
 				// Note: IE may have obtained the dependencies sync (stooooopid!) thus the completed flag
