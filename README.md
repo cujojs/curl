@@ -5,9 +5,8 @@ version 0.5.3
 
 What's New?
 
-*Please note: jQuery 1.7 compatibility is coming in version 0.5.4 which will be released very, very soon!*
-*Click the Watchers icon above (eyeball) to get a github notification when 0.5.4 is released.*
-*Note: 0.5.4 will work-around a known jQuery/AMD bug. Bug reported here: http://bugs.jquery.com/ticket/10687*
+*Please note: curl.js is compatible with jQuery 1.7.1, not 1.7.0*
+*see http://bugs.jquery.com/ticket/10687*
 
 * 0.5.3
 	* fix to js! plugin (now works without !order option)
