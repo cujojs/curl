@@ -602,6 +602,11 @@
 				deps[index] = ctx.vars[depName];
 				count--;
 			}
+			// check for blanks. fixes #32.
+			// this could also help with the has! plugin (?)
+			else if (!depName) {
+				count--;
+			}
 			else {
 				// hook into promise callbacks
 				fetchDep(depName, ctx).then(
