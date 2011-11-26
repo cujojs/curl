@@ -788,7 +788,7 @@
 	_curl['version'] = version;
 
 	// this is to comply with the AMD CommonJS proposal:
-	_define['amd'] = { plugins: true };
+	_define['amd'] = { 'plugins': true, 'jQuery': true };
 
 }(
 	this,
