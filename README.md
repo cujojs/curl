@@ -1,12 +1,16 @@
 curl (cujo resource loader)
 =====================
 
-version 0.5.3
+version 0.5.4
+
+See the [wiki](https://github.com/unscriptable/curl/wiki) for information about using curl.js with jQuery.
 
 What's New?
 
-*Please note: jQuery 1.7 compatibility is coming in version 0.5.4 which will be released very, very soon!*
-
+* 0.5.4
+	* curl.js indicates to jQuery that it is a jQuery-aware AMD loader (#31)
+	* curl.js now ignores blank or falsy module ids for better compatibility
+	  wth yepnope and has! (#32)
 * 0.5.3
 	* fix to js! plugin (now works without !order option)
 * 0.5.2
