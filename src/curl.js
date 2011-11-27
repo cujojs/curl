@@ -41,7 +41,7 @@
 	 */
 
 	var
-		version = '0.5.3',
+		version = '0.5.4',
 		head = doc['head'] || doc.getElementsByTagName('head')[0],
 		// configuration information
 		baseUrl,
@@ -792,7 +792,7 @@
 	global['define'] = _curl['define'] = _define;
 	_curl['version'] = version;
 
-	// this is to comply with the AMD CommonJS proposal:
+	// indicate our capabilities:
 	_define['amd'] = { 'plugins': true, 'jQuery': true };
 
 }(
