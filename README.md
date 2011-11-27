@@ -6,6 +6,7 @@ version 0.5.4
 See the [wiki](https://github.com/unscriptable/curl/wiki) for information about using curl.js with jQuery.
 
 What's New?
+=======
 
 * 0.5.4
 	* curl.js indicates to jQuery that it is a jQuery-aware AMD loader (#31)
