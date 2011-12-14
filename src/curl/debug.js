@@ -18,7 +18,7 @@
 define(['require', 'curl/_privileged'], function (require, priv) {
 "use strict";
 
-	var cache, totalWaiting, prevTotal;
+	var cache, totalWaiting, prevTotal, origDefine;
 
 	if (typeof console == 'undefined') {
 		throw new Error('`console` object must be defined to use debug module.');
@@ -40,7 +40,8 @@ define(['require', 'curl/_privileged'], function (require, priv) {
 	}(p, priv['core'][p]));
 
 	// add logging to define
-	global.define = function () {
+	origDefine = priv._define;
+	priv._define = function () {
 		console.log('curl define:', arguments);
 		return origDefine.apply(this, arguments);
 	};
