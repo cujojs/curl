@@ -10,11 +10,11 @@
 (function (global, doc, userCfg) {
 
 	/*
-	 * Overall operation:
+	 * Basic operation:
 	 * When a dependency is encountered and it already exists, it's returned.
 	 * If it doesn't already exist, it is created and the dependency's script
 	 * is loaded. If there is a define call in the loaded script with a id,
-	 * it is resolved asap (i.e. as soon as the dependency's dependencies are
+	 * it is resolved asap (i.e. as soon as the module's dependencies are
 	 * resolved). If there is a (single) define call with no id (anonymous),
 	 * the resource in the resNet is resolved after the script's onload fires.
 	 * IE requires a slightly different tactic. IE marks the readyState of the
@@ -22,22 +22,6 @@
 	 * while a define() is being called, we can match the define() to its id.
 	 * Opera marks scripts as 'interactive' but at inopportune times so we
 	 * have to handle it specifically.
-	 */
-
-	/*
-	 * Paths in 0.6:
-	 * Use cases (most common first):
-	 * -  "my package is located at this url" (url / location or package)
-	 * -  "I want all text! plugins to use the module named x/text" (module id)
-	 * -  "I want calls to 'x/a' from one package to reference 'x1.5/x/a' but
-	 *    calls to 'x/a' from another package to reference 'x1.6/x/a'"
-	 *    (url/location)
-	 * -  "I want to alias calls to a generic 'array' module to the module
-	 *     named 'y/array'" (module id) (or vice versa. see chat with JD Dalton)
-	 * -  "I want to alias calls to 'my/array' to 'y/array'" (module id)
-	 * -  "I want to use root paths like in node.js ("/x/b" should be the same
-	 *    as "x/b" unless we implement a way to have each package specify its
-	 *    relative dependency paths)
 	 */
 
 	var
@@ -268,7 +252,6 @@
 			convertPathMatcher(cfg);
 
 			// handle preload:
-			// TODO: move this to CurlApi
 			if (cfg['preload']){
 				// chain from previous preload (for now. revisit when
 				// doing package-specific configs).	
