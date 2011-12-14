@@ -802,7 +802,7 @@
 			// check if this resource has already been resolved (can happen if
 			// a module was defined inside a built file and outside of it and
 			// dev didn't coordinate it explicitly)
-			if (def instanceof ResourceDef && def.ctx) { //} && !('resolved' in def)) {
+			if (def instanceof ResourceDef) {
 				def.useNet = false;
 				core.resolveResDef(def, args);
 			}
