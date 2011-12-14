@@ -3,15 +3,20 @@ curl (cujo resource loader)
 
 version 0.5.4
 
+See the [wiki](https://github.com/unscriptable/curl/wiki) for information about using curl.js with jQuery.
+
 What's New?
 
 * 0.5.4
 	* jQuery 1.7 support!!!
+	* curl.js indicates to jQuery that it is a jQuery-aware AMD loader (#31)
 	* AMD/CJSM Hybrid format (see Manual Conversion section of this
 	  page: http://requirejs.org/docs/commonjs.html)
 	* Now supports node's module.exports = x; export model
 	* bug fixes:
 		* multiple .next() calls now pass variables correctly
+	* curl.js now ignores blank or falsy module ids for better compatibility
+	  wth yepnope and has! (#32)
 * 0.5.3
 	* fix to js! plugin (now works without !order option)
 * 0.5.2

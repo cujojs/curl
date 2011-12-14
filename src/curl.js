@@ -25,7 +25,7 @@
 	 */
 
 	var
-		version = '0.5.4dev',
+		version = '0.5.5dev',
 		head = doc['head'] || doc.getElementsByTagName('head')[0],
 		// local cache of resource definitions (lightweight promises)
 		cache = {},
@@ -653,6 +653,11 @@
 						deps[index] = ctx.cjsVars[depName];
 						checkDone();
 					}
+					// check for blanks. fixes #32.
+					// this could also help with the has! plugin (?)
+					else if (!depName) {
+						count--;
+					}
 					else {
 						// hook into promise callbacks
 						when(core.fetchDep(depName, ctx),
@@ -816,8 +821,8 @@
 	};
 	_curl['version'] = version;
 
-	// AMD flags
-	define['amd'] = { 'plugins': true, 'curl': version };
+	// indicate our capabilities:
+	_define['amd'] = { 'plugins': true, 'jQuery': true, 'curl': version };
 
 	// allow curl to be a dependency
 	cache['curl'] = _curl;
