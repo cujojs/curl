@@ -17,7 +17,7 @@
  *  	});
  *
  */
-define(/*=='curl/dojo16Compat',==*/ ['curl_privileged', './domReady'], function (priv, domReady) {
+define(/*=='curl/dojo16Compat',==*/ ['curl/_privileged', './domReady'], function (priv, domReady) {
 
 	var _curl = priv.core._curl,
 		_require = priv.core._require,
