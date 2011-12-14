@@ -24,7 +24,8 @@
 		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
 		orsc = 'onreadystatechange',
 		head = doc['head'] || doc.getElementsByTagName('head')[0],
-		waitForOrderedScript;
+		waitForOrderedScript,
+		undef;
 
 	// TODO: find a way to reuse the loadScript from curl.js
 	function loadScript (def, success, failure) {
@@ -46,8 +47,9 @@
 			if (ev.type == 'load' || readyStates[el.readyState]) {
 				// release event listeners
 				el.onload = el[orsc] = el.onerror = "";
-				if (!def.test || testGlobalVar(def.test)) {
-					success(el);
+				if (def.test) def.resolved = testGlobalVar(def.test);
+				if (!def.test || def.resolved) {
+					success();
 				}
 				else {
 					fail();
@@ -55,7 +57,7 @@
 			}
 		}
 
-		function fail (e) {
+		function fail () {
 			// some browsers send an event, others send a string,
 			// but none of them send anything useful, so just say we failed:
 			el.onload = el[orsc] = el.onerror = "";
@@ -101,7 +103,7 @@
 	function fetch (def, promise) {
 
 		loadScript(def,
-			function (el) {
+			function () {
 				// if there's another queued script
 				var next = queue.shift();
 				waitForOrderedScript = queue.length > 0;
@@ -109,7 +111,7 @@
 					// go get it (from cache hopefully)
 					fetch.apply(null, next);
 				}
-				promise['resolve'](true); // TODO: return test value
+				promise['resolve'](def.resolved || true);
 			},
 			function (ex) {
 				promise['reject'](ex);
@@ -120,11 +122,10 @@
 
 	function testGlobalVar (varName) {
 		try {
-			eval('global.' + varName);
-			return true;
+			return eval('global.' + varName);
 		}
 		catch (ex) {
-			return false;
+			return undef;
 		}
 	}
 

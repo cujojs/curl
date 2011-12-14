@@ -40,19 +40,17 @@
 			'stuff/three',
 			'css!stuff/base',
 			'text!stuff/template.html',
-			'js!stuff/plain_old.js!order',
+			'js!stuff/plain_old.js!order!test=testDomain.foo.bar',
 			'js!stuff/plain_old_2.js?foo!order',
 			'domReady!'
 		]
 	).then(
-		function (three, link) {
-			console.log('********* loaded:', three, document.body);
-			if (document.body) {
-				document.body.appendChild(document.createTextNode('A module with dependencies loaded successfully if 3 == ' + three + '.'));
-				document.body.appendChild(document.createElement('br'));
-				document.body.appendChild(document.createTextNode('If the following line says something then the plain js files loaded in the right order:'));
-				document.body.appendChild(document.createElement('div')).innerHTML = testDomain.foo.bar + ' ' + testDomain.awesome.sauce;
-			}
+		function (three, link, template, foobar) {
+			document.body.appendChild(document.createTextNode('A module with dependencies loaded successfully if 3 == ' + three + '.'));
+			document.body.appendChild(document.createElement('br'));
+			document.body.appendChild(document.createTextNode('If the following line says something then the plain js files loaded in the right order:'));
+			document.body.appendChild(document.createElement('div')).innerHTML = testDomain.foo.bar + ' ' + testDomain.awesome.sauce;
+			document.body.appendChild(document.createElement('div')).innerHTML = 'Did !test option work? ' + (foobar == 'whizzah!' ? 'SUCCESS' : 'FAILED');
 		}
 	);
 
