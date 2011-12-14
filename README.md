@@ -51,6 +51,7 @@ What's New?
 
 TODO:
 
+* figure out why $.ready(callback) doesn't work. however, $(callback) works!
 * configuration options per package (in progress)
 * finish i18n plugin (eta: early Nov)
 * create dojo 1.7 shim

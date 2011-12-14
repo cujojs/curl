@@ -256,11 +256,10 @@
 				// chain from previous preload (for now. revisit when
 				// doing package-specific configs).	
 				when(preload, function () {
-					var def = new ResourceDef('*preload');
-					_require(cfg['preload'], def, core.begetCtx('', cfg));
-					// assign preload after initial getDeps or we'll wait
-					// forever while preload waits for itself.
-					preload = def;
+					var ctx = core.begetCtx('', cfg);
+					preload = new ResourceDef('*preload');
+					ctx.isPreload = true;
+					_require(cfg['preload'], preload, ctx);
 				});
 			}
 
@@ -822,7 +821,7 @@
 	_curl['version'] = version;
 
 	// indicate our capabilities:
-	_define['amd'] = { 'plugins': true, 'jQuery': true, 'curl': version };
+	define['amd'] = { 'plugins': true, 'jQuery': true, 'curl': version };
 
 	// allow curl to be a dependency
 	cache['curl'] = _curl;

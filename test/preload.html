@@ -8,10 +8,12 @@ curl = {
 			baseUrl: '',
 			paths: {
 				curl: '../src/curl',
-				'jquery': 'http://code.jquery.com/jquery-1.7'
+				dojo: 'https://ajax.googleapis.com/ajax/libs/dojo/1.6.1/dojo/dojo.xd',
+				'jquery': 'http://code.jquery.com/jquery-1.7.1'
 			},
 			preload: [
-				'curl/jQuery17Compat'
+				'curl/debug',
+				'curl/dojo16Compat'
 			]
 		};
 </script>
@@ -22,8 +24,9 @@ curl = {
 	curl(
 		['jquery'],
 		function ($) {
+			// TODO: figure out why $.ready() doesn't work
 			$(function () {
-				document.body.appendChild(document.createTextNode('SUCCESS: jquery loaded correctly'));
+				document.body.appendChild(document.createTextNode('SUCCESS: dojo loaded correctly'));
 			});
 		},
 		function (ex) {
