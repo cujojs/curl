@@ -1,0 +1,51 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>js! plugin !test option</title>
+
+<script>
+
+	curl = {
+		paths: {
+			curl: '../src/curl'
+		},
+		pluginPath: 'curl/plugin'
+	};
+
+</script>
+<script src="../src/curl.js" type="text/javascript"></script>
+
+
+<script type="text/javascript">
+
+	curl(
+		[
+			'require',
+			'js!stuff/plain_old.js!order',
+			'domReady!'
+		]
+	).then(
+		function (require) {
+			try {
+				// this sync/RValue require will fail if it thinks it nees to load plain_old.js again
+				require('js!stuff/plain_old.js');
+				document.body.appendChild(document.createTextNode('SUCCESS: file only downloaded once'));
+			}
+			catch (ex) {
+				fail(ex);
+			}
+		},
+		fail
+	);
+
+	function fail (ex) {
+		document.body.appendChild(document.createTextNode('FAILED: ' + ex.message));
+	}
+
+</script>
+
+</head>
+<body>
+
+</body>
+</html>

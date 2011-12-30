@@ -130,6 +130,12 @@
 	}
 
 	define(/*=='js',==*/ {
+
+		'normalize': function (resourceId, toAbsId) {
+			// remove options
+			return resourceId ? toAbsId(resourceId.split("!")[0]) : resourceId;
+		},
+
 		'load': function (name, require, callback, config) {
 
 			var order, testPos, test, prefetch, def, promise;
@@ -177,6 +183,7 @@
 			}
 
 		}
+
 	});
 
 }(this, document));

@@ -748,7 +748,7 @@
 
 	function _curl (/* various */) {
 
-		var args = aslice.call(arguments), ctx;
+		var args = aslice.call(arguments), ids, ctx;
 
 		// extract config, if it's specified
 		if (isType(args[0], 'Object')) {
@@ -780,7 +780,8 @@
 			});
 		}
 
-		return new CurlApi(args[0], args[1]);
+		ids = [].concat(args[0]); // force to array TODO: create unit test
+		return new CurlApi(ids, args[1]);
 
 	}
 
