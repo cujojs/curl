@@ -416,7 +416,9 @@
 				try {
 					// node.js assumes `this` === exports
 					// anything returned overrides exports
-					var res = args.res.apply(childCtx.vars['exports'], deps) || childCtx.vars['exports'];
+					// TODO: there's no way to return `undefined`!
+					var res = args.res.apply(childCtx.vars['exports'], deps);
+					if (res === undef) res = childCtx.vars['exports'];
 					if (debug && console) {
 						console.log('curl: defined', def.name, res.toString().substr(0, 50).replace(/\n/, ' '));
 					}
