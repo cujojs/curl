@@ -463,8 +463,9 @@
 						// use module.exports if nothing returned (node.js
 						// convention). exports === module.exports unless
 						// module.exports was reassigned.
-						res = args.res.apply(childCtx.cjsVars['exports'], deps) ||
-							childCtx.cjsVars['module']['exports'];
+						// TODO: there's no way to return `undefined`!
+						res = args.res.apply(childCtx.cjsVars['exports'], deps);
+						if (res === undef) res = childCtx.cjsVars['module']['exports'];
 					}
 					catch (ex) {
 						def.reject(ex);
