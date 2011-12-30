@@ -47,7 +47,7 @@
 		findSlashRx = /\//g,
 		dontAddExtRx = /\?/,
 		removeCommentsRx = /\/\*[\s\S]*?\*\/|(?:[^\\])\/\/.*?[\n\r]/g,
-		findRValueRequiresRx = /require\s*\(\s*["']([^"']+)["']\s*\)/,
+		findRValueRequiresRx = /require\s*\(\s*["']([^"']+)["']\s*\)|((?:[^\\])?["'])/,
 		// script ready states that signify it's loaded
 		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
 		orsc = 'onreadystatechange',
@@ -225,7 +225,7 @@
 				}
 			}
 
-			// adds the path matching regexp ono the cfg or plugin cfgs.
+			// adds the path matching regexp onto the cfg or plugin cfgs.
 			function convertPathMatcher (cfg) {
 				var pathList = cfg.pathList, pathMap = cfg.pathMap;
 				cfg.pathRx = new RegExp('^(' +
@@ -269,32 +269,31 @@
 
 		begetCtx: function (absId, cfg) {
 
+			var baseId, ctx, exports, require;
+
 			function toUrl (n) {
 				var path = core.resolvePathInfo(core.normalizeName(n, baseId), cfg).path;
 				return core.resolveUrl(path, cfg);
 			}
 
-			var baseId = absId.substr(0, absId.lastIndexOf('/')),
-				ctx = {
-					baseId: baseId
-				},
-				exports = {},
-				require = function (deps, callback) {
+			baseId = absId.substr(0, absId.lastIndexOf('/'));
+			exports = {};
+			ctx = {
+				baseId: baseId,
+				require: function (deps, callback) {
 					return _require(deps, callback, ctx);
-				};
-			// CommonJS Modules 1.1.1 and node.js helpers
-			ctx.cjsVars = {
-				'exports': exports,
-				'module': {
-					'id': absId,
-					'uri': toUrl(absId),
-					'exports': exports
+				},
+				cjsVars: {
+					'exports': exports,
+					'module': {
+						'id': absId,
+						'uri': toUrl(absId),
+						'exports': exports
+					}
 				}
 			};
 
-			ctx.require = ctx.cjsVars['require'] = require;
-			// using bracket property notation so closure won't clobber id
-			require['toUrl'] = toUrl;
+			ctx.require['toUrl'] = toUrl;
 
 			return ctx;
 		},
@@ -379,12 +378,27 @@
 
 		},
 
+
+		// ****** TODO: move all cjs stuff to cjs11Compat module, including ctx.cjsVars (but keep cjsVars.require)
+
+
 		extractCjsDeps: function (defFunc) {
-			var source, ids = [];
+			// Note: ignores require() inside strings and comments
+			var source, ids = [], currQuote;
 			// prefer toSource (FF) since it strips comments
-			source = defFunc.toSource ? defFunc.toSource() : defFunc.toString();
-			source.replace(removeCommentsRx, '').replace(findRValueRequiresRx, function (m, id) {
-				ids.push(id);
+			source = typeof defFunc == 'string' ?
+					 defFunc :
+					 defFunc.toSource ? defFunc.toSource() : defFunc.toString();
+			// remove comments, then look for require() or quotes
+			source.replace(removeCommentsRx, '').replace(findRValueRequiresRx, function (m, id, qq) {
+				// if we encounter a quote
+				if (qq) {
+					currQuote = currQuote == qq ? undef : currQuote;
+				}
+				// if we're not inside a quoted string
+				else if (!currQuote) {
+					ids.push(id);
+				}
 				return m; // uses least RAM/CPU
 			});
 			return ids;
@@ -530,7 +544,7 @@
 				// get custom module loader from package config
 				cfg = pathInfo.config || userCfg;
 				loaderId = cfg.moduleLoader;
-				loaderInfo = loaderId && core.resolvePathInfo(loaderId, cfg);
+				loaderInfo = loaderId && core.resolvePathInfo(loaderId, userCfg);
 			}
 
 			if (loaderId) {
