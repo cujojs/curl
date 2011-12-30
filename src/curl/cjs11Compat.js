@@ -80,10 +80,11 @@ define(function () {
 	return {
 		'load': function (resourceId, require, loaded, config) {
 			// TODO: extract xhr from text! plugin and use that instead?
-			require(['text!' + resourceId + '.js'], function (source) {
+			require(['text!' + resourceId + '.js', curl/_privileged], function (source, priv) {
 				var moduleMap = []; // array and hashmap
 
 				// find (and replace?) dependencies
+				//TODO: moduleMap = priv.core.extractCjsDeps(source);
 				source = parseDepModuleIds(source, moduleMap, config.replaceRequires);
 
 				// wrap source in a define
