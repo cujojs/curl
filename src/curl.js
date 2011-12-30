@@ -281,7 +281,10 @@
 			ctx = {
 				baseId: baseId,
 				require: function (deps, callback) {
-					return _require(deps, callback, ctx);
+					// this is a public function, so remove ability for callback
+					// to be a deferred (also fixes issue #41)
+					var cb = callback ? function () { callback.apply(undef, arguments); } : noop;
+					return _require(deps, cb, ctx);
 				},
 				cjsVars: {
 					'exports': exports,
