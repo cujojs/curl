@@ -66,6 +66,11 @@
 
 	define(/*=='link',==*/ {
 
+//		'normalize': function (resourceId, toAbsId) {
+//			// remove options
+//			return resourceId ? toAbsId(resourceId.split("!")[0]) : resourceId;
+//		},
+
 		'load': function (resourceId, require, callback, config) {
 			var url, link, fix;
 

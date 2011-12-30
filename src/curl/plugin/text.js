@@ -72,6 +72,11 @@ define(/*=='text',==*/ function () {
 
 	return {
 
+//		'normalize': function (resourceId, toAbsId) {
+//			// remove options
+//			return resourceId ? toAbsId(resourceId.split("!")[0]) : resourceId;
+//		},
+
 		load: function (resourceName, req, callback, config) {
 			// remove suffixes (future)
 			// hook up callbacks
