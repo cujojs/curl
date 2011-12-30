@@ -173,7 +173,10 @@
 			},
 			exports = {},
 			require = function (deps, callback) {
-				return _require(deps, callback || noop, ctx);
+				// this is a public function, so remove ability for callback
+				// to be a deferred (also fixes issue #41)
+				var cb = callback ? function () { callback.apply(undef, arguments); } : noop;
+				return _require(deps, cb, ctx);
 			};
 		// CommonJS Modules 1.1.1 compliance
 		ctx.vars = {
@@ -729,7 +732,7 @@
 
 			if (callback) api['then'](callback);
 
-		ctx.require(names, promise, ctx);
+		_require(names, promise, ctx);
 
 		return api;
 
