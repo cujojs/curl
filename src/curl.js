@@ -208,8 +208,8 @@
 
 	function begetCfg (absPluginId) {
 		var root;
-		root = absPluginId ?
-			userCfg['plugins'] && userCfg['plugins'][absPluginId] :
+		root = absPluginId &&
+			userCfg['plugins'] && userCfg['plugins'][absPluginId] ||
 			userCfg;
 		return beget(root);
 	}
