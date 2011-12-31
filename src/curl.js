@@ -251,10 +251,10 @@
 			}
 			convertPathMatcher(cfg);
 
-			// handle preload:
+			// handle preload here since extractCfg can be called from two places
 			if (cfg['preload']){
 				// chain from previous preload (for now. revisit when
-				// doing package-specific configs).	
+				// doing package-specific configs).
 				when(preload, function () {
 					var ctx = core.begetCtx('', cfg);
 					preload = new ResourceDef('*preload');
@@ -276,17 +276,20 @@
 				return core.resolveUrl(path, cfg);
 			}
 
+			function req (deps, callback) {
+				// this is a public function, so remove ability for callback
+				// to be a deferred (also fixes issue #41)
+				var cb = callback ? function () { callback.apply(undef, arguments); } : noop;
+				return _require(deps, cb, ctx);
+			}
+
 			baseId = absId.substr(0, absId.lastIndexOf('/'));
 			exports = {};
 			ctx = {
 				baseId: baseId,
-				require: function (deps, callback) {
-					// this is a public function, so remove ability for callback
-					// to be a deferred (also fixes issue #41)
-					var cb = callback ? function () { callback.apply(undef, arguments); } : noop;
-					return _require(deps, cb, ctx);
-				},
+				require: req,
 				cjsVars: {
+					'require': req,
 					'exports': exports,
 					'module': {
 						'id': absId,
