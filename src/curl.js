@@ -776,7 +776,7 @@
 			};
 			if (callback) this['then'](callback);
 			when(waitFor, function () {
-				ctx.require([].concat(ids), promise, ctx);
+				_require([].concat(ids), promise, ctx);
 			});
 		}
 
