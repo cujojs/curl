@@ -7,12 +7,13 @@
 curl = {
 			baseUrl: '',
 			paths: {
-				curl: '../src/curl',
-				dojo: 'https://ajax.googleapis.com/ajax/libs/dojo/1.6.1/dojo/dojo.xd',
-				'jquery': 'http://code.jquery.com/jquery-1.7.1'
+				curl: '../src/curl'
 			},
 			preload: [
+				// load a bunch of stuff so that preloads take time
+				// TODO: devise a test that doesn't rely on this hack
 				'curl/debug',
+				'curl/domReady',
 				'curl/dojo16Compat'
 			]
 		};
@@ -22,24 +23,29 @@ curl = {
 <script type="text/javascript">
 
 	curl(
-		['jquery'],
-		function ($) {
-			// TODO: figure out why $.ready() doesn't work
-			$(function () {
-				document.body.appendChild(document.createTextNode('SUCCESS: dojo loaded correctly'));
-			});
+		['stuff/one'], // load something
+		function () {
+			// debug module adds an undefine method to curl
+			if (curl.undefine)
+				write('SUCCESS: preloads loaded first');
+			else
+				write('FAILED: preloads not loaded');
 		},
 		function (ex) {
-			document.body.appendChild(document.createTextNode('ERROR: ' + ex.message));
+			write('ERROR: ' + ex.message);
 		}
 	);
+
+	function write (msg) {
+		curl('domReady!', function () {
+			document.body.appendChild(document.createElement('div')).innerHTML = msg;
+		});
+	}
 
 </script>
 
 </head>
 <body>
-
-<p>There should be text below if this page loaded.</p>
 
 </body>
 </html>
