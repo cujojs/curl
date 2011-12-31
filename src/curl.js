@@ -313,26 +313,31 @@
 
 			pathMap = cfg.pathMap;
 
-			path = id.replace(cfg.pathRx, function (match) {
+			if (!absUrlRx.test(id)) {
+				path = id.replace(cfg.pathRx, function (match) {
 
-				pathInfo = pathMap[match] || {};
-				found = true;
-				config = pathInfo.config;
+					pathInfo = pathMap[match] || {};
+					found = true;
+					config = pathInfo.config;
 
-				// if pathInfo.main and match == id, this is a main module
-				if (pathInfo.main && match == id) {
-					return pathInfo.main;
-				}
-				// if pathInfo.lib return pathInfo.lib
-				else {
-					return pathInfo.lib || pathInfo.path || '';
-				}
+					// if pathInfo.main and match == id, this is a main module
+					if (pathInfo.main && match == id) {
+						return pathInfo.main;
+					}
+					// if pathInfo.lib return pathInfo.lib
+					else {
+						return pathInfo.lib || pathInfo.path || '';
+					}
 
-			});
+				});
+			}
+			else {
+				path = id;
+			}
 
 			return {
 				path: path,
-				config: config
+				config: config || userCfg
 			};
 		},
 
