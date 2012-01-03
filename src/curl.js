@@ -586,7 +586,7 @@
 					core.fetchResDef(loaderDef);
 				}
 
-				function toAbsId (id) {
+				function normalize (id) {
 					return core.normalizeName(id, ctx.baseId);
 				}
 
@@ -602,7 +602,7 @@
 						//resName = depName.substr(delPos + 1);
 						// check if plugin supports the normalize method
 						if ('normalize' in plugin) {
-							resId = plugin['normalize'](resId, toAbsId, cfg);
+							resId = plugin['normalize'](resId, normalize, cfg);
 						}
 
 						// plugin may have its own pathMap (plugin-specific paths)
