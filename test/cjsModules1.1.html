@@ -27,6 +27,7 @@
 			commonjs: {
 				path: 'support/commonjs',
 				config: {
+					injectScript: true,
 					moduleLoader: 'curl/cjs11Compat'
 				}
 			}
@@ -42,20 +43,23 @@
 	curl(
 		[
 			// test modules:
-			'commonjs/nakedCjs',
-			'domReady!'
+			'commonjs/nakedDependentCjsm1.1',
+			'commonjs/nakedSimpleCjsm1.1'
 		]
 	).then(
-		function (naked) {
-			console.log('********* loaded');
-			if (naked.id == 'commonjs/nakedCjs') {
-					document.body.appendChild(document.createTextNode('SUCCESS: module id is correct'));
-			}
-			else {
-					document.body.appendChild(document.createTextNode('ERROR: module id is incorrect'));
-			}
+		function (dep, simple) {
+			var test1 = dep.testMessage == simple.testMessage,
+				test2 = simple.id == 'commonjs/nakedSimpleCjsm1.1';
+			write((test1 ? 'SUCCESS' : 'FAILED') + ': require("./module")');
+			write((test2 ? 'SUCCESS' : 'FAILED') + ': module id is correct');
 		}
 	);
+
+	function write (msg) {
+		curl('domReady!', function () {
+			document.body.appendChild(document.createElement('div')).innerHTML = msg;
+		});
+	}
 
 </script>
 
