@@ -279,7 +279,7 @@
 			function req (deps, callback) {
 				// this is a public function, so remove ability for callback
 				// to be a deferred (also fixes issue #41)
-				var cb = callback ? function () { callback.apply(undef, arguments); } : noop;
+				var cb = callback && function () { callback.apply(undef, arguments); };
 				return _require(deps, cb, ctx);
 			}
 
@@ -456,10 +456,9 @@
 
 		resolveResDef: function (def, args) {
 
-			// if a module id has been remapped, it will have a baseId
 			// TODO: does the context's config need to be passed in somehow?
 			// TODO: resolve context outside this function
-			var childCtx = core.begetCtx(def.baseId || def.id, userCfg);
+			var childCtx = core.begetCtx(def.id, userCfg);
 
 			// get the dependencies and then resolve/reject
 			core.getDeps(def, args.deps, childCtx,
@@ -536,37 +535,54 @@
 			pathMap = userCfg.pathMap;
 			// check for plugin loaderId
 			delPos = depName.indexOf('!');
+			// obtain absolute id of resource (assume resource id is a
+			// module id until we've obtained and queried the loader/plugin)
+			// this will work for both cases (delPos == -1, or >= 0)
+			resId = core.normalizeName(depName.substr(delPos + 1), ctx.baseId);
+
 			if (delPos >= 0) {
-				// obtain absolute id of resource
-				resId = core.normalizeName(depName.substr(delPos + 1), ctx.baseId);
 				// get plugin info
 				loaderId = depName.substr(0, delPos);
 				// allow plugin-specific path mappings
 				cfg = userCfg.plugins[loaderId] || userCfg;
-				// prepend plugin folder path, if it's missing and path isn't in pathMap
-				loaderInfo = core.resolvePathInfo(loaderId, userCfg);
-				if (loaderInfo.path.indexOf('/') < 0) {
-					loaderInfo = core.resolvePathInfo(joinPath(userCfg.pluginPath, loaderInfo.path), userCfg);
-				}
 			}
 			else {
 				// get path information for this resource
-				resId = core.normalizeName(depName, ctx.baseId);
 				pathInfo = core.resolvePathInfo(resId, userCfg);
 				// get custom module loader from package config
 				cfg = pathInfo.config || userCfg;
-				loaderId = cfg.moduleLoader;
-				loaderInfo = loaderId && core.resolvePathInfo(loaderId, userCfg);
+				loaderId = cfg['moduleLoader'];
 			}
 
-			if (loaderId) {
+			if (!loaderId) {
+
+				// normal AMD module
+				def = cache[resId];
+				if (!def) {
+					def = cache[resId] = new ResourceDef(resId);
+					// TODO: def.ctx = core.childCtx(ctx);
+					def.url = core.resolveUrl(pathInfo.path, cfg, true);
+					core.fetchResDef(def);
+				}
+
+			}
+			else {
 
 				// fetch plugin or loader
 				var loaderDef = cache[loaderId];
 				if (!loaderDef) {
-					loaderDef = cache[loaderId] = new ResourceDef(loaderId);
+					// prepend plugin folder path, if it's missing and path isn't in pathMap
+					// Note: this munges the concepts of ids and paths for plugins,
+					// but is generally safe since it's only for non-namespaced
+					// plugins (plugins without path or package info).
+					loaderInfo = core.resolvePathInfo(loaderId, userCfg);
+					if (delPos >= 0 && loaderInfo.path.indexOf('/') < 0) {
+						loaderInfo = core.resolvePathInfo(joinPath(userCfg.pluginPath, loaderInfo.path), userCfg);
+					}
+					// we're using loaderInfo.path here instead of loaderId in
+					// case it was remapped via pluginPath.
+					loaderDef = cache[loaderId] = new ResourceDef(loaderInfo.path);
 					loaderDef.url = core.resolveUrl(loaderInfo.path, userCfg, true);
-					loaderDef.baseId = loaderInfo.path; // TODO: does baseId have to be normalized?
 					core.fetchResDef(loaderDef);
 				}
 
@@ -592,8 +608,8 @@
 						// plugin may have its own pathMap (plugin-specific paths)
 						childCtx = core.begetCtx(resId, cfg);
 
-						// the spec is unclear, so we're using the full id (loaderId + id) to id resources
-						// so multiple plugins could each process the same resource
+						// use the full id (loaderId + id) to id plugin resources
+						// so multiple plugins may each process the same resource
 						fullId = loaderId + '!' + resId;
 						normalizedDef = cache[fullId];
 
@@ -608,8 +624,8 @@
 								cache[fullId] = normalizedDef;
 							}
 
-							// curl's plugins prefer to receive the back-side of a promise,
-							// but to be compatible with commonjs's specification, we have to
+							// curl's plugins prefer to receive a deferred,
+							// but to be compatible with AMD spec, we have to
 							// piggy-back on the callback function parameter:
 							var loaded = function (res) {
 								cache[fullId] = res;
@@ -625,21 +641,13 @@
 						}
 
 						// chain defs (resolve when plugin.load executes)
-						when(normalizedDef, def.resolve, def.reject);
+						if (def != normalizedDef) {
+							when(normalizedDef, def.resolve, def.reject);
+						}
 
 					},
 					def.reject
 				);
-
-			}
-			else {
-				def = cache[resId];
-				if (!def) {
-					def = cache[resId] = new ResourceDef(resId);
-					// TODO: def.ctx = core.childCtx(ctx);
-					def.url = core.resolveUrl(pathInfo.path, cfg, true);
-					core.fetchResDef(def);
-				}
 
 			}
 
