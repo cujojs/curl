@@ -628,7 +628,7 @@
 							// but to be compatible with AMD spec, we have to
 							// piggy-back on the callback function parameter:
 							var loaded = function (res) {
-								cache[fullId] = res;
+								if (!plugin['dynamic']) cache[fullId] = res;
 								normalizedDef.resolve(res);
 							};
 							// using bracket property notation so closure won't clobber id
