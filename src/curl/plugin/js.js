@@ -26,7 +26,7 @@
  */
 (function (global, doc) {
 "use strict";
-	var cache = [],
+	var cache = {},
 		queue = [],
 		supportsAsyncFalse = doc.createElement('script').async == true,
 		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
@@ -165,9 +165,12 @@
 					exports: exports,
 					timeoutMsec: config['timeout']
 				};
-				promise = callback['resolve'] ? callback : {
-					'resolve': function (o) { cache[name] = o; callback(o); },
-					'reject': function (ex) { throw ex; }
+				promise = {
+					'resolve': function (o) {
+						cache[name] = o;
+						(callback['resolve'] || callback)(o);
+					},
+					'reject': callback['reject'] || function (ex) { throw ex; }
 				};
 
 				// if this script has to wait for another
