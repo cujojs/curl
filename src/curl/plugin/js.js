@@ -57,7 +57,7 @@
 				el.onload = el[orsc] = el.onerror = "";
 				if (def.exports) def.resolved = testGlobalVar(def.exports);
 				if (!def.exports || def.resolved) {
-					success();
+					success(el);
 				}
 				else {
 					fail();
