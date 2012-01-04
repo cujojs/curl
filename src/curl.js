@@ -359,7 +359,7 @@
 				if (ev.type === 'load' || readyStates[this.readyState]) {
 					delete activeScripts[def.id];
 					// release event listeners
-					this.onload = this[orsc] = this.onerror = undef;
+					this.onload = this[orsc] = this.onerror = ''; // ie cries if we use undefined
 					success(el);
 				}
 			}
@@ -579,9 +579,9 @@
 					if (delPos >= 0 && loaderInfo.path.indexOf('/') < 0) {
 						loaderInfo = core.resolvePathInfo(joinPath(userCfg.pluginPath, loaderInfo.path), userCfg);
 					}
+					loaderDef = cache[loaderId] = new ResourceDef(loaderId);
 					// we're using loaderInfo.path here instead of loaderId in
 					// case it was remapped via pluginPath.
-					loaderDef = cache[loaderId] = new ResourceDef(loaderInfo.path);
 					loaderDef.url = core.resolveUrl(loaderInfo.path, userCfg, true);
 					core.fetchResDef(loaderDef);
 				}
