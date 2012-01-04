@@ -359,7 +359,7 @@
 				if (ev.type === 'load' || readyStates[this.readyState]) {
 					delete activeScripts[def.id];
 					// release event listeners
-					this.onload = this[orsc] = this.onerror = null;
+					this.onload = this[orsc] = this.onerror = undef;
 					success(el);
 				}
 			}
@@ -749,10 +749,10 @@
 		}
 
 		// resolve dependencies
-		core.getDeps(null, ids, ctx,
+		core.getDeps(undef, ids, ctx,
 			function (deps) {
 				// Note: deps are passed to a promise as an array, not as individual arguments
-				callback.resolve ? callback.resolve(deps) : callback.apply(null, deps);
+				callback.resolve ? callback.resolve(deps) : callback.apply(undef, deps);
 			},
 			function (ex) {
 				if (callback.reject) callback.reject(ex);
@@ -805,7 +805,7 @@
 
 		var id = args.id;
 
-		if (id == null) {
+		if (id == undef) {
 			if (argsNet !== undef) {
 				argsNet = {ex: 'Multiple anonymous defines found in ${url}.'};
 			}
@@ -814,7 +814,7 @@
 				argsNet = args;
 			}
 		}
-		if (id != null) {
+		if (id != undef) {
 			// named define(), it is in the cache if we are loading a dependency
 			// (could also be a secondary define() appearing in a built file, etc.)
 			var def = cache[id];
