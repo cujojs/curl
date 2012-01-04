@@ -7,7 +7,7 @@
 define(function () {
 
 
-	var globalEval /*, findRequiresRx, myId*/;
+	var doc, globalEval /*, findRequiresRx, myId*/;
 
 //	findRequiresRx = /require\s*\(\s*['"](\w+)['"]\s*\)/,
 
@@ -52,15 +52,25 @@ define(function () {
 	// see http://perfectionkills.com/global-eval-what-are-the-options/
 	globalEval = eval;
 
+	doc = document;
+
 	function wrapSource (source, resourceId) {
 		return "define('" + resourceId + "'," +
 			"['require','exports','module'],function(require,exports,module){" +
 			source + "\n});\n";
 	}
 
+	var injectSource = function (el, source) {
+		// got this from Stoyan Stefanov (http://www.phpied.com/dynamic-script-and-style-elements-in-ie/)
+		injectSource = ('text' in el) ?
+			function (el, source) { el.text = source; } :
+			function (el, source) { el.appendChild(doc.createTextNode(source)); };
+		injectSource(el, source);
+	};
+
 	function injectScript (source) {
-		var doc = document, el = doc.createElement('script');
-		el.appendChild(doc.createTextNode(source));
+		var el = doc.createElement('script');
+		injectSource(el, source);
 		doc.body.appendChild(el);
 	}
 
