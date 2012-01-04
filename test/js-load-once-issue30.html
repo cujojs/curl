@@ -1,7 +1,7 @@
 <!DOCTYPE HTML>
 <html>
 <head>
-<title>js! plugin !test option</title>
+<title>js! plugin load once</title>
 
 <script>
 
@@ -21,25 +21,30 @@
 	curl(
 		[
 			'require',
-			'js!stuff/plain_old.js!order',
-			'domReady!'
+			'js!stuff/random.js!order!exports=random'
 		]
 	).then(
-		function (require) {
-			try {
-				// this sync/RValue require will fail if it thinks it nees to load plain_old.js again
-				require('js!stuff/plain_old.js');
-				document.body.appendChild(document.createTextNode('SUCCESS: file only downloaded once'));
-			}
-			catch (ex) {
-				fail(ex);
-			}
+		function (require, random) {
+				require(['js!stuff/random.js!exports=random'], function (random2) {
+					if (random == random2) {
+						write('SUCCESS: js file downloaded/executed once');
+					}
+					else {
+						write('FAILED: js file downloaded/executed twice');
+					}
+				});
 		},
 		fail
 	);
 
+	function write (msg) {
+		curl('domReady!', function () {
+			document.body.appendChild(document.createElement('div')).innerHTML = msg;
+		});
+	}
+
 	function fail (ex) {
-		document.body.appendChild(document.createTextNode('FAILED: ' + ex.message));
+		write('FAILED: ' + ex.message);
 	}
 
 </script>
