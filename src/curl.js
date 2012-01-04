@@ -620,7 +620,7 @@
 
 							// resName could be blank if the plugin doesn't specify an id (e.g. "domReady!")
 							// don't cache non-determinate "dynamic" resources (or non-existent resources)
-							if (resId && !plugin['dynamic']) {
+							if (!plugin['dynamic']) {
 								cache[fullId] = normalizedDef;
 							}
 
