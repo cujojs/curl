@@ -16,15 +16,18 @@ curl = {
 
 <script type="text/javascript">
 
-	var $readyWorked, $Worked;
+	var $readyWorked, $docReadyWorked, $Worked;
 
 	curl(
 		['jquery'],
 		function ($) {
-			// TODO: figure out why $.ready() doesn't work
-			$.ready(function () {
-				write('SUCCESS: jquery $.ready(callback) worked');
+			$().ready(function () {
+				write('SUCCESS: jquery $().ready(callback) worked');
 				$readyWorked = true;
+			});
+			$(document).ready(function () {
+				write('SUCCESS: jquery $(document).ready(callback) worked');
+				$docReadyWorked = true;
 			});
 			$(function () {
 				write('SUCCESS: jquery $(callback) worked');
@@ -50,6 +53,7 @@ curl = {
 </body>
 <script>
 	setTimeout(function () {
+		if (!$docReadyWorked) write('FAILED: $.ready(callback) didn\'t fire');
 		if (!$readyWorked) write('FAILED: $.ready(callback) didn\'t fire');
 		if (!$Worked) write('FAILED: $(callback) didn\'t fire');
 	}, 2000);
