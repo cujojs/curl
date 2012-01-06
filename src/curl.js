@@ -390,7 +390,7 @@
 		},
 
 
-		// ****** TODO: move all cjs stuff to cjs11Compat module, including ctx.cjsVars (but keep cjsVars.require)
+		// ****** TODO: move all cjs stuff to cjsm11 module, including ctx.cjsVars (but keep cjsVars.require)
 
 
 		extractCjsDeps: function (defFunc) {

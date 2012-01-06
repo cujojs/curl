@@ -30,7 +30,9 @@ The following files can be concatenated into curl.js using make.sh:
 * ../src/curl/plugin/link.js (the link! plugin)
 * ../src/curl/plugin/domReady.js (the domReady plugin)
 * ../src/curl/domReady.js (the domReady module)
-* ../src/curl/dojo16Compat.js (the dojo 1.6 compatibility shim / module)
+* ../src/curl/shim/dojo16.js (the dojo 1.6 compatibility shim / module)
+* ../src/curl/shim/underscore.js (the underscore compatibility shim / module)
+* ../src/curl/loader/cjsm11.js (the CommonJS Modules/1.1 compatibility shim / module)
 * Any named AMD module (does not support anonymous modules, yet!)
 * Any non-AMD javascript file
 

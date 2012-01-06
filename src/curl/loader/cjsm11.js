@@ -4,7 +4,7 @@
 /**
  * @experimental
  */
-define(function () {
+define(/*==='curl/shim/cjsm11',===*/ function () {
 
 
 	var doc, globalEval /*, findRequiresRx, myId*/;

@@ -1,4 +1,4 @@
-define(/*==='curl/underscoreCompat',===*/ ['curl/_privileged'], function (priv) {
+define(/*==='curl/shim/underscore',===*/ ['curl/_privileged'], function (priv) {
 "use strict";
 
 	var core, _define;

@@ -10,14 +10,14 @@
  * foray into AMD territory. :)
  *
  * usage:
- *  curl(['curl/dojo16Compat', 'curl/domReady'])
+ *  curl(['curl/shim/dojo16', 'curl/domReady'])
  *  	.next(['dojo/parser'])
  *  	.then(function (parser) {
  *  		parser.parse();
  *  	});
  *
  */
-define(/*=='curl/dojo16Compat',==*/ ['curl/_privileged', './domReady'], function (priv, domReady) {
+define(/*=='curl/shim/dojo16',==*/ ['curl/_privileged', './domReady'], function (priv, domReady) {
 
 	var _curl = priv.core._curl,
 		_require = priv.core._require,
