@@ -187,29 +187,33 @@
 			// the global cfg.pathMap or on a plugin-specific altCfg.pathMap.
 			// also populates a pathList on cfg or plugin configs.
 			function fixAndPushPaths (coll, isPkg) {
-				var id, prefixPos, prefix, currCfg, info;
+				var id, data, prefixPos, prefix, currCfg, info;
 				for (var name in coll) {
+					data = coll[name];
 					currCfg = cfg;
 					// grab the package id, if specified. default to
 					// property name.
-					id = removeEndSlash(coll[name]['id'] || name);
+					id = removeEndSlash(data['id'] || name);
 					prefixPos = id.indexOf('!');
 					if (prefixPos > 0) {
 						// plugin-specific path
 						prefix = id.substr(0, prefixPos);
-						if (!pluginCfgs[prefix]) {
+						currCfg = pluginCfgs[prefix];
+						if (!currCfg) {
 							currCfg = pluginCfgs[prefix] = beget(cfg);
 							currCfg.pathMap = beget(cfg.pathMap);
 							currCfg.pathList = [];
 						}
 						// remove prefix from id
 						id = id.substr(prefixPos + 1);
+						// remove plugin-specific path from coll
+						delete coll[name];
 					}
 					if (isPkg) {
-						info = normalizePkgDescriptor(coll[name]);
+						info = normalizePkgDescriptor(data);
 					}
 					else {
-						info = { path: removeEndSlash(coll[name]) };
+						info = { path: removeEndSlash(data) };
 					}
 					info.specificity = (id.match(findSlashRx) || []).length;
 					if (id) {
@@ -220,7 +224,7 @@
 						// naked plugin name signifies baseUrl for plugin
 						// resources. baseUrl could be relative to global
 						// baseUrl.
-						currCfg.baseUrl = core.resolveUrl(coll[name], cfg);
+						currCfg.baseUrl = core.resolveUrl(data, cfg);
 					}
 				}
 			}
@@ -388,10 +392,6 @@
 			head.insertBefore(el, head.firstChild);
 
 		},
-
-
-		// ****** TODO: move all cjs stuff to cjsm11 module, including ctx.cjsVars (but keep cjsVars.require)
-
 
 		extractCjsDeps: function (defFunc) {
 			// Note: ignores require() inside strings and comments
