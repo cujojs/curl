@@ -311,8 +311,6 @@
 		resolvePathInfo: function (id, cfg) {
 			// TODO: figure out why this gets called so often for the same file
 			// searches through the configured path mappings and packages
-			// if the resulting module is part of a package, also return the main
-			// module so it can be loaded.
 			var pathMap, pathInfo, path, config, found;
 
 			pathMap = cfg.pathMap;
