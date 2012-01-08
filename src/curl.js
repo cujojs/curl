@@ -741,10 +741,7 @@
 			name = args.name;
 
 		if (name == null) {
-			if (argsNet !== undef) {
-				argsNet = {ex: 'Multiple anonymous defines found in ${url}.'};
-			}
-			else if (!(name = getCurrentDefName())/* intentional assignment */) {
+			if (!(name = getCurrentDefName())/* intentional assignment */) {
 				// anonymous define(), defer processing until after script loads
 				argsNet = args;
 			}
