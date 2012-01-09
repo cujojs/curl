@@ -374,6 +374,7 @@
 
 			// set type first since setting other properties could
 			// prevent us from setting this later
+			// TODO: do we need this at all?
 			el.type = 'text/javascript';
 			// using dom0 event handlers instead of wordy w3c/ms
 			el.onload = el[orsc] = process;
