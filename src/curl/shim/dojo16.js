@@ -20,7 +20,7 @@
 define(/*=='curl/shim/dojo16',==*/ ['curl/_privileged', 'curl/domReady'], function (priv, domReady) {
 "use strict";
 
-	var _curl = priv._curl,
+	var _curl = priv['_curl'],
 		origBegetCtx = priv['core'].begetCtx;
 
 	function duckPunchRequire (req) {
