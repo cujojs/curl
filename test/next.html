@@ -1,17 +1,13 @@
 <!DOCTYPE HTML>
 <html>
 <head>
-<title>plugin-specific-paths</title>
+<title>test next()</title>
 
 <script>
 
 	curl = {
 		paths: {
-			curl: '../src/curl/',
-			'css!': 'stuff/',
-			'text!': 'stuff/',
-			'link!': 'http://ajax.googleapis.com/ajax/libs/dojo/1.6/dojo/resources/',
-			'link!resources/': '//ajax.googleapis.com/ajax/libs/dojo/1.6/dojo/resources/'
+			curl: '../src/curl/'
 		}
 	};
 
@@ -34,20 +30,40 @@
 
 <script type="text/javascript">
 
+	var start = new Date();
 	curl(
 		[
-			'stuff/three',
-			'css!base.css',
-			'text!template.html',
-			'link!resources/dojo.css',
 			'js!stuff/plain_old.js'
-		]
+		],
+		function () {
+			console.log('first callback', arguments);
+		}
 	).then(
-		function (three, baseCss, /*strings,*/ template, dojoCss) {
+		function () {
+			console.log('this is a then()', arguments)
+		}
+	).next(
+		[
+			'js!stuff/plain_old_2.js'
+		],
+		function () {
+			console.log('second callback', arguments);
+		}
+	).next(
+		[
+			'stuff/three',
+			'css!stuff/base',
+			'text!stuff/template.html'
+		],
+		function () {
+			console.log('third callback', arguments);
+		}
+	)
+	.then(
+		function (three, link, template) {
+			console.log('total time:', new Date() - start);
 			if (document.body) {
 				document.body.appendChild(document.createTextNode('A module with dependencies loaded successfully if 3 == ' + three + '.'));
-				document.body.appendChild(document.createElement('br'));
-				document.body.appendChild(document.createTextNode('A plain-old js file loaded if whizzah! == ' + testDomain.foo.bar));
 				document.body.appendChild(document.createElement('br'));
 				document.body.appendChild(document.createTextNode('There should be a success message below if the text file loaded:'));
 				document.body.appendChild(document.createElement('div')).innerHTML = template;
@@ -59,6 +75,8 @@
 
 </head>
 <body>
+
+<p>This text should all be the same <span style="color: #2faced;">color</span> if the css file loaded.</p>
 
 </body>
 </html>

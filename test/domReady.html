@@ -36,7 +36,7 @@
 		handle = setTimeout(poller, 10);
 
 		// go
-		curl({ baseUrl: '../src', debug: true }, ['domReady!'], function(domReady){
+		curl({ baseUrl: '../src' }, ['domReady!'], function () {
 			clearInterval(handle);
 			document.body.appendChild(document.createTextNode('did this append?'));
 			console.log('DOM Ready!', isDomReady(), new Date() - start);

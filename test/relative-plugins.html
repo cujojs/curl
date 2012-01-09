@@ -1,7 +1,7 @@
 <!DOCTYPE HTML>
 <html>
 <head>
-<title>test for github issue #20</title>
+<title>main curl test file</title>
 
 <script>
 
@@ -11,7 +11,7 @@
 		console._msg = [];
 		console.log = function (msg) {
 			var _msg = this._msg;
-			_msg.push(msg && msg.join ? msg.join(' ') : msg);
+			_msg.push([].join.call(arguments, ' '));
 			clearTimeout(this._timeout);
 			this._timeout = setTimeout(function () {
 				alert(_msg.join('\n'));
@@ -19,30 +19,25 @@
 		};
 	}
 
-//	curl = {
-//		pluginPath: '../src/curl/plugin/'
-//	};
 </script>
 <script src="../src/curl.js" type="text/javascript"></script>
-<!--<script src="../dist/curl-for-jQuery1.7/curl.js" type="text/javascript"></script>-->
-
 
 <script type="text/javascript">
 
-	curl(
-		{
+	curl({
 			paths: {
-				curl: '../src/curl'
+				curl: '../src/curl/',
+				aView: 'stuff/aView'
 			}
 		},
 		[
-			'js!stuff/plain_old.js'
+			'aView/controller',
+			'domReady!'
 		]
 	).then(
-		function (three, link) {
-			setTimeout(function () {
-				document.body.appendChild(document.createTextNode('loaded'));
-			})
+		function (aView) {
+			document.body.appendChild(document.createTextNode('SUCCESS: all files loaded'));
+			aView.render(document.getElementById('test'));
 		}
 	);
 
@@ -51,7 +46,7 @@
 </head>
 <body>
 
-<p>You should see the word, "loaded".</p>
+<p id="test"></p>
 
 </body>
 </html>

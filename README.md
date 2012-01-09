@@ -9,7 +9,13 @@ What's New?
 =======
 
 * 0.5.4
+	* jQuery 1.7 support!!!
 	* curl.js indicates to jQuery that it is a jQuery-aware AMD loader (#31)
+	* AMD/CJSM Hybrid format (see Manual Conversion section of this
+	  page: http://requirejs.org/docs/commonjs.html)
+	* Now supports node's module.exports = x; export model
+	* bug fixes:
+		* multiple .next() calls now pass variables correctly
 	* curl.js now ignores blank or falsy module ids for better compatibility
 	  wth yepnope and has! (#32)
 * 0.5.3
@@ -46,9 +52,10 @@ What's New?
 
 TODO:
 
-* configuration options per package
-* finish i18n plugin (eta: September)
-* create dojo 1.6 tests
+* figure out why $.ready(callback) doesn't work. however, $(callback) works!
+* configuration options per package (in progress)
+* finish i18n plugin (eta: early Nov)
+* create dojo 1.7 shim
 * document plugin configuration options and how to use plugins
 * notes about using JSONP (it works for objects, arrays, functions, numbers
   and strings! use ?callback=define)

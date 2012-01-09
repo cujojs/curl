@@ -1,0 +1,51 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>preload test file</title>
+
+<script>
+curl = {
+			baseUrl: '',
+			paths: {
+				curl: '../src/curl'
+			},
+			preload: [
+				// load a bunch of stuff so that preloads take time
+				// TODO: devise a test that doesn't rely on this hack
+				'curl/debug',
+				'curl/domReady',
+				'curl/shim/dojo16'
+			]
+		};
+</script>
+<script src="../src/curl.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+
+	curl(
+		['stuff/one'], // load something
+		function () {
+			// debug module adds an undefine method to curl
+			if (curl.undefine)
+				write('SUCCESS: preloads loaded first');
+			else
+				write('FAILED: preloads not loaded');
+		},
+		function (ex) {
+			write('ERROR: ' + ex.message);
+		}
+	);
+
+	function write (msg) {
+		curl('domReady!', function () {
+			document.body.appendChild(document.createElement('div')).innerHTML = msg;
+		});
+	}
+
+</script>
+
+</head>
+<body>
+
+</body>
+</html>

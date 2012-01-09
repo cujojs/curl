@@ -341,19 +341,11 @@
 		};
 	}
 
-	function jsEncode (text) {
-		// TODO: hoist the map and regex to the enclosing scope for better performance
-		var map = { 34: '\\"', 13: '\\r', 12: '\\f', 10: '\\n', 9: '\\t', 8: '\\b' };
-		return text.replace(/(["\n\f\t\r\b])/g, function (c) {
-			return map[c.charCodeAt(0)];
-		});
-	}
-
 /***** finally! the actual plugin *****/
 
 	define(/*=='css',==*/ {
 
-		'normalize': function (resourceId, toAbsId) {
+		'normalize': function (resourceId, normalize) {
 			var resources, normalized;
 
 			if (!resourceId) return resourceId;
@@ -362,7 +354,7 @@
 			normalized = [];
 
 			for (var i = 0, len = resources.length; i < len; i++) {
-				normalized.push(toAbsId(resources[i]));
+				normalized.push(normalize(resources[i]));
 			}
 
 			return normalized.join(',');
@@ -450,39 +442,7 @@
 
 		},
 
-		/***** build methods *****/
-
-		'build': function (writer, fetcher, config) {
-			// writer is a function used to output to the built file
-			// fetcher is a function used to fetch a text file
-			// config is the global config
-			// returns a function that the build tool can use to tell this
-			// plugin to write-out a resource
-			return function write (pluginId, resource, resolver) {
-				var opts, name, url, absId, text, output;
-				// TODO: implement !nowait and comma-sep files!
-				opts = parseSuffixes(resource);
-				name = opts.shift();
-				absId = resolver['toAbsMid'](name);
-				if (!(absId in built)) {
-					built[absId] = true;
-					url = resolver['toUrl'](nameWithExt(absId, 'css'));
-					// fetch text
-					text = jsEncode(fetcher(url));
-					// write out a define
-					// TODO: wait until sheet's rules are active before returning (use an amd promise)
-					// TODO: fix parser so that it doesn't choke on the word define( in a string
-					output = 'def' + 'ine("' + pluginId + '!' + absId + '", ["' + pluginId + '!"], function (api) {\n' +
-						// translate urls
-						'\tvar cssText = "' + text + '";\n' +
-						'\tcssText = api.translateUrls(cssText, "' + absId + '");\n' +
-						// call the injectStyle function
-						'\treturn api.proxySheet(api.injectStyle(cssText));\n' +
-					'});\n';
-					writer(output);
-				}
-			};
-		}
+		'plugin-builder': './builder/css'
 
 	});
 
