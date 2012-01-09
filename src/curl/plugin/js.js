@@ -35,6 +35,11 @@
 		waitForOrderedScript,
 		undef;
 
+	function nameWithExt (name, defaultExt) {
+		return name.lastIndexOf('.') <= name.lastIndexOf('/') ?
+			name + '.' + defaultExt : name;
+	}
+
 	// TODO: find a way to reuse the loadScript from curl.js
 	function loadScript (def, success, failure) {
 		// script processing rules learned from RequireJS
@@ -160,7 +165,7 @@
 				cache[name] = undef;
 				def = {
 					name: name,
-					url: require['toUrl'](name),
+					url: require['toUrl'](nameWithExt(name, 'js')),
 					order: order,
 					exports: exports,
 					timeoutMsec: config['timeout']
