@@ -17,11 +17,11 @@
  *  	});
  *
  */
-define(/*=='curl/shim/dojo16',==*/ ['curl/_privileged', './domReady'], function (priv, domReady) {
+define(/*=='curl/shim/dojo16',==*/ ['curl/_privileged', 'curl/domReady'], function (priv, domReady) {
+"use strict";
 
-	var _curl = priv.core._curl,
-		_require = priv.core._require,
-		define;
+	var _curl = priv._curl,
+		origBegetCtx = priv['core'].begetCtx;
 
 	function duckPunchRequire (req) {
 		if (!req['ready']){
@@ -41,7 +41,13 @@ define(/*=='curl/shim/dojo16',==*/ ['curl/_privileged', './domReady'], function 
 	// modify global curl cuz dojo doesn't always use standard `require`
 	// as a dependency
 	duckPunchRequire(_curl);
-	duckPunchRequire(_require);
+
+	// override begetCtx
+	priv['core'].begetCtx = function (absId, cfg) {
+		var ctx = origBegetCtx(absId, cfg);
+		ctx.require = duckPunchRequire(ctx.require);
+		return ctx;
+	};
 
 	return true;
 
