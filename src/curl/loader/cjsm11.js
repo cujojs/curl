@@ -7,7 +7,7 @@
 define(/*==='curl/shim/cjsm11',===*/ function () {
 
 
-	var doc, globalEval /*, findRequiresRx, myId*/;
+	var doc, head, globalEval /*, findRequiresRx, myId*/;
 
 //	findRequiresRx = /require\s*\(\s*['"](\w+)['"]\s*\)/,
 
@@ -53,6 +53,7 @@ define(/*==='curl/shim/cjsm11',===*/ function () {
 	globalEval = eval;
 
 	doc = document;
+	head = doc['head'] || doc.getElementsByTagName('head')[0];
 
 	function wrapSource (source, resourceId) {
 		return "define('" + resourceId + "'," +
@@ -71,7 +72,9 @@ define(/*==='curl/shim/cjsm11',===*/ function () {
 	function injectScript (source) {
 		var el = doc.createElement('script');
 		injectSource(el, source);
-		doc.body.appendChild(el);
+		el.charset = 'utf-8';
+		// use insertBefore to keep IE from throwing Operation Aborted (thx Bryan Forbes!)
+		head.insertBefore(el, head.firstChild);
 	}
 
 	return {
