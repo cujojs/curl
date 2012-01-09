@@ -345,7 +345,7 @@
 
 	define(/*=='css',==*/ {
 
-		'normalize': function (resourceId, toAbsId) {
+		'normalize': function (resourceId, normalize) {
 			var resources, normalized;
 
 			if (!resourceId) return resourceId;
@@ -354,7 +354,7 @@
 			normalized = [];
 
 			for (var i = 0, len = resources.length; i < len; i++) {
-				normalized.push(toAbsId(resources[i]));
+				normalized.push(normalize(resources[i]));
 			}
 
 			return normalized.join(',');
