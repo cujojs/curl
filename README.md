@@ -1,13 +1,24 @@
 curl (cujo resource loader)
 =====================
 
-version 0.5.4
+version 0.6
 
 See the [wiki](https://github.com/unscriptable/curl/wiki) for information about using curl.js with jQuery.
 
 What's New?
 =======
 
+* 0.6
+	* updated to latest AMD plugin specifications
+	* underscore shim (curl/shim/underscore) that corrects underscore's
+	  not-quite-right AMD implementation
+	* preload config array to ensure shims (or any other modules) are loaded
+	  first
+	* CommonJS Modules/1.1 compatibility (experimental)
+	* non-AMD module loading via moduleLoader config property
+	* package-specific configuration, including paths
+	* folder reorganization. shims were moved into their own folder
+	* many bugs fixed, including #21, #22, #28, #34, #36, #39, #40
 * 0.5.4
 	* jQuery 1.7 support!!!
 	* curl.js indicates to jQuery that it is a jQuery-aware AMD loader (#31)
@@ -52,11 +63,9 @@ What's New?
 
 TODO:
 
-* figure out why $.ready(callback) doesn't work. however, $(callback) works!
-* configuration options per package (in progress)
-* finish i18n plugin (eta: early Nov)
-* create dojo 1.7 shim
-* document plugin configuration options and how to use plugins
+* finish i18n plugin!
+* create dojo 1.7 shim, if necessary
+* document plugin configuration options and how to use each plugin
 * notes about using JSONP (it works for objects, arrays, functions, numbers
   and strings! use ?callback=define)
 
