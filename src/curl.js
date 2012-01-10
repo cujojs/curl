@@ -25,7 +25,7 @@
 	 */
 
 	var
-		version = '0.5.5dev',
+		version = '0.6',
 		head = doc['head'] || doc.getElementsByTagName('head')[0],
 		// local cache of resource definitions (lightweight promises)
 		cache = {},
