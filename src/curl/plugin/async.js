@@ -1,6 +1,15 @@
+/**
+ * curl async! plugin
+ *
+ * (c) copyright 2010-2012 Brian Cavalier and John Hann
+ *
+ * curl is part of the cujo.js family of libraries (http://cujojs.com/)
+ *
+ * Licensed under the MIT License at:
+ * 		http://www.opensource.org/licenses/mit-license.php
+ *
+ */
 /*
-	(c) copyright 2011, unscriptable.com / John M. Hann
-
 	async plugin takes another module as it's resource and defers callback
 	until that module is complete.  the module must return a promise-like
 	object (i.e. has a then method). usage:

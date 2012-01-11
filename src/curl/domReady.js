@@ -1,10 +1,15 @@
 /**
  * curl domReady
  *
- * (c) copyright 2011, unscriptable.com / John Hann
+ * (c) copyright 2010-2012 Brian Cavalier and John Hann
+ *
+ * curl is part of the cujo.js family of libraries (http://cujojs.com/)
+ *
  * Licensed under the MIT License at:
  * 		http://www.opensource.org/licenses/mit-license.php
  *
+ */
+/**
  * usage:
  *  require(['ModuleA', 'curl/domReady'], function (ModuleA, domReady) {
  * 		var a = new ModuleA();

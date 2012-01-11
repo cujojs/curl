@@ -1,5 +1,13 @@
 /**
- * Copyright (c) 2010 unscriptable.com
+ * curl link! plugin
+ *
+ * (c) copyright 2010-2012 Brian Cavalier and John Hann
+ *
+ * curl is part of the cujo.js family of libraries (http://cujojs.com/)
+ *
+ * Licensed under the MIT License at:
+ * 		http://www.opensource.org/licenses/mit-license.php
+ *
  */
 
 (function (global) {
