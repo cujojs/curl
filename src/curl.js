@@ -60,27 +60,11 @@
 	}
 
 	function normalizePkgDescriptor (descriptor) {
+		var path;
 
-		descriptor.path = descriptor['path'] || '';
+		path = descriptor.path = removeEndSlash(descriptor['path'] || descriptor['location'] || '');
 		descriptor.config = descriptor['config'];
-
-		function normalizePkgPart (partName) {
-			var path, part;
-			if (partName in descriptor) {
-				part = descriptor[partName];
-				if (part.charAt(0) != '.') {
-					// prefix with path
-					path = joinPath(descriptor.path, part);
-				}
-				else {
-					// use normal . and .. path processing
-					path = core.normalizeName(part, descriptor.path);
-				}
-				return removeEndSlash(path);
-			}
-		}
-		descriptor.lib = normalizePkgPart('lib');
-		descriptor.main = normalizePkgPart('main');
+		descriptor.main = removeEndSlash(core.normalizeName(descriptor['main'] || 'main', path));
 
 		return descriptor;
 	}
@@ -328,9 +312,9 @@
 					if (pathInfo.main && match == id) {
 						return pathInfo.main;
 					}
-					// if pathInfo.lib return pathInfo.lib
+					// if pathInfo.path return pathInfo.path
 					else {
-						return pathInfo.lib || pathInfo.path || '';
+						return pathInfo.path || '';
 					}
 
 				});
