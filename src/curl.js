@@ -510,7 +510,10 @@
 			// if id starts with . then use parent's id as a base
 			// if id starts with .. then use parent's parent
 			return id.replace(normalizeRx, function (match, dot1, dot2) {
-				return (dot2 ? basePath.substr(0, basePath.lastIndexOf('/')) : basePath) + '/';
+				var path = (dot2 ? basePath.substr(0, basePath.lastIndexOf('/')) : basePath);
+				// don't add slash to blank string or it will look like a
+				// pge-relative path
+				return path && path + '/';
 			});
 		},
 
