@@ -60,11 +60,14 @@
 	}
 
 	function normalizePkgDescriptor (descriptor) {
-		var path;
+		var path, main;
 
 		path = descriptor.path = removeEndSlash(descriptor['path'] || descriptor['location'] || '');
+		main = descriptor['main'] || 'main';
 		descriptor.config = descriptor['config'];
-		descriptor.main = removeEndSlash(core.normalizeName(descriptor['main'] || 'main', path));
+		descriptor.main = main.charAt(0) == '.' ?
+			removeEndSlash(core.normalizeName(main, path)) :
+			joinPath(path, main);
 
 		return descriptor;
 	}
@@ -179,7 +182,7 @@
 					currCfg = cfg;
 					// grab the package id, if specified. default to
 					// property name.
-					id = removeEndSlash(data['id'] || name);
+					id = removeEndSlash(data['id'] || data['name'] || name);
 					prefixPos = id.indexOf('!');
 					if (prefixPos > 0) {
 						// plugin-specific path
