@@ -28,7 +28,7 @@
 
 	var
 		version = '0.6',
-		head = doc['head'] || doc.getElementsByTagName('head')[0],
+		head = doc && (doc['head'] || doc.getElementsByTagName('head')[0]),
 		// local cache of resource definitions (lightweight promises)
 		cache = {},
 		// preload are files that must be loaded before any others
@@ -351,7 +351,7 @@
 					delete activeScripts[def.id];
 					// release event listeners
 					this.onload = this[orsc] = this.onerror = ''; // ie cries if we use undefined
-					success(el);
+					success();
 				}
 			}
 
@@ -850,7 +850,9 @@
 	define['amd'] = { 'plugins': true, 'jQuery': true, 'curl': version };
 
 	// allow curl to be a dependency
+	// TODO: use this? define('curl', function () { return _curl; });
 	cache['curl'] = _curl;
+
 
 	// expose curl core for special plugins and modules
 	// Note: core overrides will only work in either of two scenarios:
@@ -871,7 +873,7 @@
 
 }(
 	this,
-	document,
+	this.document,
 	// grab configuration
 	this['curl']
 ));

@@ -16,3 +16,7 @@ async!
 domReady!
 js!
 link!
+
+TODO:
+
+json! (auto-detects xdomain and uses JSON-P)
