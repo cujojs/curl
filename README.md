@@ -5,6 +5,17 @@ version 0.5.4
 
 See the [wiki](https://github.com/unscriptable/curl/wiki) for information about using curl.js with jQuery.
 
+Please Note: this project has moved from unscriptable/curl to cujojs/curl.
+Any existing forks have been automatically moved to cujojs/curl. However,
+you will need to update your clone and submodule remotes manually.
+
+Update the url in your .git/config, and also .gitmodules for submodules:
+	git://github.com/cujojs/curl.git
+	https://cujojs@github.com/cujojs/curl.git
+
+Helpful link for updating submodules:
+[Git Submodules: Adding, Using, Removing, Updating](http://chrisjean.com/2009/04/20/git-submodules-adding-using-removing-and-updating/)
+
 What's New?
 =======
 
