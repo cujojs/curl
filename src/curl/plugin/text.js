@@ -57,9 +57,7 @@ define(/*=='text',==*/ function () {
 	}
 
 	function error (ex) {
-		if (console) {
-			console.error ? console.error(ex) : console.log(ex.message);
-		}
+		throw ex;
 	}
 
 	return {
