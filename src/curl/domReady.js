@@ -31,7 +31,7 @@
 		// keep these quoted so closure compiler doesn't squash them
 		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
 		callbacks = [],
-		fixReadyState = typeof doc[readyState] != "string",
+		fixReadyState = doc && typeof doc[readyState] != "string",
 		// IE needs this cuz it won't stop setTimeout if it's already queued up
 		completed = false,
 		pollerTime = 10,
@@ -134,4 +134,4 @@
 
 	});
 
-}(this, document));
+}(this, this.document));
