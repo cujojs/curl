@@ -1,13 +1,15 @@
+/** @license MIT License (c) copyright B Cavalier & J Hann */
+
 /**
  * curl (cujo resource loader)
- *
- * (c) copyright 2010-2012 Brian Cavalier and John Hann
+ * An AMD-compliant javascript module and resource loader
  *
  * curl is part of the cujo.js family of libraries (http://cujojs.com/)
  *
  * Licensed under the MIT License at:
  * 		http://www.opensource.org/licenses/mit-license.php
  *
+ * @version 0.6
  */
 (function (global, doc, userCfg) {
 
@@ -264,8 +266,13 @@
 
 			var baseId, ctx, exports, require;
 
+			function normalize (id) {
+				return core.normalizeName(id, baseId);
+			}
+
 			function toUrl (n) {
-				var path = core.resolvePathInfo(core.normalizeName(n, baseId), cfg).path;
+				// TODO: determine if we can skip call to normalize if all ids passed to this function are normalized or absolute
+				var path = core.resolvePathInfo(normalize(n), cfg).path;
 				return core.resolveUrl(path, cfg);
 			}
 
@@ -293,6 +300,7 @@
 			};
 
 			ctx.require['toUrl'] = toUrl;
+			ctx.require.normalize = normalize;
 
 			return ctx;
 		},
@@ -529,7 +537,7 @@
 			// obtain absolute id of resource (assume resource id is a
 			// module id until we've obtained and queried the loader/plugin)
 			// this will work for both cases (delPos == -1, or >= 0)
-			resId = core.normalizeName(depName.substr(delPos + 1), ctx.baseId);
+			resId = ctx.require.normalize(depName.substr(delPos + 1));
 
 			if (delPos >= 0) {
 				// get plugin info
@@ -577,10 +585,6 @@
 					core.fetchResDef(loaderDef);
 				}
 
-				function normalize (id) {
-					return core.normalizeName(id, ctx.baseId);
-				}
-
 				// we need to use depName until plugin tells us normalized id.
 				// if the plugin changes the id, we need to consolidate
 				// def promises below.
@@ -593,7 +597,7 @@
 						//resName = depName.substr(delPos + 1);
 						// check if plugin supports the normalize method
 						if ('normalize' in plugin) {
-							resId = plugin['normalize'](resId, normalize, cfg);
+							resId = plugin['normalize'](resId, ctx.require.normalize, cfg);
 						}
 
 						// plugin may have its own pathMap (plugin-specific paths)
@@ -729,7 +733,7 @@
 		// RValue require (CommonJS)
 		if (isType(ids, 'String')) {
 			// return resource
-			var id = core.normalizeName(ids, ctx.baseId), def = cache[id];
+			var id = ctx.require.normalize(ids), def = cache[id];
 			if (!(id in cache) || def instanceof ResourceDef) {
 				throw new Error('Module is not already resolved: '  + id);
 			}
