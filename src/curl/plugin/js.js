@@ -33,10 +33,10 @@
 "use strict";
 	var cache = {},
 		queue = [],
-		supportsAsyncFalse = doc.createElement('script').async == true,
+		supportsAsyncFalse = doc && doc.createElement('script').async == true,
 		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
 		orsc = 'onreadystatechange',
-		head = doc['head'] || doc.getElementsByTagName('head')[0],
+		head = doc && (doc['head'] || doc.getElementsByTagName('head')[0]),
 		waitForOrderedScript,
 		undef;
 
@@ -212,4 +212,4 @@
 
 	});
 
-}(this, document));
+}(this, this.document));
