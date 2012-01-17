@@ -163,7 +163,7 @@
 
 			// set defaults and convert from closure-safe names
 			cfg.baseUrl = cfg['baseUrl'] || '';
-			cfg.pluginPath = cfg['pluginPath'] || 'curl/plugin';
+			cfg.pluginPath = 'pluginPath' in cfg ? cfg['pluginPath'] : 'curl/plugin';
 
 			// create object to hold path map.
 			// each plugin and package will have its own pathMap, too.
@@ -568,19 +568,16 @@
 			else {
 
 				// fetch plugin or loader
-				var loaderDef = cache[loaderId];
+				var usePluginPath, loaderDef = cache[loaderId];
 				if (!loaderDef) {
 					// prepend plugin folder path, if it's missing and path isn't in pathMap
 					// Note: this munges the concepts of ids and paths for plugins,
 					// but is generally safe since it's only for non-namespaced
 					// plugins (plugins without path or package info).
-					loaderInfo = core.resolvePathInfo(loaderId, userCfg);
-					if (delPos >= 0 && loaderInfo.path.indexOf('/') < 0) {
-						loaderInfo = core.resolvePathInfo(joinPath(userCfg.pluginPath, loaderInfo.path), userCfg);
-					}
+					// TODO: use plugin=specific cfg instead of userCfg?
+					usePluginPath = userCfg.pluginPath && delPos >= 0 && loaderId.indexOf('/') < 0;
+					loaderInfo = core.resolvePathInfo(usePluginPath ? joinPath(userCfg.pluginPath, loaderId) : loaderId, userCfg);
 					loaderDef = cache[loaderId] = new ResourceDef(loaderId);
-					// we're using loaderInfo.path here instead of loaderId in
-					// case it was remapped via pluginPath.
 					loaderDef.url = core.resolveUrl(loaderInfo.path, userCfg, true);
 					core.fetchResDef(loaderDef);
 				}
