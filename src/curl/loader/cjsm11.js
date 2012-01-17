@@ -12,10 +12,11 @@
 /**
  * @experimental
  */
+(function (global, document) {
+
 define(/*==='curl/shim/cjsm11',===*/ function () {
 
-
-	var doc, head, globalEval /*, findRequiresRx, myId*/;
+	var head, globalEval /*, findRequiresRx, myId*/;
 
 //	findRequiresRx = /require\s*\(\s*['"](\w+)['"]\s*\)/,
 
@@ -60,8 +61,7 @@ define(/*==='curl/shim/cjsm11',===*/ function () {
 	// see http://perfectionkills.com/global-eval-what-are-the-options/
 	globalEval = eval;
 
-	doc = document;
-	head = doc['head'] || doc.getElementsByTagName('head')[0];
+	head = document && (document['head'] || document.getElementsByTagName('head')[0]);
 
 	function wrapSource (source, resourceId) {
 		return "define('" + resourceId + "'," +
@@ -73,12 +73,12 @@ define(/*==='curl/shim/cjsm11',===*/ function () {
 		// got this from Stoyan Stefanov (http://www.phpied.com/dynamic-script-and-style-elements-in-ie/)
 		injectSource = ('text' in el) ?
 			function (el, source) { el.text = source; } :
-			function (el, source) { el.appendChild(doc.createTextNode(source)); };
+			function (el, source) { el.appendChild(document.createTextNode(source)); };
 		injectSource(el, source);
 	};
 
 	function injectScript (source) {
-		var el = doc.createElement('script');
+		var el = document.createElement('script');
 		injectSource(el, source);
 		el.charset = 'utf-8';
 		// use insertBefore to keep IE from throwing Operation Aborted (thx Bryan Forbes!)
@@ -118,3 +118,5 @@ define(/*==='curl/shim/cjsm11',===*/ function () {
 	};
 
 });
+
+}(this, this.document));
