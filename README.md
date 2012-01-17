@@ -143,6 +143,8 @@ Promises-based API for executing callbacks.
 * ['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
 * callback: Function to receive modules or resources
 * errorback: Function to call if an exception occurred while loading
+* For full CommonJS Promises/A compliance, use [when.js](https://github.com/briancavalier/when.js)
+    * `when(curl(['dep1']).then(callback);`
 
 ---------
 
