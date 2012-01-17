@@ -18,8 +18,6 @@
  * The debug module must be used in conjunction with the debug: true config param!
  *
  */
-(function (global, origDefine) {
-
 define(['require', 'curl/_privileged'], function (require, priv) {
 "use strict";
 
@@ -75,5 +73,3 @@ define(['require', 'curl/_privileged'], function (require, priv) {
 	return true;
 
 });
-
-}(this, this.define));
