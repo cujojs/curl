@@ -3,7 +3,7 @@ curl (cujo resource loader)
 
 version 0.5.4
 
-See the [wiki](https://github.com/unscriptable/curl/wiki) for information about using curl.js with jQuery.
+See the [wiki](https://github.com/cujojs/curl/wiki) for information about using curl.js with jQuery.
 
 Please Note: this project has moved from unscriptable/curl to cujojs/curl.
 Any existing forks have been automatically moved to cujojs/curl. However,
@@ -107,7 +107,7 @@ script loaders.
 How to get support
 ===============
 
-1. Go to the issues section of the curl repo (https://github.com/unscriptable/curl/issues)
+1. Go to the issues section of the curl repo (https://github.com/cujojs/curl/issues)
 	and search for an answer to your question or problem.
 2. If no answer exists, file a new ticket!  Somebody will typically respond within a 
 	few hours.
@@ -119,7 +119,7 @@ It's that easy.
 API at a glance
 ===============
 
-For a complete description, check out the [wiki](https://github.com/unscriptable/curl/wiki).
+For a complete description, check out the [wiki](https://github.com/cujojs/curl/wiki).
 
 ```javascript
 curl(['dep1', 'dep2', 'dep3' /* etc */], callback);
@@ -420,7 +420,7 @@ argument signatures as server-side javascript (ssjs) modules.
 Not all async loaders are AMD-compliant. Of the list above, only the following
 are AMD-compliant:
 
-curl.js <http://github.com/unscriptable/curl>
+curl.js <http://github.com/cujojs/curl>
 
 RequireJS <http://requirejs.org/>
 
@@ -507,7 +507,7 @@ Can curl.js load non-javascript files?
 Yes, curl.js follows the CommonJS Loader Plugin specification, so you can use
 any compatible plugin. The following plugins are included:
 
-js! -- loads non-AMD javascript files. more info on the [wiki](https://github.com/unscriptable/curl/wiki/js)
+js! -- loads non-AMD javascript files. more info on the [wiki](https://github.com/cujojs/curl/wiki/js)
 
 text! -- loads text files
 
@@ -523,7 +523,7 @@ The following plugins are in progress:
 
 i18n! -- loads text strings and other locale-specific constants
 
-Complete plugin docs are on the [wiki](https://github.com/unscriptable/curl/wiki/Plugins).
+Complete plugin docs are on the [wiki](https://github.com/cujojs/curl/wiki/Plugins).
 
 ----------------------------------------
 
@@ -674,7 +674,7 @@ After the build tool creates the concatenated files, the files can be passed
 into a compiler (also called a shrinker or compressor).
 
 We're writing curl to be compatible with RequireJS's build tool, but there's
-also another cujo project in the pipeline: [cram](https://github.com/unscriptable/cram).
+also another cujo project in the pipeline: [cram](https://github.com/cujojs/cram).
 Cram is the Cujo Resource Assembler.
 
 ----------------------------------------
@@ -738,7 +738,7 @@ libs include:
 * [canhaz](https://github.com/briancavalier/canhaz): a project and code bootstrapping tool that will save you tons of typing.
 * [wire](https://github.com/briancavalier/wire): A light, fast, flexible Javascript IOC container
 * [when.js](https://github.com/briancavalier/when.js): A small, fast Promises/A compliant promises implementation
-* [cram](https://github.com/unscriptable/cram): a javascript compressor, concatenator, and optimizer meant to be used with curl.js
+* [cram](https://github.com/cujojs/cram): a javascript compressor, concatenator, and optimizer meant to be used with curl.js
 
 Kudos
 =================
