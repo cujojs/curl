@@ -23,7 +23,7 @@ What's New?
 	* updated to latest AMD plugin specifications
 	* underscore shim (curl/shim/underscore) that corrects underscore's
 	  not-quite-right AMD implementation
-	* preload config array to ensure shims (or any other modules) are loaded
+	* preload config array to ensure shims (or other modules) are loaded
 	  first
 	* CommonJS Modules/1.1 compatibility (experimental)
 	* non-AMD module loading via moduleLoader config property
