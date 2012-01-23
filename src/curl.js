@@ -538,7 +538,8 @@
 		},
 
 		fetchDep: function (depName, ctx) {
-			var fullId, delPos, loaderId, pathMap, resId, loaderInfo, pathInfo, def, cfg;
+			var fullId, delPos, loaderId, pathMap, resId, loaderInfo, pathInfo,
+                def, cfg;
 
 			pathMap = userCfg.pathMap;
 			// check for plugin loaderId
@@ -550,7 +551,7 @@
 
 			if (delPos >= 0) {
 				// get plugin info
-				loaderId = depName.substr(0, delPos);
+				loaderId = ctx.require.normalize(depName.substr(0, delPos));
 				// allow plugin-specific path mappings
 				cfg = userCfg.plugins[loaderId] || userCfg;
 			}
