@@ -305,12 +305,21 @@
 			return ctx;
 		},
 
-		resolvePathInfo: function (id, cfg) {
+		resolvePathInfo: function (id, cfg, isPlugin) {
 			// TODO: figure out why this gets called so often for the same file
 			// searches through the configured path mappings and packages
 			var pathMap, pathInfo, path, config, found;
 
 			pathMap = cfg.pathMap;
+
+			if (isPlugin && userCfg.pluginPath && id.indexOf('/') < 0) {
+				// prepend plugin folder path, if it's missing and path isn't in pathMap
+				// Note: this munges the concepts of ids and paths for plugins,
+				// but is generally safe since it's only for non-namespaced
+				// plugins (plugins without path or package info).
+				// TODO: use plugin-specific cfg instead of userCfg?
+				id = joinPath(userCfg.pluginPath, id);
+			}
 
 			if (!absUrlRx.test(id)) {
 				path = id.replace(cfg.pathRx, function (match) {
@@ -570,13 +579,7 @@
 				// fetch plugin or loader
 				var usePluginPath, loaderDef = cache[loaderId];
 				if (!loaderDef) {
-					// prepend plugin folder path, if it's missing and path isn't in pathMap
-					// Note: this munges the concepts of ids and paths for plugins,
-					// but is generally safe since it's only for non-namespaced
-					// plugins (plugins without path or package info).
-					// TODO: use plugin=specific cfg instead of userCfg?
-					usePluginPath = userCfg.pluginPath && delPos >= 0 && loaderId.indexOf('/') < 0;
-					loaderInfo = core.resolvePathInfo(usePluginPath ? joinPath(userCfg.pluginPath, loaderId) : loaderId, userCfg);
+					loaderInfo = core.resolvePathInfo(loaderId, userCfg, delPos > 0);
 					loaderDef = cache[loaderId] = new ResourceDef(loaderId);
 					loaderDef.url = core.resolveUrl(loaderInfo.path, userCfg, true);
 					core.fetchResDef(loaderDef);
