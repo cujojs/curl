@@ -428,7 +428,9 @@
 			// (string, object|function) sx|sf
 			// (object|function) x|f
 
-			var id, deps, defFunc, isDefFunc, len = args.length;
+			var id, deps, defFunc, isDefFunc, len, cjs;
+
+			len = args.length;
 
 			defFunc = args[len - 1];
 			isDefFunc = isType(defFunc, 'Function');
@@ -449,13 +451,15 @@
 			// Hybrid format: assume that a definition function with zero
 			// dependencies and non-zero arity is a wrapped CommonJS module
 			if (!deps && isDefFunc && defFunc.length > 0) {
+				cjs = true;
 				deps = ['require', 'exports', 'module'].concat(core.extractCjsDeps(defFunc));
 			}
 
 			return {
 				id: id,
 				deps: deps || [],
-				res: isDefFunc ? defFunc : function () { return defFunc; }
+				res: isDefFunc ? defFunc : function () { return defFunc; },
+				cjs: cjs
 			};
 		},
 
@@ -468,16 +472,18 @@
 			// get the dependencies and then resolve/reject
 			core.getDeps(def, args.deps, childCtx,
 				function (deps) {
-					var res;
+					var res, defContext;
 					try {
 						// node.js assumes `this` === exports.
 						// anything returned overrides exports.
 						// use module.exports if nothing returned (node.js
 						// convention). exports === module.exports unless
 						// module.exports was reassigned.
-						// TODO: there's no way to return `undefined`!
-						res = args.res.apply(childCtx.cjsVars['exports'], deps);
-						if (res === undef) res = childCtx.cjsVars['module']['exports'];
+						defContext = args.cjs ? childCtx.cjsVars['exports'] : global;
+						res = args.res.apply(defContext, deps);
+						if (args.cjs && res === undef) {
+							res = childCtx.cjsVars['module']['exports'];
+						}
 					}
 					catch (ex) {
 						def.reject(ex);
@@ -532,14 +538,14 @@
 			return id.replace(normalizeRx, function (match, dot1, dot2) {
 				var path = (dot2 ? basePath.substr(0, basePath.lastIndexOf('/')) : basePath);
 				// don't add slash to blank string or it will look like a
-				// pge-relative path
+				// page-relative path
 				return path && path + '/';
 			});
 		},
 
 		fetchDep: function (depName, ctx) {
 			var fullId, delPos, loaderId, pathMap, resId, loaderInfo, pathInfo,
-                def, cfg;
+				def, cfg;
 
 			pathMap = userCfg.pathMap;
 			// check for plugin loaderId
@@ -601,39 +607,42 @@
 							resId = plugin['normalize'](resId, ctx.require.normalize, cfg);
 						}
 
-						// plugin may have its own pathMap (plugin-specific paths)
-						childCtx = core.begetCtx(resId, cfg);
+						// dojo/has may return falsey values (0, actually)
+						if (resId) {
+							// plugin may have its own pathMap (plugin-specific paths)
+							childCtx = core.begetCtx(resId, cfg);
 
-						// use the full id (loaderId + id) to id plugin resources
-						// so multiple plugins may each process the same resource
-						fullId = loaderId + '!' + resId;
-						normalizedDef = cache[fullId];
+							// use the full id (loaderId + id) to id plugin resources
+							// so multiple plugins may each process the same resource
+							fullId = loaderId + '!' + resId;
+							normalizedDef = cache[fullId];
 
-						// if this is our first time fetching this (normalized) def
-						if (!normalizedDef) {
+							// if this is our first time fetching this (normalized) def
+							if (!normalizedDef) {
 
-							normalizedDef = new ResourceDef(fullId);
+								normalizedDef = new ResourceDef(fullId);
 
-							// resName could be blank if the plugin doesn't specify an id (e.g. "domReady!")
-							// don't cache non-determinate "dynamic" resources (or non-existent resources)
-							if (!plugin['dynamic']) {
-								cache[fullId] = normalizedDef;
+								// resName could be blank if the plugin doesn't specify an id (e.g. "domReady!")
+								// don't cache non-determinate "dynamic" resources (or non-existent resources)
+								if (!plugin['dynamic']) {
+									cache[fullId] = normalizedDef;
+								}
+
+								// curl's plugins prefer to receive a deferred,
+								// but to be compatible with AMD spec, we have to
+								// piggy-back on the callback function parameter:
+								var loaded = function (res) {
+									if (!plugin['dynamic']) cache[fullId] = res;
+									normalizedDef.resolve(res);
+								};
+								// using bracket property notation so closure won't clobber id
+								loaded['resolve'] = loaded;
+								loaded['reject'] = normalizedDef.reject;
+
+								// load the resource!
+								plugin.load(resId, childCtx.require, loaded, cfg);
+
 							}
-
-							// curl's plugins prefer to receive a deferred,
-							// but to be compatible with AMD spec, we have to
-							// piggy-back on the callback function parameter:
-							var loaded = function (res) {
-								if (!plugin['dynamic']) cache[fullId] = res;
-								normalizedDef.resolve(res);
-							};
-							// using bracket property notation so closure won't clobber id
-							loaded['resolve'] = loaded;
-							loaded['reject'] = normalizedDef.reject;
-
-							// load the resource!
-							plugin.load(resId, childCtx.require, loaded, cfg);
-
 						}
 
 						// chain defs (resolve when plugin.load executes)
@@ -680,6 +689,7 @@
 						// look for commonjs free vars
 					if (depName in ctx.cjsVars) {
 						deps[index] = ctx.cjsVars[depName];
+						ctx.cjsVars.inUse
 						checkDone();
 					}
 					// check for blanks. fixes #32.
