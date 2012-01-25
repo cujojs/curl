@@ -24,7 +24,8 @@ define(/*=='curl/shim/dojo16',==*/ ['curl/_privileged', 'curl/domReady'], functi
 "use strict";
 
 	var _curl = priv['_curl'],
-		origBegetCtx = priv['core'].begetCtx;
+//		origBegetCtx = priv['core'].begetCtx,
+		origFetchDep = priv['core'].fetchDep;
 
 	function duckPunchRequire (req) {
 		if (!req['ready']){
@@ -45,11 +46,20 @@ define(/*=='curl/shim/dojo16',==*/ ['curl/_privileged', 'curl/domReady'], functi
 	// as a dependency
 	duckPunchRequire(_curl);
 
-	// override begetCtx
-	priv['core'].begetCtx = function (absId, cfg) {
-		var ctx = origBegetCtx(absId, cfg);
-		ctx.require = duckPunchRequire(ctx.require);
-		return ctx;
+//	// override begetCtx
+//	priv['core'].begetCtx = function (absId, cfg) {
+//		var ctx = origBegetCtx(absId, cfg);
+//		ctx.require = duckPunchRequire(ctx.require);
+//		return ctx;
+//	};
+
+	// override fetchDep to look for "require" deps
+	priv['core'].fetchDep = function (depName, ctx) {
+		var result = origFetchDep(depName, ctx);
+		if (depName == 'require') {
+			duckPunchRequire(result);
+		}
+		return result;
 	};
 
 	return true;

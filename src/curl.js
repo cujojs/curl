@@ -47,11 +47,11 @@
 		aslice = [].slice,
 		// RegExp's used later, "cached" here
 		absUrlRx = /^\/|^[^:]+:\/\//,
-		normalizeRx = /^(\.)(\.)?(\/|$)/,
+		findLeadingDotsRx = /(?:^|\/)(\.)(\.?)\/?/g,
 		findSlashRx = /\//g,
 		dontAddExtRx = /\?/,
 		removeCommentsRx = /\/\*[\s\S]*?\*\/|(?:[^\\])\/\/.*?[\n\r]/g,
-		findRValueRequiresRx = /require\s*\(\s*["']([^"']+)["']\s*\)|((?:[^\\])?["'])/,
+		findRValueRequiresRx = /require\s*\(\s*["']([^"']+)["']\s*\)|(?:[^\\]?)(["'])/g,
 		// script ready states that signify it's loaded
 		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
 		orsc = 'onreadystatechange',
@@ -84,6 +84,30 @@
 
 	function removeEndSlash (path) {
 		return endsWithSlash(path) ? path.substr(0, path.length - 1) : path;
+	}
+
+	function reduceLeadingDots (childId, baseId) {
+		// this algorithm is similar to dojo's compactPath, which interprets
+		// module ids of "." and ".." as meaning "grab the module whose name is
+		// the same as my folder or parent folder".  These special module ids
+		// are not included in the AMD spec.
+		var levels, removeLevels, isRelative;
+		removeLevels = 1;
+		childId = childId.replace(findLeadingDotsRx, function (m, dot, doubleDot) {
+			if (doubleDot) removeLevels++;
+			isRelative = true;
+			return '';
+		});
+		// TODO: throw if removeLevels > baseId levels
+		if (isRelative) {
+			levels = baseId.split('/');
+			levels.splice(levels.length - removeLevels, removeLevels);
+			// childId || [] is a trick to not concat if no childId
+			return levels.concat(childId || []).join('/');
+		}
+		else {
+			return childId;
+		}
 	}
 
 	function Begetter () {}
@@ -246,8 +270,12 @@
 			}
 			convertPathMatcher(cfg);
 
-			// handle preload here since extractCfg can be called from two places
-			if (cfg['preload']){
+			return cfg;
+
+		},
+
+		checkPreloads: function (cfg) {
+			if (cfg['preload'] && cfg['preload'].length > 0){
 				// chain from previous preload (for now. revisit when
 				// doing package-specific configs).
 				when(preload, function () {
@@ -258,16 +286,14 @@
 				});
 			}
 
-			return cfg;
-
 		},
 
 		begetCtx: function (absId, cfg) {
 
-			var baseId, ctx, exports, require;
+			var /*baseId, */ctx, exports, require;
 
-			function normalize (id) {
-				return core.normalizeName(id, baseId);
+			function normalize (childId) {
+				return core.normalizeName(childId, absId /*baseId*/);
 			}
 
 			function toUrl (n) {
@@ -283,10 +309,10 @@
 				return _require(deps, cb, ctx);
 			}
 
-			baseId = absId.substr(0, absId.lastIndexOf('/'));
+//			baseId = absId.substr(0, absId.lastIndexOf('/'));
 			exports = {};
 			ctx = {
-				baseId: baseId,
+//				baseId: baseId,
 				require: req,
 				cjsVars: {
 					'require': req,
@@ -472,24 +498,27 @@
 			// get the dependencies and then resolve/reject
 			core.getDeps(def, args.deps, childCtx,
 				function (deps) {
-					var res, defContext;
+					var resource, moduleThis;
 					try {
-						// node.js assumes `this` === exports.
-						// anything returned overrides exports.
-						// use module.exports if nothing returned (node.js
-						// convention). exports === module.exports unless
-						// module.exports was reassigned.
-						defContext = args.cjs ? childCtx.cjsVars['exports'] : global;
-						res = args.res.apply(defContext, deps);
-						if (args.cjs && res === undef) {
-							res = childCtx.cjsVars['module']['exports'];
+						// the force of AMD is strong so anything returned
+						// overrides exports.
+						// node.js assumes `this` === `exports` so we do that
+						// for all cjs-wrapped modules, just in case.
+						// also, use module.exports if that was set
+						// (node.js convention).
+						// note: exports will equal module.exports unless
+						// module.exports was reassigned inside module.
+						moduleThis = args.cjs ? childCtx.cjsVars['exports'] : undef;
+						resource = args.res.apply(moduleThis, deps);
+						if (resource === undef && (args.cjs || childCtx.useExports)) {
+							resource = childCtx.cjsVars['module']['exports'];
 						}
 					}
 					catch (ex) {
 						def.reject(ex);
 					}
-					cache[def.id] = res; // replace ResourceDef with actual value
-					def.resolve(res);
+					cache[def.id] = resource; // replace ResourceDef with actual value
+					def.resolve(resource);
 				},
 				def.reject
 			);
@@ -532,28 +561,25 @@
 
 		},
 
-		normalizeName: function (id, basePath) {
-			// if id starts with . then use parent's id as a base
-			// if id starts with .. then use parent's parent
-			return id.replace(normalizeRx, function (match, dot1, dot2) {
-				var path = (dot2 ? basePath.substr(0, basePath.lastIndexOf('/')) : basePath);
-				// don't add slash to blank string or it will look like a
-				// page-relative path
-				return path && path + '/';
-			});
+		normalizeName: function (childId, baseId) {
+			var name = reduceLeadingDots(childId, baseId);
+			return name;
 		},
 
 		fetchDep: function (depName, ctx) {
 			var fullId, delPos, loaderId, pathMap, resId, loaderInfo, pathInfo,
 				def, cfg;
 
+			if (depName in ctx.cjsVars) {
+				// is this "require", "exports", or "module"?
+				// if "exports" or "module" indicate we should grab exports
+				ctx.useExports = ctx.useExports || depName != 'require';
+				return ctx.cjsVars[depName];
+			}
+
 			pathMap = userCfg.pathMap;
 			// check for plugin loaderId
 			delPos = depName.indexOf('!');
-			// obtain absolute id of resource (assume resource id is a
-			// module id until we've obtained and queried the loader/plugin)
-			// this will work for both cases (delPos == -1, or >= 0)
-			resId = ctx.require.normalize(depName.substr(delPos + 1));
 
 			if (delPos >= 0) {
 				// get plugin info
@@ -562,6 +588,8 @@
 				cfg = userCfg.plugins[loaderId] || userCfg;
 			}
 			else {
+				// obtain absolute id of resource
+				resId = ctx.require.normalize(depName.substr(delPos + 1));
 				// get path information for this resource
 				pathInfo = core.resolvePathInfo(resId, userCfg);
 				// get custom module loader from package config
@@ -604,7 +632,10 @@
 						//resName = depName.substr(delPos + 1);
 						// check if plugin supports the normalize method
 						if ('normalize' in plugin) {
-							resId = plugin['normalize'](resId, ctx.require.normalize, cfg);
+							resId = plugin['normalize'](depName.substr(delPos + 1), ctx.require.normalize, cfg);
+						}
+						else {
+							resId = ctx.require.normalize(depName.substr(delPos + 1));
 						}
 
 						// dojo/has may return falsey values (0, actually)
@@ -686,16 +717,10 @@
 				// obtain each dependency
 				// Note: IE may have obtained the dependencies sync (stooooopid!) thus the completed flag
 				for (i = 0, len = names.length; i < len && !completed; i++) (function (index, depName) {
-						// look for commonjs free vars
-					if (depName in ctx.cjsVars) {
-						deps[index] = ctx.cjsVars[depName];
-						ctx.cjsVars.inUse
-						checkDone();
-					}
 					// check for blanks. fixes #32.
 					// this could also help with the has! plugin (?)
-					else if (!depName) {
-						count--;
+					if (!depName) {
+						checkDone();
 					}
 					else {
 						// hook into promise callbacks
@@ -775,6 +800,7 @@
 		// extract config, if it's specified
 		if (isType(args[0], 'Object')) {
 			userCfg = core.extractCfg(args.shift());
+			core.checkPreloads(userCfg);
 		}
 
 		// this must be after extractCfg
@@ -844,6 +870,7 @@
 	if (isType(userCfg, 'Function')) return;
 
 	userCfg = core.extractCfg(userCfg || {});
+	core.checkPreloads(userCfg);
 
 	/***** define public API *****/
 
