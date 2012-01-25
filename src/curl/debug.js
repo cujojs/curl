@@ -63,6 +63,11 @@ define(['require', 'curl/_privileged'], function (require, priv) {
 		count();
 		if (prevTotal != totalWaiting) {
 			console.log('curl: ********** modules waiting: ' + totalWaiting);
+			for (var p in cache) {
+				if (cache[p] instanceof priv['ResourceDef']) {
+					console.log('curl: ********** module waiting: ' + p);
+				}
+			}
 		}
 		prevTotal = totalWaiting;
 		setTimeout(periodicLogger, 500);

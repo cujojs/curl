@@ -290,7 +290,7 @@
 
 		begetCtx: function (absId, cfg) {
 
-			var /*baseId, */ctx, exports, require;
+			var ctx, exports, require;
 
 			function normalize (childId) {
 				return core.normalizeName(childId, absId /*baseId*/);
@@ -309,10 +309,8 @@
 				return _require(deps, cb, ctx);
 			}
 
-//			baseId = absId.substr(0, absId.lastIndexOf('/'));
 			exports = {};
 			ctx = {
-//				baseId: baseId,
 				require: req,
 				cjsVars: {
 					'require': req,
@@ -489,6 +487,24 @@
 			};
 		},
 
+		executeDefFunc: function (deps, args, ctx) {
+			var resource, moduleThis;
+			// the force of AMD is strong so anything returned
+			// overrides exports.
+			// node.js assumes `this` === `exports` so we do that
+			// for all cjs-wrapped modules, just in case.
+			// also, use module.exports if that was set
+			// (node.js convention).
+			// note: exports will equal module.exports unless
+			// module.exports was reassigned inside module.
+			moduleThis = args.cjs ? ctx.cjsVars['exports'] : undef;
+			resource = args.res.apply(moduleThis, deps);
+			if (resource === undef && (args.cjs || ctx.useExports)) {
+				resource = ctx.cjsVars['module']['exports'];
+			}
+			return resource;
+		},
+
 		resolveResDef: function (def, args) {
 
 			// TODO: does the context's config need to be passed in somehow?
@@ -500,19 +516,7 @@
 				function (deps) {
 					var resource, moduleThis;
 					try {
-						// the force of AMD is strong so anything returned
-						// overrides exports.
-						// node.js assumes `this` === `exports` so we do that
-						// for all cjs-wrapped modules, just in case.
-						// also, use module.exports if that was set
-						// (node.js convention).
-						// note: exports will equal module.exports unless
-						// module.exports was reassigned inside module.
-						moduleThis = args.cjs ? childCtx.cjsVars['exports'] : undef;
-						resource = args.res.apply(moduleThis, deps);
-						if (resource === undef && (args.cjs || childCtx.useExports)) {
-							resource = childCtx.cjsVars['module']['exports'];
-						}
+						resource = core.executeDefFunc(deps, args, childCtx);
 					}
 					catch (ex) {
 						def.reject(ex);
@@ -632,48 +636,46 @@
 						//resName = depName.substr(delPos + 1);
 						// check if plugin supports the normalize method
 						if ('normalize' in plugin) {
-							resId = plugin['normalize'](depName.substr(delPos + 1), ctx.require.normalize, cfg);
+							// dojo/has may return falsey values (0, actually)
+							resId = plugin['normalize'](depName.substr(delPos + 1), ctx.require.normalize, cfg) || '';
 						}
 						else {
 							resId = ctx.require.normalize(depName.substr(delPos + 1));
 						}
 
-						// dojo/has may return falsey values (0, actually)
-						if (resId) {
-							// plugin may have its own pathMap (plugin-specific paths)
-							childCtx = core.begetCtx(resId, cfg);
+						// plugin may have its own pathMap (plugin-specific paths)
+						childCtx = core.begetCtx(resId, cfg);
 
-							// use the full id (loaderId + id) to id plugin resources
-							// so multiple plugins may each process the same resource
-							fullId = loaderId + '!' + resId;
-							normalizedDef = cache[fullId];
+						// use the full id (loaderId + id) to id plugin resources
+						// so multiple plugins may each process the same resource
+						fullId = loaderId + '!' + resId;
+						normalizedDef = cache[fullId];
 
-							// if this is our first time fetching this (normalized) def
-							if (!normalizedDef) {
+						// if this is our first time fetching this (normalized) def
+						if (!normalizedDef) {
 
-								normalizedDef = new ResourceDef(fullId);
+							normalizedDef = new ResourceDef(fullId);
 
-								// resName could be blank if the plugin doesn't specify an id (e.g. "domReady!")
-								// don't cache non-determinate "dynamic" resources (or non-existent resources)
-								if (!plugin['dynamic']) {
-									cache[fullId] = normalizedDef;
-								}
-
-								// curl's plugins prefer to receive a deferred,
-								// but to be compatible with AMD spec, we have to
-								// piggy-back on the callback function parameter:
-								var loaded = function (res) {
-									if (!plugin['dynamic']) cache[fullId] = res;
-									normalizedDef.resolve(res);
-								};
-								// using bracket property notation so closure won't clobber id
-								loaded['resolve'] = loaded;
-								loaded['reject'] = normalizedDef.reject;
-
-								// load the resource!
-								plugin.load(resId, childCtx.require, loaded, cfg);
-
+							// resName could be blank if the plugin doesn't specify an id (e.g. "domReady!")
+							// don't cache non-determinate "dynamic" resources (or non-existent resources)
+							if (!plugin['dynamic']) {
+								cache[fullId] = normalizedDef;
 							}
+
+							// curl's plugins prefer to receive a deferred,
+							// but to be compatible with AMD spec, we have to
+							// piggy-back on the callback function parameter:
+							var loaded = function (res) {
+								if (!plugin['dynamic']) cache[fullId] = res;
+								normalizedDef.resolve(res);
+							};
+							// using bracket property notation so closure won't clobber id
+							loaded['resolve'] = loaded;
+							loaded['reject'] = normalizedDef.reject;
+
+							// load the resource!
+							plugin.load(resId, childCtx.require, loaded, cfg);
+
 						}
 
 						// chain defs (resolve when plugin.load executes)
@@ -709,7 +711,7 @@
 			}
 
 			// wait for preload
-			// TODO: cascade context so this will work:
+			// TODO: when we're properly cascading contexts, move this lower, to resolveResDef maybe?
 			when(ctx.isPreload || preload, function () {
 
 				preload = true; // indicate we've preloaded everything

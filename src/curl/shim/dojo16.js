@@ -24,8 +24,7 @@ define(/*=='curl/shim/dojo16',==*/ ['curl/_privileged', 'curl/domReady'], functi
 "use strict";
 
 	var _curl = priv['_curl'],
-//		origBegetCtx = priv['core'].begetCtx,
-		origFetchDep = priv['core'].fetchDep;
+		origExecuteDefFunc = priv['core'].executeDefFunc;
 
 	function duckPunchRequire (req) {
 		if (!req['ready']){
@@ -42,24 +41,14 @@ define(/*=='curl/shim/dojo16',==*/ ['curl/_privileged', 'curl/domReady'], functi
 		return req;
 	}
 
-	// modify global curl cuz dojo doesn't always use standard `require`
+	// modify global curl cuz dojo doesn't always use local `require`
 	// as a dependency
 	duckPunchRequire(_curl);
 
-//	// override begetCtx
-//	priv['core'].begetCtx = function (absId, cfg) {
-//		var ctx = origBegetCtx(absId, cfg);
-//		ctx.require = duckPunchRequire(ctx.require);
-//		return ctx;
-//	};
-
-	// override fetchDep to look for "require" deps
-	priv['core'].fetchDep = function (depName, ctx) {
-		var result = origFetchDep(depName, ctx);
-		if (depName == 'require') {
-			duckPunchRequire(result);
-		}
-		return result;
+	// override executeDefFunc to override "require" deps
+	priv['core'].executeDefFunc = function (deps, args, ctx) {
+		duckPunchRequire(ctx.require);
+		return origExecuteDefFunc(deps, args, ctx);
 	};
 
 	return true;
