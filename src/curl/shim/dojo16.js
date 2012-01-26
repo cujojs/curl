@@ -46,9 +46,9 @@ define(/*=='curl/shim/dojo16',==*/ ['curl/_privileged', 'curl/domReady'], functi
 	duckPunchRequire(_curl);
 
 	// override executeDefFunc to override "require" deps
-	priv['core'].executeDefFunc = function (deps, args, ctx) {
-		duckPunchRequire(ctx.require);
-		return origExecuteDefFunc(deps, args, ctx);
+	priv['core'].executeDefFunc = function (def) {
+		duckPunchRequire(def.ctx.require);
+		return origExecuteDefFunc(def);
 	};
 
 	return true;
