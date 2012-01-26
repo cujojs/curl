@@ -126,34 +126,43 @@
 
 		this.id = id; // for ResourceDefs
 
-		function then (resolved, rejected) {
+		function then (resolved, rejected, meshed) {
 			// capture calls to callbacks
-			thens.push([resolved, rejected]);
+			// the third callback is for mesh/cycle detection
+			thens.push([resolved, rejected, meshed]);
 		}
 
 		function resolve (val) { complete(true, val); }
 
 		function reject (ex) { complete(false, ex); }
 
+		function notify (which, arg) {
+			// complete all callbacks
+			var aThen, cb, i = 0;
+			while ((aThen = thens[i++])) {
+				cb = aThen[which];
+				if (cb) cb(arg);
+			}
+		}
+
 		function complete (success, arg) {
 			// switch over to sync then()
 			then = success ?
 				function (resolve, reject) { resolve && resolve(arg); } :
 				function (resolve, reject) { reject && reject(arg); };
-			// we no longe throw during multiple calls to resolve or reject
+			// we no longer throw during multiple calls to resolve or reject
 			// since we don't really provide useful information anyways.
 			resolve = reject =
 				function () { /*throw new Error('Promise already completed.');*/ };
 			// complete all callbacks
-			var aThen, cb, i = 0;
-			while ((aThen = thens[i++])) {
-				cb = aThen[success ? 0 : 1];
-				if (cb) cb(arg);
-			}
+			notify(success ? 0 : 1, arg);
 		}
 
-		this.then = function (resolved, rejected) {
-			then(resolved, rejected);
+		this.then = function (resolved, rejected, meshed) {
+			then(resolved, rejected, meshed);
+			// execute mesh/cycle callback asap. we're using the callback
+			// itself as the identifier of the entity that entered the mesh
+			notify(3, meshed);
 			return self;
 		};
 		this.resolve = function (val) {
@@ -169,11 +178,11 @@
 
 	var ResourceDef = Promise; // subclassing isn't worth the extra bytes
 
-	function when (promiseOrValue, callback, errback) {
+	function when (promiseOrValue, callback, errback, meshback) {
 		// we can't just sniff for then(). if we do, resources that have a
 		// then() method will make dependencies wait!
 		if (promiseOrValue instanceof Promise) {
-			promiseOrValue.then(callback, errback);
+			promiseOrValue.then(callback, errback, meshback);
 		}
 		else {
 			callback(promiseOrValue);
@@ -290,7 +299,7 @@
 
 		begetCtx: function (absId, cfg) {
 
-			var ctx, exports, require;
+			var ctx, exports;
 
 			function normalize (childId) {
 				return core.normalizeName(childId, absId /*baseId*/);
@@ -487,7 +496,7 @@
 			};
 		},
 
-		executeDefFunc: function (deps, args, ctx) {
+		executeDefFunc: function (def) {
 			var resource, moduleThis;
 			// the force of AMD is strong so anything returned
 			// overrides exports.
@@ -495,12 +504,12 @@
 			// for all cjs-wrapped modules, just in case.
 			// also, use module.exports if that was set
 			// (node.js convention).
-			// note: exports will equal module.exports unless
-			// module.exports was reassigned inside module.
-			moduleThis = args.cjs ? ctx.cjsVars['exports'] : undef;
-			resource = args.res.apply(moduleThis, deps);
-			if (resource === undef && (args.cjs || ctx.useExports)) {
-				resource = ctx.cjsVars['module']['exports'];
+			moduleThis = def.cjs ? def.ctx.cjsVars['exports'] : undef;
+			resource = def.res.apply(moduleThis, def.deps);
+			if (resource === undef && (def.cjs || def.ctx.useExports || def.ctx.useModule)) {
+				// note: exports will equal module.exports unless
+				// module.exports was reassigned inside module.
+				resource = def.ctx.cjsVars['module']['exports'];
 			}
 			return resource;
 		},
@@ -508,15 +517,17 @@
 		resolveResDef: function (def, args) {
 
 			// TODO: does the context's config need to be passed in somehow?
-			// TODO: resolve context outside this function
-			var childCtx = core.begetCtx(def.id, userCfg);
+			def.ctx = core.begetCtx(def.id, userCfg);
+			def.cjs = args.cjs;
 
 			// get the dependencies and then resolve/reject
-			core.getDeps(def, args.deps, childCtx,
+			core.getDeps(def, args.deps, def.ctx,
 				function (deps) {
-					var resource, moduleThis;
+					var resource;
+					def.deps = deps;
+					def.res = args.res;
 					try {
-						resource = core.executeDefFunc(deps, args, childCtx);
+						resource = core.executeDefFunc(def);
 					}
 					catch (ex) {
 						def.reject(ex);
@@ -566,22 +577,21 @@
 		},
 
 		normalizeName: function (childId, baseId) {
-			var name = reduceLeadingDots(childId, baseId);
-			return name;
+			return reduceLeadingDots(childId, baseId);
 		},
 
 		fetchDep: function (depName, ctx) {
-			var fullId, delPos, loaderId, pathMap, resId, loaderInfo, pathInfo,
+			var fullId, delPos, loaderId, resId, loaderInfo, pathInfo,
 				def, cfg;
 
 			if (depName in ctx.cjsVars) {
 				// is this "require", "exports", or "module"?
 				// if "exports" or "module" indicate we should grab exports
-				ctx.useExports = ctx.useExports || depName != 'require';
+				ctx.useExports = ctx.useExports || depName == 'exports';
+				ctx.useModule = ctx.useModule || depName == 'module';
 				return ctx.cjsVars[depName];
 			}
 
-			pathMap = userCfg.pathMap;
 			// check for plugin loaderId
 			delPos = depName.indexOf('!');
 
@@ -616,7 +626,6 @@
 			else {
 
 				// fetch plugin or loader
-				var usePluginPath, loaderDef = cache[loaderId];
 				if (!loaderDef) {
 					loaderInfo = core.resolvePathInfo(loaderId, userCfg, delPos > 0);
 					loaderDef = cache[loaderId] = new ResourceDef(loaderId);
@@ -692,6 +701,10 @@
 			return def;
 		},
 
+		handleDepCycle: function (def1, def2, success, failure) {
+			failure(new Error('dependency cycle: ' + def1.id + ' - ' + def2.id));
+		},
+
 		getDeps: function (def, names, ctx, success, failure) {
 			var deps = [],
 				count = names.length,
@@ -705,8 +718,34 @@
 
 			function checkDone () {
 				if (--count == 0) {
+					// Note: IE may have obtained the dependencies sync, thus the completed flag
 					completed = true;
 					success(deps);
+				}
+			}
+
+
+			function getDep (index, depName) {
+				var depDef;
+				// check for blanks. fixes #32.
+				// this could also help with the has! plugin (?)
+				if (!depName) {
+					checkDone();
+				}
+				else {
+					// hook into promise callbacks
+					depDef = when(core.fetchDep(depName, ctx),
+						function doSuccess (dep) {
+							deps[index] = dep; // got it!
+							checkDone();
+						},
+						doFailure,
+						function checkCycle (initiator) {
+							if (initiator == checkCycle) {
+								core.handleDepCycle(def, depDef, doSuccess, doFailure);
+							}
+						}
+					);
 				}
 			}
 
@@ -716,25 +755,9 @@
 
 				preload = true; // indicate we've preloaded everything
 
-				// obtain each dependency
-				// Note: IE may have obtained the dependencies sync (stooooopid!) thus the completed flag
-				for (i = 0, len = names.length; i < len && !completed; i++) (function (index, depName) {
-					// check for blanks. fixes #32.
-					// this could also help with the has! plugin (?)
-					if (!depName) {
-						checkDone();
-					}
-					else {
-						// hook into promise callbacks
-						when(core.fetchDep(depName, ctx),
-							function (dep) {
-								deps[index] = dep; // got it!
-								checkDone();
-							},
-							doFailure
-						);
-					}
-				}(i, names[i]));
+				for (i = 0, len = names.length; i < len && !completed; i++) {
+					getDep(i, names[i]);
+				}
 
 				// were there none to fetch and did we not already complete the promise?
 				if (count == 0 && !completed) {
@@ -767,18 +790,21 @@
 
 	function _require (ids, callback, ctx) {
 		// Note: callback could be a promise
+		var id, def, earlyExport;
 
 		// RValue require (CommonJS)
 		if (isType(ids, 'String')) {
 			// return resource
-			var id = ctx.require.normalize(ids), def = cache[id];
-			if (!(id in cache) || def instanceof ResourceDef) {
+			id = ctx.require.normalize(ids);
+			def = cache[id];
+			earlyExport = def instanceof ResourceDef && def.cjs && def.ctx.exports;
+			if (!(id in cache) || !earlyExport) {
 				throw new Error('Module is not already resolved: '  + id);
 			}
 			if (callback) {
 				throw new Error('require(<string>, callback) not allowed. use <array>.');
 			}
-			return def;
+			return earlyExport || def;
 		}
 
 		// resolve dependencies
