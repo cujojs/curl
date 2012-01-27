@@ -143,7 +143,7 @@ Promises-based API for executing callbacks.
 * ['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
 * callback: Function to receive modules or resources
 * errorback: Function to call if an exception occurred while loading
-* For full CommonJS Promises/A compliance, use [when.js](https://github.com/briancavalier/when.js)
+* For full CommonJS Promises/A compliance, use [when.js](https://github.com/cujojs/when)
     * `when(curl(['dep1'])).then(callback);`
 
 ---------
@@ -735,9 +735,9 @@ out of cujo.js.  Our goal is to make the advanced concepts in cujo.js more
 palatable by breaking them down into easier-to-grok chunks.  Other cujo.js
 libs include:
 
-* [canhaz](https://github.com/briancavalier/canhaz): a project and code bootstrapping tool that will save you tons of typing.
-* [wire](https://github.com/briancavalier/wire): A light, fast, flexible Javascript IOC container
-* [when.js](https://github.com/briancavalier/when.js): A small, fast Promises/A compliant promises implementation
+* [canhaz](https://github.com/cujojs/canhaz): a project and code bootstrapping tool that will save you tons of typing.
+* [wire](https://github.com/cujojs/wire): A light, fast, flexible Javascript IOC container
+* [when.js](https://github.com/cujojs/when): A small, fast Promises/A compliant promises implementation
 * [cram](https://github.com/cujojs/cram): a javascript compressor, concatenator, and optimizer meant to be used with curl.js
 
 Kudos
