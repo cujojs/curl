@@ -121,20 +121,21 @@
 
 	function Promise (id) {
 
-		var self = this,
-			thens = [];
+		var self, thens, resolve, reject;
+
+		self = this;
+		thens = [];
 
 		this.id = id; // for ResourceDefs
 
-		function then (resolved, rejected, meshed) {
+		function then (resolved, rejected, progressed) {
 			// capture calls to callbacks
-			// the third callback is for mesh/cycle detection
-			thens.push([resolved, rejected, meshed]);
+			thens.push([resolved, rejected, progressed]);
 		}
 
-		function resolve (val) { complete(true, val); }
+		resolve = function (val) { complete(true, val); };
 
-		function reject (ex) { complete(false, ex); }
+		reject = function (ex) { complete(false, ex); };
 
 		function notify (which, arg) {
 			// complete all callbacks
@@ -148,8 +149,8 @@
 		function complete (success, arg) {
 			// switch over to sync then()
 			then = success ?
-				function (resolve, reject) { resolve && resolve(arg); } :
-				function (resolve, reject) { reject && reject(arg); };
+				function (resolved, rejected) { resolved && resolved(arg); } :
+				function (resolved, rejected) { rejected && rejected(arg); };
 			// we no longer throw during multiple calls to resolve or reject
 			// since we don't really provide useful information anyways.
 			resolve = reject =
@@ -158,11 +159,8 @@
 			notify(success ? 0 : 1, arg);
 		}
 
-		this.then = function (resolved, rejected, meshed) {
-			then(resolved, rejected, meshed);
-			// execute mesh/cycle callback asap. we're using the callback
-			// itself as the identifier of the entity that entered the mesh
-			notify(3, meshed);
+		this.then = function (resolved, rejected, progressed) {
+			then(resolved, rejected, progressed);
 			return self;
 		};
 		this.resolve = function (val) {
@@ -173,16 +171,23 @@
 			self.rejected = ex;
 			reject(ex);
 		};
+		this.progress = function (msg) {
+			notify(2, msg);
+		}
 
 	}
 
 	var ResourceDef = Promise; // subclassing isn't worth the extra bytes
 
-	function when (promiseOrValue, callback, errback, meshback) {
+	function isPromise (o) {
+		return o instanceof ResourceDef;
+	}
+
+	function when (promiseOrValue, callback, errback, progback) {
 		// we can't just sniff for then(). if we do, resources that have a
 		// then() method will make dependencies wait!
-		if (promiseOrValue instanceof Promise) {
-			promiseOrValue.then(callback, errback, meshback);
+		if (isPromise(promiseOrValue)) {
+			promiseOrValue.then(callback, errback, progback);
 		}
 		else {
 			callback(promiseOrValue);
@@ -581,8 +586,8 @@
 		},
 
 		fetchDep: function (depName, ctx) {
-			var fullId, delPos, loaderId, resId, loaderInfo, pathInfo,
-				def, cfg;
+			var fullId, delPos, resId, loaderId, loaderInfo, loaderDef,
+				pathInfo, def, cfg;
 
 			if (depName in ctx.cjsVars) {
 				// is this "require", "exports", or "module"?
@@ -626,6 +631,7 @@
 			else {
 
 				// fetch plugin or loader
+				loaderDef = cache[loaderId];
 				if (!loaderDef) {
 					loaderInfo = core.resolvePathInfo(loaderId, userCfg, delPos > 0);
 					loaderDef = cache[loaderId] = new ResourceDef(loaderId);
@@ -701,8 +707,18 @@
 			return def;
 		},
 
-		handleDepCycle: function (def1, def2, success, failure) {
-			failure(new Error('dependency cycle: ' + def1.id + ' - ' + def2.id));
+		handleDepCycle: function (chain, success, failure) {
+			// override this function to attempt to handle dependencies.
+			// there are several choices (choose one):
+			// a) call failure with an exception,
+			// b) call success with some result somehow
+			// c) resolve or reject one of the resource defs, or
+			// d) do nothing and let another run of this routine to resolve the cycle.
+			// TODO: remove success and failure callbacks since they are the same as resolving/rejecting the first def in the chain
+			var err = new Error('dependency cycle: ' + chain[0].id);
+			err.chain = chain;
+			chain[0].reject(err);
+//			failure(err);
 		},
 
 		getDeps: function (def, names, ctx, success, failure) {
@@ -711,41 +727,62 @@
 				completed = false,
 				len, i;
 
-			function doFailure (ex) {
-				completed = true;
-				failure(ex);
+			function addToCollection (item, coll) {
+				return coll.concat(item);
 			}
-
-			function checkDone () {
-				if (--count == 0) {
-					// Note: IE may have obtained the dependencies sync, thus the completed flag
-					completed = true;
-					success(deps);
-				}
-			}
-
 
 			function getDep (index, depName) {
-				var depDef;
+				var depDef, checkCycle;
+
+				function doFailure (ex) {
+					completed = true;
+					checkCycle = function () {};
+					failure(ex);
+				}
+
+				function checkDone () {
+					if (--count == 0) {
+						// Note: IE may have obtained the dependencies sync, thus the completed flag
+						completed = true;
+						success(deps);
+					}
+				}
+
+				function doSuccess (dep) {
+					deps[index] = dep; // got it!
+					checkCycle = function () {};
+					checkDone();
+				}
+
+				checkCycle = function (chain) {
+					// this callback is for def, but is only called when it has dependencies of its own
+console.log('cycle check for', (def && def.id), 'got called by dep', depName, 'with chain:', chain.map(function (d) { return d.id; }));
+
+//					if (chain.length > 1 && chain[0] == chain[chain.length - 1]) {
+					if (chain.length > 1 && chain[0] == depDef) {
+//console.log('cycle check for', (def && def.id), 'got called by dep', depName, 'with chain:', chain.map(function (d) { return d.id; }));
+						// oops, we are in a cycle cuz this chain started with me
+						// handle it
+						core.handleDepCycle(chain, doSuccess, doFailure);
+					}
+					// add dependency and cascade-notify our dependers/listeners
+					else {
+						def.progress(addToCollection(def, chain));
+					}
+				};
+
 				// check for blanks. fixes #32.
 				// this could also help with the has! plugin (?)
 				if (!depName) {
 					checkDone();
 				}
 				else {
-					// hook into promise callbacks
-					depDef = when(core.fetchDep(depName, ctx),
-						function doSuccess (dep) {
-							deps[index] = dep; // got it!
-							checkDone();
-						},
-						doFailure,
-						function checkCycle (initiator) {
-							if (initiator == checkCycle) {
-								core.handleDepCycle(def, depDef, doSuccess, doFailure);
-							}
-						}
-					);
+					// hook into promise callbacks. only hook
+					// progress if depender is a promise (can't be a circular
+					// dep if it's already resolved)
+					depDef = core.fetchDep(depName, ctx);
+					when(depDef, doSuccess, doFailure, isPromise(def) && checkCycle);
+window.foo = (window.foo || 0) + 1;console.log('registered checkCycle:', depDef, def, window.foo);
 				}
 			}
 
@@ -759,12 +796,19 @@
 					getDep(i, names[i]);
 				}
 
-				// were there none to fetch and did we not already complete the promise?
 				if (count == 0 && !completed) {
+					// there were none to fetch
 					success(deps);
 				}
+				else if (names.length > 0 && isPromise(def) /* at top level def is undefined */) {
+					// notify dependers to check for circular dependencies
+					// use the progress handler for notifications
+					// TODO: figure out how to stop entering this code branch if the dependencies are all psuedo-deps ("require", "exports", "module")
+					def.progress(addToCollection(def, []));
+//					def.progress([]);
+				}
 
-			}, doFailure);
+			});
 
 		},
 
@@ -797,7 +841,7 @@
 			// return resource
 			id = ctx.require.normalize(ids);
 			def = cache[id];
-			earlyExport = def instanceof ResourceDef && def.cjs && def.ctx.exports;
+			earlyExport = isPromise(def) && def.cjs && def.ctx.exports;
 			if (!(id in cache) || !earlyExport) {
 				throw new Error('Module is not already resolved: '  + id);
 			}
@@ -884,7 +928,7 @@
 			// check if this resource has already been resolved (can happen if
 			// a module was defined inside a built file and outside of it and
 			// dev didn't coordinate it explicitly)
-			if (def instanceof ResourceDef) {
+			if (isPromise(def)) {
 				def.useNet = false;
 				core.resolveResDef(def, args);
 			}
