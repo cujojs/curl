@@ -727,12 +727,8 @@
 				completed = false,
 				len, i;
 
-			function addToCollection (item, coll) {
-				return coll.concat(item);
-			}
-
 			function getDep (index, depName) {
-				var depDef, checkCycle;
+				var depDef, checkCycle, cycles;
 
 				function doFailure (ex) {
 					completed = true;
@@ -754,25 +750,20 @@
 					checkDone();
 				}
 
-				checkCycle = function (chain) {
-					// this callback is for def, but is only called when it has dependencies of its own
-console.log('cycle check for', (def && def.id), 'got called by dep', depName, 'with chain:', chain.map(function (d) { return d.id; }));
-
-//					if (chain.length > 1 && chain[0] == chain[chain.length - 1]) {
-					if (chain.length > 1 && chain[0] == depDef) {
-//console.log('cycle check for', (def && def.id), 'got called by dep', depName, 'with chain:', chain.map(function (d) { return d.id; }));
-						// oops, we are in a cycle cuz this chain started with me
+				checkCycle = function (prev) {
+					if (prev == depDef) {
+						// oops, we are in a cycle cuz this prev started with me
 						// handle it
-						core.handleDepCycle(chain, doSuccess, doFailure);
+						core.handleDepCycle([def, prev], doSuccess, doFailure);
 					}
 					// add dependency and cascade-notify our dependers/listeners
 					else {
-						def.progress(addToCollection(def, chain));
+						def.progress(def);
 					}
 				};
 
 				// check for blanks. fixes #32.
-				// this could also help with the has! plugin (?)
+				// this could also help with the has! plugin
 				if (!depName) {
 					checkDone();
 				}
@@ -782,7 +773,6 @@ console.log('cycle check for', (def && def.id), 'got called by dep', depName, 'w
 					// dep if it's already resolved)
 					depDef = core.fetchDep(depName, ctx);
 					when(depDef, doSuccess, doFailure, isPromise(def) && checkCycle);
-window.foo = (window.foo || 0) + 1;console.log('registered checkCycle:', depDef, def, window.foo);
 				}
 			}
 
@@ -802,10 +792,9 @@ window.foo = (window.foo || 0) + 1;console.log('registered checkCycle:', depDef,
 				}
 				else if (names.length > 0 && isPromise(def) /* at top level def is undefined */) {
 					// notify dependers to check for circular dependencies
-					// use the progress handler for notifications
+					// using the progress handler for notifications
 					// TODO: figure out how to stop entering this code branch if the dependencies are all psuedo-deps ("require", "exports", "module")
-					def.progress(addToCollection(def, []));
-//					def.progress([]);
+					def.progress();
 				}
 
 			});
@@ -842,7 +831,7 @@ window.foo = (window.foo || 0) + 1;console.log('registered checkCycle:', depDef,
 			id = ctx.require.normalize(ids);
 			def = cache[id];
 			earlyExport = isPromise(def) && def.cjs && def.ctx.exports;
-			if (!(id in cache) || !earlyExport) {
+			if (!(id in cache) && !earlyExport) {
 				throw new Error('Module is not already resolved: '  + id);
 			}
 			if (callback) {

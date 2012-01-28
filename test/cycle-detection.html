@@ -25,8 +25,10 @@
 			'domReady!'
 		]
 	).then(
-		success,
-		fail
+		fail,
+		function (ex) {
+			if (/cycle/.test(ex.message)) success(); else fail(ex);
+		}
 	);
 
 	// fail if we haven't succeeded in 3 seconds. note: this is janky
@@ -35,7 +37,7 @@
 	function success (foo) {
 		clearTimeout(timeout);
 		var doc = document;
-		doc.body.appendChild(doc.createTextNode('FAILED: recursion not detected'));
+		doc.body.appendChild(doc.createTextNode('SUCCESS: cycle detected'));
 	}
 
 	function fail (ex) {

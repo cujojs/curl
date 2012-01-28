@@ -50,7 +50,7 @@
 				document.body.appendChild(document.createElement('br'));
 				document.body.appendChild(document.createTextNode('A module that inspects `require("module")` loaded successfully if "commonjs/module" == ' + hybrid.foo + '.'));
 				document.body.appendChild(document.createElement('br'));
-				document.body.appendChild(document.createTextNode('A module that exposes its module info loaded successfully if this "commonjs/module" == ' + thisModule._module.testMessage + '.'));
+				document.body.appendChild(document.createTextNode('A module that exposes its module info loaded successfully if this "commonjs/module" == ' + thisModule._module.id + '.'));
 			}
 		}
 	);
