@@ -38,12 +38,14 @@
 		clearTimeout(timeout);
 		var doc = document;
 		doc.body.appendChild(doc.createTextNode('SUCCESS: cycle detected'));
+		console.log('loop detected');
 	}
 
 	function fail (ex) {
 		clearTimeout(timeout);
 		var doc = document;
 		doc.body.appendChild(doc.createTextNode('FAILED: ' + (ex ? ex.message : 'timed out')));
+		console.log('yak');
 	}
 
 </script>

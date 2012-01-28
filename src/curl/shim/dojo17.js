@@ -38,11 +38,15 @@ define(/*=='curl/shim/dojo17',==*/ ['curl/_privileged', './dojo16'], function (p
 		// cycle (and aren't coded to handle a cycle) could be waiting
 		// call success instead so that the currently waiting module
 		// can have something to work with.  iiuc, this is roughly how the
-		// horribly unreliable dojo loader works. :(
-		var def = modules[0];
-		if (dojoDetectorRx.test(def.id)) {
-			def.resolve(def.ctx.exports);
-			//success(def.ctx.exports);
+		// dojo loader works. :(
+		var def = modules[0], dep = modules[1];
+		if (dojoDetectorRx.test(dep.id)) {
+			if (dep.ctx.useExports) {
+				success(dep.ctx.cjsVars.exports);
+			}
+			else {
+				// wait until another time when the dep uses exports!
+			}
 		}
 		else {
 			orig(modules, success, failure);

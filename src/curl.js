@@ -183,6 +183,8 @@
 		return o instanceof ResourceDef;
 	}
 
+	function noop () {}
+
 	function when (promiseOrValue, callback, errback, progback) {
 		// we can't just sniff for then(). if we do, resources that have a
 		// then() method will make dependencies wait!
@@ -727,53 +729,57 @@
 				completed = false,
 				len, i;
 
+			function checkDone () {
+				if (--count == 0) {
+					// Note: IE may have obtained the dependencies sync, thus the completed flag
+					completed = true;
+					success(deps);
+				}
+			}
+
 			function getDep (index, depName) {
-				var depDef, checkCycle, cycles;
+				var depDef, onProgress;
 
 				function doFailure (ex) {
 					completed = true;
-					checkCycle = function () {};
+					onProgress = noop;
 					failure(ex);
-				}
-
-				function checkDone () {
-					if (--count == 0) {
-						// Note: IE may have obtained the dependencies sync, thus the completed flag
-						completed = true;
-						success(deps);
-					}
 				}
 
 				function doSuccess (dep) {
 					deps[index] = dep; // got it!
-					checkCycle = function () {};
+					onProgress = noop;
 					checkDone();
 				}
 
-				checkCycle = function (prev) {
-					if (prev == depDef) {
-						// oops, we are in a cycle cuz this prev started with me
+				function doProgress (def) {
+					onProgress && onProgress(def);
+				}
+
+				onProgress = function checkCycle (origin) {basic.html
+					// the first time this runs, origin == depDef, so we send
+					// undefined the first time.
+					if (origin == depDef) {
+						// oops, we are in a cycle cuz i am the origin
 						// handle it
-						core.handleDepCycle([def, prev], doSuccess, doFailure);
+						core.handleDepCycle([def, depDef], doSuccess, doFailure);
 					}
-					// add dependency and cascade-notify our dependers/listeners
-					else {
-						def.progress(def);
+					// cascade-notify our dependers/listeners
+					else if (isPromise(def)) {
+						// push to next-turn to prevent stack overruns on large dep graphs
+						// with a 25ms delay, there's a better chance that deps will
+						// be loaded before the next time checkCycle is called,
+						// actually improving performance over the network.
+						// performance in a built file will be lower, though/
+						setTimeout(function () { def.progress(origin || depDef); }, 25);
 					}
 				};
 
-				// check for blanks. fixes #32.
-				// this could also help with the has! plugin
-				if (!depName) {
-					checkDone();
-				}
-				else {
-					// hook into promise callbacks. only hook
-					// progress if depender is a promise (can't be a circular
-					// dep if it's already resolved)
-					depDef = core.fetchDep(depName, ctx);
-					when(depDef, doSuccess, doFailure, isPromise(def) && checkCycle);
-				}
+				// hook into promise callbacks. only hook
+				// progress if depender is a promise (can't be a circular
+				// dep if it's already resolved)
+				depDef = core.fetchDep(depName, ctx);
+				when(depDef, doSuccess, doFailure, doProgress);
 			}
 
 			// wait for preload
@@ -783,7 +789,14 @@
 				preload = true; // indicate we've preloaded everything
 
 				for (i = 0, len = names.length; i < len && !completed; i++) {
-					getDep(i, names[i]);
+					if (names[i]) {
+						getDep(i, names[i]);
+					}
+					// check for blanks. fixes #32.
+					// this could also help with the has! plugin
+					else {
+						checkDone();
+					}
 				}
 
 				if (count == 0 && !completed) {
@@ -791,6 +804,7 @@
 					success(deps);
 				}
 				else if (names.length > 0 && isPromise(def) /* at top level def is undefined */) {
+					// TODO: pass a promise at top level instead of success/failure callbacks
 					// notify dependers to check for circular dependencies
 					// using the progress handler for notifications
 					// TODO: figure out how to stop entering this code branch if the dependencies are all psuedo-deps ("require", "exports", "module")
