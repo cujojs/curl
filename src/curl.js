@@ -756,7 +756,7 @@
 					onProgress && onProgress(def);
 				}
 
-				onProgress = function checkCycle (origin) {basic.html
+				onProgress = function checkCycle (origin) {
 					// the first time this runs, origin == depDef, so we send
 					// undefined the first time.
 					if (origin == depDef) {
