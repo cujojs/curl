@@ -5,20 +5,6 @@
 
 <script>
 
-	// mock console for IE
-	if (!window.console) console = {};
-	if (!('log' in console)) {
-		console._msg = [];
-		console.log = function (msg) {
-			var _msg = this._msg;
-			_msg.push(msg && msg.join ? msg.join(' ') : msg);
-			clearTimeout(this._timeout);
-			this._timeout = setTimeout(function () {
-				alert(_msg.join('\n'));
-			}, 100);
-		};
-	}
-
 	curl = {
 		paths: {
 			curl: '../src/curl',
@@ -42,7 +28,6 @@
 		]
 	).then(
 		function (exports, thisModule, hybrid) {
-			console.log('********* loaded');
 			if (document.body) {
 				document.body.appendChild(document.createTextNode('A module that exports properties loaded successfully if "it works" == ' + exports.testMessage + '.'));
 				document.body.appendChild(document.createElement('br'));
@@ -50,7 +35,7 @@
 				document.body.appendChild(document.createElement('br'));
 				document.body.appendChild(document.createTextNode('A module that inspects `require("module")` loaded successfully if "commonjs/module" == ' + hybrid.foo + '.'));
 				document.body.appendChild(document.createElement('br'));
-				document.body.appendChild(document.createTextNode('A module that exposes its module info loaded successfully if this "commonjs/module" == ' + thisModule._module.id + '.'));
+				document.body.appendChild(document.createTextNode('A module that exposes its module info loaded successfully if this "commonjs/this" == ' + thisModule._module.id + '.'));
 			}
 		}
 	);

@@ -1,4 +1,3 @@
-define(['exports'], function (exports) {
+define(function (require, exports) {
 	exports.testMessage = 'it works';
-	console.log('exports test loaded');
 });
