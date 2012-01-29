@@ -33,23 +33,24 @@ define(/*=='curl/shim/dojo17',==*/ ['curl/_privileged', './dojo16'], function (p
 	// (see dojo16 shim), dojo 1.7 has a wholly unnecessary dependency cycle
 	// that the dojo loader resolves in a very janky way.
 
-	priv['core'].handleDepCycle = function (modules, success, failure) {
+	priv['core'].handleDepCycle = function (defs, earlyExport, failure) {
 		// don't resolve def since other modules that aren't in the
 		// cycle (and aren't coded to handle a cycle) could be waiting
-		// call success instead so that the currently waiting module
+		// call earlyExport instead so that the currently waiting module
 		// can have something to work with.  iiuc, this is roughly how the
-		// dojo loader works. :(
-		var def = modules[0], dep = modules[1];
+		// dojo loader works.
+		var parent = defs[0], dep = defs[1];
 		if (dojoDetectorRx.test(dep.id)) {
-			if (dep.ctx.useExports) {
-				success(dep.ctx.cjsVars.exports);
+			if (dep.ctx.useExports && (!parent || parent.ctx.useExports)) {
+				earlyExport(dep.ctx.cjsVars.exports);
 			}
 			else {
 				// wait until another time when the dep uses exports!
+				// this could be using entirely different modules in the cycle.
 			}
 		}
 		else {
-			orig(modules, success, failure);
+			orig(defs, earlyExport, failure);
 		}
 	};
 

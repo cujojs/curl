@@ -183,8 +183,6 @@
 		return o instanceof ResourceDef;
 	}
 
-	function noop () {}
-
 	function when (promiseOrValue, callback, errback, progback) {
 		// we can't just sniff for then(). if we do, resources that have a
 		// then() method will make dependencies wait!
@@ -709,25 +707,26 @@
 			return def;
 		},
 
-		handleDepCycle: function (chain, success, failure) {
+		handleDepCycle: function (defs, success, failure) {
 			// override this function to attempt to handle dependencies.
 			// there are several choices (choose one):
 			// a) call failure with an exception,
-			// b) call success with some result somehow
-			// c) resolve or reject one of the resource defs, or
-			// d) do nothing and let another run of this routine to resolve the cycle.
-			// TODO: remove success and failure callbacks since they are the same as resolving/rejecting the first def in the chain
-			var err = new Error('dependency cycle: ' + chain[0].id);
-			err.chain = chain;
-			chain[0].reject(err);
-//			failure(err);
+			// b) call success with some result for defs[1] somehow
+			// c) resolve or reject one of the defs, or
+			// d) do nothing and let another run of this routine try to
+			// resolve the cycle.
+			// Note: defs[0] can be undefined at top-level: require() or curl().
+			var err = new Error('dependency cycle: ' + defs[1].id);
+			err.chain = defs;
+			defs[1].reject(err);
 		},
 
 		getDeps: function (def, names, ctx, success, failure) {
-			var deps = [],
-				count = names.length,
-				completed = false,
-				len, i;
+			var deps, count, len, i , name, completed;
+
+			deps = [];
+			count = len = names.length;
+			completed = false;
 
 			function checkDone () {
 				if (--count == 0) {
@@ -740,21 +739,7 @@
 			function getDep (index, depName) {
 				var depDef, onProgress;
 
-				function doFailure (ex) {
-					completed = true;
-					onProgress = noop;
-					failure(ex);
-				}
-
-				function doSuccess (dep) {
-					deps[index] = dep; // got it!
-					onProgress = noop;
-					checkDone();
-				}
-
-				function doProgress (def) {
-					onProgress && onProgress(def);
-				}
+				depDef = core.fetchDep(depName, ctx);
 
 				onProgress = function checkCycle (origin) {
 					// the first time this runs, origin == depDef, so we send
@@ -775,11 +760,27 @@
 					}
 				};
 
+				function doSuccess (dep) {
+					deps[index] = dep; // got it!
+					onProgress = undef;
+					checkDone();
+				}
+
+				function doFailure (ex) {
+					completed = true;
+					onProgress = undef;
+					failure(ex);
+				}
+
+				function doProgress (def) {
+					onProgress && onProgress(def);
+				}
+
 				// hook into promise callbacks. only hook
 				// progress if depender is a promise (can't be a circular
 				// dep if it's already resolved)
-				depDef = core.fetchDep(depName, ctx);
 				when(depDef, doSuccess, doFailure, doProgress);
+
 			}
 
 			// wait for preload
@@ -788,27 +789,26 @@
 
 				preload = true; // indicate we've preloaded everything
 
-				for (i = 0, len = names.length; i < len && !completed; i++) {
+				for (i = 0; i < len && !completed; i++) {
+					// check for blanks. fixes #32.
+					// this could also help with the has! plugin
 					if (names[i]) {
 						getDep(i, names[i]);
 					}
-					// check for blanks. fixes #32.
-					// this could also help with the has! plugin
 					else {
 						checkDone();
 					}
 				}
 
-				if (count == 0 && !completed) {
-					// there were none to fetch
-					success(deps);
-				}
-				else if (names.length > 0 && isPromise(def) /* at top level def is undefined */) {
+				if (count > 0) {
 					// TODO: pass a promise at top level instead of success/failure callbacks
 					// notify dependers to check for circular dependencies
 					// using the progress handler for notifications
-					// TODO: figure out how to stop entering this code branch if the dependencies are all psuedo-deps ("require", "exports", "module")
-					def.progress();
+					if (isPromise(def)) def.progress();
+				}
+				else if (!completed) {
+					// there were none to fetch
+					success(deps);
 				}
 
 			});
