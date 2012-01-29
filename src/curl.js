@@ -128,9 +128,9 @@
 
 		this.id = id; // for ResourceDefs
 
-		function then (resolved, rejected, progressed) {
+		function then (resolved, rejected/*, progressed*/) {
 			// capture calls to callbacks
-			thens.push([resolved, rejected, progressed]);
+			thens.push([resolved, rejected/*, progressed*/]);
 		}
 
 		resolve = function (val) { complete(true, val); };
@@ -159,8 +159,8 @@
 			notify(success ? 0 : 1, arg);
 		}
 
-		this.then = function (resolved, rejected, progressed) {
-			then(resolved, rejected, progressed);
+		this.then = function (resolved, rejected/*, progressed*/) {
+			then(resolved, rejected/*, progressed*/);
 			return self;
 		};
 		this.resolve = function (val) {
@@ -171,9 +171,9 @@
 			self.rejected = ex;
 			reject(ex);
 		};
-		this.progress = function (msg) {
-			notify(2, msg);
-		}
+//		this.progress = function (msg) {
+//			notify(2, msg);
+//		}
 
 	}
 
@@ -295,6 +295,7 @@
 				when(preload, function () {
 					var ctx = core.begetCtx('', cfg);
 					preload = new ResourceDef('*preload');
+					preload.ctx = ctx;
 					ctx.isPreload = true;
 					_require(cfg['preload'], preload, ctx);
 				});
@@ -522,7 +523,8 @@
 		resolveResDef: function (def, args) {
 
 			// TODO: does the context's config need to be passed in somehow?
-			def.ctx = core.begetCtx(def.id, userCfg);
+			//def.ctx = core.begetCtx(def.id, userCfg);
+
 			def.cjs = args.cjs;
 
 			// get the dependencies and then resolve/reject
@@ -622,7 +624,7 @@
 				def = cache[resId];
 				if (!def) {
 					def = cache[resId] = new ResourceDef(resId);
-					// TODO: def.ctx = core.childCtx(ctx);
+					def.ctx = core.begetCtx(resId, cfg || userCfg);
 					def.url = core.resolveUrl(pathInfo.path, cfg, true);
 					core.fetchResDef(def);
 				}
@@ -635,14 +637,17 @@
 				if (!loaderDef) {
 					loaderInfo = core.resolvePathInfo(loaderId, userCfg, delPos > 0);
 					loaderDef = cache[loaderId] = new ResourceDef(loaderId);
+					loaderDef.ctx = core.begetCtx(loaderId, cfg || userCfg);
 					loaderDef.url = core.resolveUrl(loaderInfo.path, userCfg, true);
 					core.fetchResDef(loaderDef);
 				}
 
 				// we need to use depName until plugin tells us normalized id.
 				// if the plugin changes the id, we need to consolidate
-				// def promises below.
+				// def promises below.  Note: exports objects will be different
+				// between pre-normalized and post-normalized defs! TODO: fix this somehow
 				def = new ResourceDef(depName);
+				def.ctx = core.begetCtx(depName, cfg || userCfg); // note: only the exports object is useful in ctx
 
 				when(loaderDef,
 					function (plugin) {
@@ -658,9 +663,6 @@
 							resId = ctx.require.normalize(depName.substr(delPos + 1));
 						}
 
-						// plugin may have its own pathMap (plugin-specific paths)
-						childCtx = core.begetCtx(resId, cfg);
-
 						// use the full id (loaderId + id) to id plugin resources
 						// so multiple plugins may each process the same resource
 						fullId = loaderId + '!' + resId;
@@ -669,7 +671,11 @@
 						// if this is our first time fetching this (normalized) def
 						if (!normalizedDef) {
 
+							// plugin may have its own pathMap (plugin-specific paths)
+							childCtx = core.begetCtx(resId, cfg);
+
 							normalizedDef = new ResourceDef(fullId);
+							normalizedDef.ctx = childCtx;
 
 							// resName could be blank if the plugin doesn't specify an id (e.g. "domReady!")
 							// don't cache non-determinate "dynamic" resources (or non-existent resources)
@@ -707,20 +713,6 @@
 			return def;
 		},
 
-		handleDepCycle: function (defs, success, failure) {
-			// override this function to attempt to handle dependencies.
-			// there are several choices (choose one):
-			// a) call failure with an exception,
-			// b) call success with some result for defs[1] somehow
-			// c) resolve or reject one of the defs, or
-			// d) do nothing and let another run of this routine try to
-			// resolve the cycle.
-			// Note: defs[0] can be undefined at top-level: require() or curl().
-			var err = new Error('dependency cycle: ' + defs[1].id);
-			err.chain = defs;
-			defs[1].reject(err);
-		},
-
 		getDeps: function (def, names, ctx, success, failure) {
 			var deps, count, len, i , name, completed;
 
@@ -737,49 +729,22 @@
 			}
 
 			function getDep (index, depName) {
-				var depDef, onProgress;
+				var depDef;
 
 				depDef = core.fetchDep(depName, ctx);
 
-				onProgress = function checkCycle (origin) {
-					// the first time this runs, origin == depDef, so we send
-					// undefined the first time.
-					if (origin == depDef) {
-						// oops, we are in a cycle cuz i am the origin
-						// handle it
-						core.handleDepCycle([def, depDef], doSuccess, doFailure);
-					}
-					// cascade-notify our dependers/listeners
-					else if (isPromise(def)) {
-						// push to next-turn to prevent stack overruns on large dep graphs
-						// with a 25ms delay, there's a better chance that deps will
-						// be loaded before the next time checkCycle is called,
-						// actually improving performance over the network.
-						// performance in a built file will be lower, though/
-						setTimeout(function () { def.progress(origin || depDef); }, 25);
-					}
-				};
-
 				function doSuccess (dep) {
 					deps[index] = dep; // got it!
-					onProgress = undef;
 					checkDone();
 				}
 
 				function doFailure (ex) {
 					completed = true;
-					onProgress = undef;
 					failure(ex);
 				}
 
-				function doProgress (def) {
-					onProgress && onProgress(def);
-				}
-
-				// hook into promise callbacks. only hook
-				// progress if depender is a promise (can't be a circular
-				// dep if it's already resolved)
-				when(depDef, doSuccess, doFailure, doProgress);
+				// hook into promise callbacks.
+				when(depDef, doSuccess, doFailure);
 
 			}
 
@@ -800,13 +765,7 @@
 					}
 				}
 
-				if (count > 0) {
-					// TODO: pass a promise at top level instead of success/failure callbacks
-					// notify dependers to check for circular dependencies
-					// using the progress handler for notifications
-					if (isPromise(def)) def.progress();
-				}
-				else if (!completed) {
+				if (count == 0 && !completed) {
 					// there were none to fetch
 					success(deps);
 				}
@@ -924,9 +883,12 @@
 		if (id != undef) {
 			// named define(), it is in the cache if we are loading a dependency
 			// (could also be a secondary define() appearing in a built file, etc.)
+			// id is an absolute id in this case, so we can get the config and context
 			var def = cache[id];
 			if (!def) {
 				def = cache[id] = new ResourceDef(id);
+				var pathInfo = core.resolvePathInfo(id, userCfg);
+				def.ctx = core.begetCtx(id, pathInfo.config);
 			}
 			// check if this resource has already been resolved (can happen if
 			// a module was defined inside a built file and outside of it and
