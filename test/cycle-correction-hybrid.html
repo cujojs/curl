@@ -49,14 +49,18 @@
 
 	function success () {
 		clearTimeout(timeout);
-		var doc = document;
-		doc.body.appendChild(doc.createTextNode('SUCCESS: cycle corrected'));
+		write('SUCCESS: cycle corrected');
 	}
 
 	function fail (ex) {
 		clearTimeout(timeout);
-		var doc = document;
-		doc.body.appendChild(doc.createTextNode('FAILED: ' + (ex ? ex.message : 'timed out')));
+		write('FAILED: ' + (ex ? ex.message : 'timed out'));
+	}
+
+	function write (msg) {
+		curl('domReady!', function () {
+			document.body.appendChild(document.createElement('div')).innerHTML = msg;
+		});
 	}
 
 </script>
