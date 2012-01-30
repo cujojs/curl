@@ -55,6 +55,8 @@
 		// script ready states that signify it's loaded
 		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
 		orsc = 'onreadystatechange',
+		// messages
+		msgUsingExports = {},
 		core;
 
 	function isType (obj, type) {
@@ -119,18 +121,20 @@
 		return child;
 	}
 
-	function Promise (id) {
+	function ResourceDef (id, ctx, cfg) {
 
 		var self, thens, resolve, reject;
 
 		self = this;
 		thens = [];
 
-		this.id = id; // for ResourceDefs
+		this.id = id;
+		this.cfg = cfg;
+		this.ctx = ctx;
 
-		function then (resolved, rejected/*, progressed*/) {
+		function then (resolved, rejected, progressed) {
 			// capture calls to callbacks
-			thens.push([resolved, rejected/*, progressed*/]);
+			thens.push([resolved, rejected, progressed]);
 		}
 
 		resolve = function (val) { complete(true, val); };
@@ -159,8 +163,8 @@
 			notify(success ? 0 : 1, arg);
 		}
 
-		this.then = function (resolved, rejected/*, progressed*/) {
-			then(resolved, rejected/*, progressed*/);
+		this.then = function (resolved, rejected, progressed) {
+			then(resolved, rejected, progressed);
 			return self;
 		};
 		this.resolve = function (val) {
@@ -171,16 +175,16 @@
 			self.rejected = ex;
 			reject(ex);
 		};
-//		this.progress = function (msg) {
-//			notify(2, msg);
-//		}
+		this.progress = function (msg) {
+			notify(2, msg);
+		}
 
 	}
 
-	var ResourceDef = Promise; // subclassing isn't worth the extra bytes
+	var Promise = ResourceDef; // subclassing isn't worth the extra bytes
 
 	function isPromise (o) {
-		return o instanceof ResourceDef;
+		return o instanceof Promise;
 	}
 
 	function when (promiseOrValue, callback, errback, progback) {
@@ -293,11 +297,10 @@
 				// chain from previous preload (for now. revisit when
 				// doing package-specific configs).
 				when(preload, function () {
-					var ctx = core.begetCtx('', cfg);
-					preload = new ResourceDef('*preload');
-					preload.ctx = ctx;
-					ctx.isPreload = true;
-					_require(cfg['preload'], preload, ctx);
+					preload = new ResourceDef('*preload', core.begetCtx('', cfg), cfg);
+					// TODO: figure out a better way to pass isPreload
+					preload.ctx.isPreload = true;
+					_require(cfg['preload'], preload, preload.ctx);
 				});
 			}
 
@@ -591,13 +594,7 @@
 			var fullId, delPos, resId, loaderId, loaderInfo, loaderDef,
 				pathInfo, def, cfg;
 
-			if (depName in ctx.cjsVars) {
-				// is this "require", "exports", or "module"?
-				// if "exports" or "module" indicate we should grab exports
-				ctx.useExports = ctx.useExports || depName == 'exports';
-				ctx.useModule = ctx.useModule || depName == 'module';
-				return ctx.cjsVars[depName];
-			}
+			cfg = userCfg; // default
 
 			// check for plugin loaderId
 			delPos = depName.indexOf('!');
@@ -606,15 +603,15 @@
 				// get plugin info
 				loaderId = ctx.require.normalize(depName.substr(0, delPos));
 				// allow plugin-specific path mappings
-				cfg = userCfg.plugins[loaderId] || userCfg;
+				cfg = userCfg.plugins[loaderId] || cfg;
 			}
 			else {
 				// obtain absolute id of resource
 				resId = ctx.require.normalize(depName.substr(delPos + 1));
 				// get path information for this resource
-				pathInfo = core.resolvePathInfo(resId, userCfg);
+				pathInfo = core.resolvePathInfo(resId, cfg);
 				// get custom module loader from package config
-				cfg = pathInfo.config || userCfg;
+				cfg = pathInfo.config || cfg;
 				loaderId = cfg['moduleLoader'];
 			}
 
@@ -623,8 +620,7 @@
 				// normal AMD module
 				def = cache[resId];
 				if (!def) {
-					def = cache[resId] = new ResourceDef(resId);
-					def.ctx = core.begetCtx(resId, cfg || userCfg);
+					def = cache[resId] = new ResourceDef(resId, core.begetCtx(resId, cfg), cfg);
 					def.url = core.resolveUrl(pathInfo.path, cfg, true);
 					core.fetchResDef(def);
 				}
@@ -635,9 +631,9 @@
 				// fetch plugin or loader
 				loaderDef = cache[loaderId];
 				if (!loaderDef) {
+					// TODO: is this right? should userCfg be used to resolve the loader url and path?
 					loaderInfo = core.resolvePathInfo(loaderId, userCfg, delPos > 0);
-					loaderDef = cache[loaderId] = new ResourceDef(loaderId);
-					loaderDef.ctx = core.begetCtx(loaderId, cfg || userCfg);
+					loaderDef = cache[loaderId] = new ResourceDef(loaderId, core.begetCtx(loaderId, cfg), cfg);
 					loaderDef.url = core.resolveUrl(loaderInfo.path, userCfg, true);
 					core.fetchResDef(loaderDef);
 				}
@@ -646,12 +642,11 @@
 				// if the plugin changes the id, we need to consolidate
 				// def promises below.  Note: exports objects will be different
 				// between pre-normalized and post-normalized defs! TODO: fix this somehow
-				def = new ResourceDef(depName);
-				def.ctx = core.begetCtx(depName, cfg || userCfg); // note: only the exports object is useful in ctx
+				def = new ResourceDef(depName, core.begetCtx(depName, cfg), cfg);
 
 				when(loaderDef,
 					function (plugin) {
-						var childCtx, normalizedDef;
+						var normalizedDef;
 
 						//resName = depName.substr(delPos + 1);
 						// check if plugin supports the normalize method
@@ -671,11 +666,7 @@
 						// if this is our first time fetching this (normalized) def
 						if (!normalizedDef) {
 
-							// plugin may have its own pathMap (plugin-specific paths)
-							childCtx = core.begetCtx(resId, cfg);
-
-							normalizedDef = new ResourceDef(fullId);
-							normalizedDef.ctx = childCtx;
+							normalizedDef = new ResourceDef(fullId, core.begetCtx(resId, cfg), cfg);
 
 							// resName could be blank if the plugin doesn't specify an id (e.g. "domReady!")
 							// don't cache non-determinate "dynamic" resources (or non-existent resources)
@@ -695,7 +686,7 @@
 							loaded['reject'] = normalizedDef.reject;
 
 							// load the resource!
-							plugin.load(resId, childCtx.require, loaded, cfg);
+							plugin.load(resId, normalizedDef.ctx.require, loaded, cfg);
 
 						}
 
@@ -714,7 +705,7 @@
 		},
 
 		getDeps: function (def, names, ctx, success, failure) {
-			var deps, count, len, i , name, completed;
+			var deps, count, len, i, name, completed;
 
 			deps = [];
 			count = len = names.length;
@@ -729,13 +720,19 @@
 			}
 
 			function getDep (index, depName) {
-				var depDef;
+				var depDef, doOnce;
 
 				depDef = core.fetchDep(depName, ctx);
 
-				function doSuccess (dep) {
+				doOnce = function (dep) {
 					deps[index] = dep; // got it!
 					checkDone();
+					// only run once for this dep (in case of early exports)
+					doOnce = function () {};
+				};
+
+				function doSuccess (dep) {
+					doOnce(dep);
 				}
 
 				function doFailure (ex) {
@@ -743,8 +740,17 @@
 					failure(ex);
 				}
 
+				function doProgress (msg) {
+					// only early-export to modules that also export since
+					// pure AMD modules don't expect to get an early export
+					// Note: this logic makes dojo 1.7 work, too.
+					if (msg == msgUsingExports && def && def.ctx.useExports) {
+						doOnce(depDef.ctx.cjsVars.exports);
+					}
+				}
+
 				// hook into promise callbacks.
-				when(depDef, doSuccess, doFailure);
+				when(depDef, doSuccess, doFailure, doProgress);
 
 			}
 
@@ -755,14 +761,28 @@
 				preload = true; // indicate we've preloaded everything
 
 				for (i = 0; i < len && !completed; i++) {
+					name = names[i];
+					if (name in ctx.cjsVars) {
+						// is this "require", "exports", or "module"?
+						// if "exports" or "module" indicate we should grab exports
+						if (name == 'exports') ctx.useExports = true;
+						if (name == 'module') ctx.useModule = true;
+						deps[i] = ctx.cjsVars[name];
+						checkDone();
+					}
 					// check for blanks. fixes #32.
 					// this could also help with the has! plugin
-					if (names[i]) {
+					else if (names[i]) {
 						getDep(i, names[i]);
 					}
 					else {
 						checkDone();
 					}
+				}
+
+				if (ctx.useExports) {
+					// announce
+					def.progress(msgUsingExports);
 				}
 
 				if (count == 0 && !completed) {
@@ -794,27 +814,27 @@
 
 	};
 
-	function _require (ids, callback, ctx) {
+	function _require (ids, callback, parentCtx) {
 		// Note: callback could be a promise
 		var id, def, earlyExport;
 
 		// RValue require (CommonJS)
 		if (isType(ids, 'String')) {
 			// return resource
-			id = ctx.require.normalize(ids);
+			id = parentCtx.require.normalize(ids);
 			def = cache[id];
-			earlyExport = isPromise(def) && def.cjs && def.ctx.exports;
-			if (!(id in cache) && !earlyExport) {
-				throw new Error('Module is not already resolved: '  + id);
+			earlyExport = isPromise(def) && def.ctx.useExports && def.ctx.cjsVars.exports;
+			if (!(id in cache) || (isPromise(def) && !earlyExport)) {
+				throw new Error('Module is not resolved: '  + id);
 			}
 			if (callback) {
-				throw new Error('require(<string>, callback) not allowed. use <array>.');
+				throw new Error('require(id, callback) not allowed.');
 			}
 			return earlyExport || def;
 		}
 
 		// resolve dependencies
-		core.getDeps(undef, ids, ctx,
+		core.getDeps(undef, ids, parentCtx,
 			function (deps) {
 				// Note: deps are passed to a promise as an array, not as individual arguments
 				callback.resolve ? callback.resolve(deps) : callback.apply(undef, deps);
@@ -886,9 +906,8 @@
 			// id is an absolute id in this case, so we can get the config and context
 			var def = cache[id];
 			if (!def) {
-				def = cache[id] = new ResourceDef(id);
-				var pathInfo = core.resolvePathInfo(id, userCfg);
-				def.ctx = core.begetCtx(id, pathInfo.config);
+				var cfg = core.resolvePathInfo(id, userCfg).config;
+				def = cache[id] = new ResourceDef(id, core.begetCtx(id, cfg), cfg);
 			}
 			// check if this resource has already been resolved (can happen if
 			// a module was defined inside a built file and outside of it and

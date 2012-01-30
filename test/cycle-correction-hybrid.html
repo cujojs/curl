@@ -1,7 +1,7 @@
 <!DOCTYPE HTML>
 <html>
 <head>
-<title>cycle detection test</title>
+<title>cycle correction for hybrid modules</title>
 
 <script>
 
@@ -9,7 +9,7 @@
 		debug: true,
 		paths: {
 			curl: '../src/curl',
-			loop: 'support/loop'
+			loop: 'support/commonjs/loop'
 		}
 	};
 
@@ -21,23 +21,36 @@
 
 	curl(
 		[
-			'loop/loop-start',
+			'loop/hybrid-loop1',
 			'domReady!'
 		]
 	).then(
-		fail,
-		function (ex) {
-			if (/cycle/.test(ex.message)) success(); else fail(ex);
-		}
+		function (loop1) {
+			// ensure next-turn so that cycle can resolve
+			setTimeout(function () {
+				// test add, subtract, and multiple
+				try {
+					loop1.add(1, 2);
+					loop1.subtract(1, 2);
+					loop1.multiply(1, 2);
+					success();
+				}
+				catch (ex) {
+					fail(ex);
+				}
+			}, 0);
+
+		},
+		fail
 	);
 
 	// fail if we haven't succeeded in 3 seconds. note: this is janky
 	var timeout = setTimeout(fail, 3000);
 
-	function success (foo) {
+	function success () {
 		clearTimeout(timeout);
 		var doc = document;
-		doc.body.appendChild(doc.createTextNode('SUCCESS: cycle detected'));
+		doc.body.appendChild(doc.createTextNode('SUCCESS: cycle corrected'));
 	}
 
 	function fail (ex) {
