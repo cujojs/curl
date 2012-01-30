@@ -293,14 +293,15 @@
 		},
 
 		checkPreloads: function (cfg) {
-			if (cfg['preload'] && cfg['preload'].length > 0){
+			var preloads = cfg['preloads'];
+			if (preloads && preloads.length > 0){
 				// chain from previous preload (for now. revisit when
 				// doing package-specific configs).
 				when(preload, function () {
 					preload = new ResourceDef('*preload', core.begetCtx('', cfg), cfg);
 					// TODO: figure out a better way to pass isPreload
 					preload.ctx.isPreload = true;
-					_require(cfg['preload'], preload, preload.ctx);
+					_require(preloads, preload, preload.ctx);
 				});
 			}
 
