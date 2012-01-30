@@ -354,13 +354,12 @@
 
 			pathMap = cfg.pathMap;
 
-			if (isPlugin && userCfg.pluginPath && id.indexOf('/') < 0) {
+			if (isPlugin && cfg.pluginPath && id.indexOf('/') < 0 && !(id in pathMap)) {
 				// prepend plugin folder path, if it's missing and path isn't in pathMap
 				// Note: this munges the concepts of ids and paths for plugins,
 				// but is generally safe since it's only for non-namespaced
 				// plugins (plugins without path or package info).
-				// TODO: use plugin-specific cfg instead of userCfg?
-				id = joinPath(userCfg.pluginPath, id);
+				id = joinPath(cfg.pluginPath, id);
 			}
 
 			if (!absUrlRx.test(id)) {
