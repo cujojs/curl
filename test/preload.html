@@ -14,7 +14,8 @@ curl = {
 				// TODO: devise a test that doesn't rely on this hack
 				'curl/debug',
 				'curl/domReady',
-				'curl/shim/dojo16'
+				'curl/shim/dojo16',
+				'js!stuff/plain_old.js'
 			]
 		};
 </script>
@@ -23,13 +24,19 @@ curl = {
 <script type="text/javascript">
 
 	curl(
-		['stuff/one'], // load something
+		['stuff/one'], // load something or callback will execute asap
 		function () {
-			// debug module adds an undefine method to curl
-			if (curl.undefine)
-				write('SUCCESS: preloads loaded first');
-			else
-				write('FAILED: preloads not loaded');
+			try {
+				// debug module adds an undefine method to curl and plain_old
+				// adds a global testDomain object
+				if (curl.undefine && testDomain.foo)
+					write('SUCCESS: preloads loaded first');
+				else
+					write('FAILED: preloads not loaded');
+			}
+			catch (ex) {
+				write('FAILED: ' + ex.message);
+			}
 		},
 		function (ex) {
 			write('ERROR: ' + ex.message);

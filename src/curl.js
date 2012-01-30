@@ -524,9 +524,6 @@
 
 		resolveResDef: function (def, args) {
 
-			// TODO: does the context's config need to be passed in somehow?
-			//def.ctx = core.begetCtx(def.id, userCfg);
-
 			def.cjs = args.cjs;
 
 			// get the dependencies and then resolve/reject
@@ -620,6 +617,7 @@
 				def = cache[resId];
 				if (!def) {
 					def = cache[resId] = new ResourceDef(resId, core.begetCtx(resId, cfg), cfg);
+					def.ctx.isPreload = ctx.isPreload; // TODO: inherit from parent
 					def.url = core.resolveUrl(pathInfo.path, cfg, true);
 					core.fetchResDef(def);
 				}
@@ -633,6 +631,7 @@
 					// TODO: is this right? should userCfg be used to resolve the loader url and path?
 					loaderInfo = core.resolvePathInfo(loaderId, userCfg, delPos > 0);
 					loaderDef = cache[loaderId] = new ResourceDef(loaderId, core.begetCtx(loaderId, cfg), cfg);
+					loaderDef.ctx.isPreload = ctx.isPreload; // TODO: inherit from parent
 					loaderDef.url = core.resolveUrl(loaderInfo.path, userCfg, true);
 					core.fetchResDef(loaderDef);
 				}
@@ -642,6 +641,7 @@
 				// def promises below.  Note: exports objects will be different
 				// between pre-normalized and post-normalized defs! TODO: fix this somehow
 				def = new ResourceDef(depName, core.begetCtx(depName, cfg), cfg);
+				def.ctx.isPreload = ctx.isPreload; // TODO: inherit from parent
 
 				when(loaderDef,
 					function (plugin) {
@@ -666,6 +666,7 @@
 						if (!normalizedDef) {
 
 							normalizedDef = new ResourceDef(fullId, core.begetCtx(resId, cfg), cfg);
+							normalizedDef.ctx.isPreload = ctx.isPreload; // TODO: inherit from parent
 
 							// resName could be blank if the plugin doesn't specify an id (e.g. "domReady!")
 							// don't cache non-determinate "dynamic" resources (or non-existent resources)
@@ -756,8 +757,6 @@
 			// wait for preload
 			// TODO: when we're properly cascading contexts, move this lower, to resolveResDef maybe?
 			when(ctx.isPreload || preload, function () {
-
-				preload = true; // indicate we've preloaded everything
 
 				for (i = 0; i < len && !completed; i++) {
 					name = names[i];
