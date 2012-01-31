@@ -603,22 +603,24 @@
 
 		fetchDep: function (depName, parentCtx) {
 			var fullId, resId, loaderId, loaderInfo, loaderDef,
-				pathInfo, def, cfg, parts;
+				pathInfo, def, cfg, parts, toAbsId, isPreload;
 
 			cfg = userCfg; // default
+			toAbsId = parentCtx.toAbsId;
+			isPreload = parentCtx.isPreload;
 
 			// check for plugin loaderId
 			parts = pluginParts(depName);
 
 			if (parts.pluginId) {
 				// get plugin info
-				loaderId = parentCtx.toAbsId(parts.pluginId);
+				loaderId = toAbsId(parts.pluginId);
 				// allow plugin-specific path mappings
 				cfg = userCfg.plugins[loaderId] || cfg;
 			}
 			else {
 				// obtain absolute id of resource
-				resId = parentCtx.toAbsId(parts.resourceId);
+				resId = toAbsId(parts.resourceId);
 				// get path information for this resource
 				pathInfo = core.resolvePathInfo(resId, cfg);
 				// get custom module loader from package config
@@ -631,7 +633,7 @@
 				// normal AMD module
 				def = cache[resId];
 				if (!def) {
-					def = cache[resId] = core.createResourceDef(resId, cfg, parentCtx.isPreload);
+					def = cache[resId] = core.createResourceDef(resId, cfg, isPreload);
 					def.url = core.resolveUrl(pathInfo.path, cfg, true);
 					core.fetchResDef(def);
 				}
@@ -644,7 +646,7 @@
 				if (!loaderDef) {
 					// userCfg is used to resolve the loader url and path
 					loaderInfo = core.resolvePathInfo(loaderId, userCfg, !!parts.pluginId);
-					loaderDef = cache[loaderId] = core.createResourceDef(loaderId, cfg, parentCtx.isPreload);
+					loaderDef = cache[loaderId] = core.createResourceDef(loaderId, cfg, isPreload);
 					loaderDef.url = core.resolveUrl(loaderInfo.path, userCfg, true);
 					core.fetchResDef(loaderDef);
 				}
@@ -662,10 +664,10 @@
 						// check if plugin supports the normalize method
 						if ('normalize' in plugin) {
 							// dojo/has may return falsey values (0, actually)
-							resId = plugin['normalize'](parts.resourceId, parentCtx.toAbsId, cfg) || '';
+							resId = plugin['normalize'](parts.resourceId, toAbsId, cfg) || '';
 						}
 						else {
-							resId = parentCtx.toAbsId(parts.resourceId);
+							resId = toAbsId(parts.resourceId);
 						}
 
 						// use the full id (loaderId + id) to id plugin resources
@@ -678,7 +680,7 @@
 
 							// because we're using resId, plugins, such as wire!,
 							// can use paths relative to the resource
-							normalizedDef = core.createResourceDef(fullId, cfg, parentCtx.isPreload, resId);
+							normalizedDef = core.createResourceDef(fullId, cfg, isPreload, resId);
 
 							// resName could be blank if the plugin doesn't specify an id (e.g. "domReady!")
 							// don't cache non-determinate "dynamic" resources (or non-existent resources)
