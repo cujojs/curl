@@ -57,6 +57,7 @@
 		orsc = 'onreadystatechange',
 		// messages
 		msgUsingExports = {},
+		cjsVars = {'require': 1, 'exports': 1, 'module': 1},
 		core;
 
 	function isType (obj, type) {
@@ -113,11 +114,11 @@
 	}
 
 	function pluginParts (id) {
-		var parts = id.split('!', 2), last = parts.length - 1;
+		var delPos = id.indexOf('!');
 		return {
-			resourceId: parts[last],
-			// resourceId can be zero length, so check for # of items in array
-			pluginId: last && parts[0]
+			resourceId: id.substr(delPos + 1),
+			// resourceId can be zero length
+			pluginId: delPos >= 0 && id.substr(0, delPos)
 		};
 	}
 
@@ -206,13 +207,68 @@
 	core = {
 
 		createResourceDef: function (id, cfg, isPreload, optCtxId) {
-			var def = new ResourceDef();
+			var def, ctxId;
+
+			ctxId = optCtxId == undef ? id : optCtxId;
+
+			def = new ResourceDef();
 			def.id = id;
-			def.ctx = core.begetCtx(optCtxId == undef ? id : optCtxId, cfg);
-			def.ctx.isPreload = isPreload;
+			def.isPreload = isPreload;
 			def.cfg = cfg;
 			// replace cache with resolved value (overwrites self in cache)
 			def.then(function (res) { cache[id] = res; });
+
+			// functions that dependencies will use
+
+			function toAbsId (childId) {
+				return core.normalizeName(childId, ctxId);
+			}
+
+			function toUrl (n) {
+				// TODO: determine if we can skip call to toAbsId if all ids passed to this function are normalized or absolute
+				var path = core.resolvePathInfo(toAbsId(n), cfg).path;
+				return core.resolveUrl(path, cfg);
+			}
+
+			function localRequire (ids, callback) {
+				var cb, rvid, childDef, earlyExport;
+
+				// this is a public function, so remove ability for callback
+				// fixes issue #41
+				cb = callback && function () { callback.apply(undef, arguments[0]); };
+
+				// RValue require (CommonJS)
+				if (isType(ids, 'String')) {
+					// return resource
+					rvid = toAbsId(ids);
+					childDef = cache[rvid];
+					earlyExport = isPromise(childDef) && childDef.useExports && childDef.exports;
+					if (!(rvid in cache) || (isPromise(childDef) && !earlyExport)) {
+						throw new Error('Module is not resolved: '  + rvid);
+					}
+					if (cb) {
+						throw new Error('require(id, callback) not allowed.');
+					}
+					return earlyExport || childDef;
+				}
+
+				// pass the callback, so the main def won't get resolved!
+				core.getDeps(def, ids, cb);
+
+			}
+
+			def['require'] = def.require = localRequire;
+			def['exports'] = {};
+			def['module'] = {
+				'id': id,
+				// TODO: defer creation of 'module' so we don't have to run this function unnecessarily
+				'uri': toUrl(id),
+				'exports': def['exports']
+			};
+
+			localRequire['toUrl'] = toUrl;
+			def.toAbsId = toAbsId;
+
 			return def;
 		},
 
@@ -314,52 +370,11 @@
 				when(preload, function () {
 					preload = core.createResourceDef('*preload', cfg, false, '');
 					// TODO: figure out a better way to pass isPreload
-					preload.ctx.isPreload = true;
-					_require(preloads, preload, preload.ctx);
+					preload.isPreload = true;
+					core.getDeps(preload, preloads);
 				});
 			}
 
-		},
-
-		begetCtx: function (absId, cfg) {
-
-			var ctx, exports;
-
-			function toAbsId (childId) {
-				return core.normalizeName(childId, absId /*baseId*/);
-			}
-
-			function toUrl (n) {
-				// TODO: determine if we can skip call to toAbsId if all ids passed to this function are normalized or absolute
-				var path = core.resolvePathInfo(toAbsId(n), cfg).path;
-				return core.resolveUrl(path, cfg);
-			}
-
-			function req (deps, callback) {
-				// this is a public function, so remove ability for callback
-				// to be a deferred (also fixes issue #41)
-				var cb = callback && function () { callback.apply(undef, arguments); };
-				return _require(deps, cb, ctx);
-			}
-
-			exports = {};
-			ctx = {
-				require: req,
-				cjsVars: {
-					'require': req,
-					'exports': exports,
-					'module': {
-						'id': absId,
-						'uri': toUrl(absId),
-						'exports': exports
-					}
-				}
-			};
-
-			ctx.require['toUrl'] = toUrl;
-			ctx.toAbsId = toAbsId;
-
-			return ctx;
 		},
 
 		resolvePathInfo: function (id, cfg, isPlugin) {
@@ -528,12 +543,12 @@
 			// for all cjs-wrapped modules, just in case.
 			// also, use module.exports if that was set
 			// (node.js convention).
-			moduleThis = def.cjs ? def.ctx.cjsVars['exports'] : undef;
+			moduleThis = def.cjs ? def['exports'] : undef;
 			resource = def.res.apply(moduleThis, def.deps);
-			if (resource === undef && (def.cjs || def.ctx.useExports || def.ctx.useModule)) {
+			if (resource === undef && (def.cjs || def.useExports || def.useModule)) {
 				// note: exports will equal module.exports unless
 				// module.exports was reassigned inside module.
-				resource = def.ctx.cjsVars['module']['exports'];
+				resource = def['module']['exports'];
 			}
 			return resource;
 		},
@@ -543,7 +558,7 @@
 			def.cjs = args.cjs;
 
 			// get the dependencies and then resolve/reject
-			core.getDeps(def, args.deps, def.ctx,
+			core.getDeps(def, args.deps,
 				function (deps) {
 					var resource;
 					def.deps = deps;
@@ -555,8 +570,7 @@
 						def.reject(ex);
 					}
 					def.resolve(resource);
-				},
-				def.reject
+				}
 			);
 
 		},
@@ -597,17 +611,17 @@
 
 		},
 
-		normalizeName: function (childId, baseId) {
-			return reduceLeadingDots(childId, baseId);
+		normalizeName: function (childId, parentId) {
+			return reduceLeadingDots(childId, parentId);
 		},
 
-		fetchDep: function (depName, parentCtx) {
+		fetchDep: function (depName, parentDef) {
 			var fullId, resId, loaderId, loaderInfo, loaderDef,
 				pathInfo, def, cfg, parts, toAbsId, isPreload;
 
 			cfg = userCfg; // default
-			toAbsId = parentCtx.toAbsId;
-			isPreload = parentCtx.isPreload;
+			toAbsId = parentDef.toAbsId;
+			isPreload = parentDef.isPreload;
 
 			// check for plugin loaderId
 			parts = pluginParts(depName);
@@ -700,7 +714,7 @@
 							loaded['reject'] = normalizedDef.reject;
 
 							// load the resource!
-							plugin.load(resId, normalizedDef.ctx.require, loaded, cfg);
+							plugin.load(resId, normalizedDef.require, loaded, cfg);
 
 						}
 
@@ -718,25 +732,26 @@
 			return def;
 		},
 
-		getDeps: function (def, names, ctx, success, failure) {
-			var deps, count, len, i, name, completed;
+		getDeps: function (parentDef, names, overrideCallback) {
+			var deps, count, len, i, name, completed, callback;
 
 			deps = [];
 			count = len = names.length;
 			completed = false;
+			callback = overrideCallback || parentDef.resolve;
 
 			function checkDone () {
 				if (--count == 0) {
 					// Note: IE may have obtained the dependencies sync, thus the completed flag
 					completed = true;
-					success(deps);
+					callback(deps);
 				}
 			}
 
 			function getDep (index, depName) {
-				var depDef, doOnce;
+				var childDef, doOnce;
 
-				depDef = core.fetchDep(depName, ctx);
+				childDef = core.fetchDep(depName, parentDef);
 
 				doOnce = function (dep) {
 					deps[index] = dep; // got it!
@@ -751,35 +766,35 @@
 
 				function doFailure (ex) {
 					completed = true;
-					failure(ex);
+					parentDef.reject(ex);
 				}
 
 				function doProgress (msg) {
 					// only early-export to modules that also export since
 					// pure AMD modules don't expect to get an early export
 					// Note: this logic makes dojo 1.7 work, too.
-					if (msg == msgUsingExports && def && def.ctx.useExports) {
-						doOnce(depDef.ctx.cjsVars.exports);
+					if (msg == msgUsingExports && parentDef.useExports) {
+						doOnce(childDef.exports);
 					}
 				}
 
 				// hook into promise callbacks.
-				when(depDef, doSuccess, doFailure, doProgress);
+				when(childDef, doSuccess, doFailure, doProgress);
 
 			}
 
 			// wait for preload
 			// TODO: when we're properly cascading contexts, move this lower, to resolveResDef maybe?
-			when(ctx.isPreload || preload, function () {
+			when(parentDef.isPreload || preload, function () {
 
 				for (i = 0; i < len && !completed; i++) {
 					name = names[i];
-					if (name in ctx.cjsVars) {
+					if (name in cjsVars) {
 						// is this "require", "exports", or "module"?
 						// if "exports" or "module" indicate we should grab exports
-						if (name == 'exports') ctx.useExports = true;
-						if (name == 'module') ctx.useModule = true;
-						deps[i] = ctx.cjsVars[name];
+						if (name == 'exports') parentDef.useExports = true;
+						if (name == 'module') parentDef.useModule = true;
+						deps[i] = parentDef[name];
 						checkDone();
 					}
 					// check for blanks. fixes #32.
@@ -792,14 +807,14 @@
 					}
 				}
 
-				if (ctx.useExports) {
+				if (parentDef.useExports) {
 					// announce
-					def.progress(msgUsingExports);
+					parentDef.progress(msgUsingExports);
 				}
 
 				if (count == 0 && !completed) {
 					// there were none to fetch
-					success(deps);
+					overrideCallback(deps);
 				}
 
 			});
@@ -826,42 +841,9 @@
 
 	};
 
-	function _require (ids, callback, parentCtx) {
-		// Note: callback could be a promise
-		var id, def, earlyExport;
-
-		// RValue require (CommonJS)
-		if (isType(ids, 'String')) {
-			// return resource
-			id = parentCtx.toAbsId(ids);
-			def = cache[id];
-			earlyExport = isPromise(def) && def.ctx.useExports && def.ctx.cjsVars.exports;
-			if (!(id in cache) || (isPromise(def) && !earlyExport)) {
-				throw new Error('Module is not resolved: '  + id);
-			}
-			if (callback) {
-				throw new Error('require(id, callback) not allowed.');
-			}
-			return earlyExport || def;
-		}
-
-		// resolve dependencies
-		core.getDeps(undef, ids, parentCtx,
-			function (deps) {
-				// Note: deps are passed to a promise as an array, not as individual arguments
-				callback.resolve ? callback.resolve(deps) : callback.apply(undef, deps);
-			},
-			function (ex) {
-				if (callback.reject) callback.reject(ex);
-				else throw ex;
-			}
-		);
-
-	}
-
 	function _curl (/* various */) {
 
-		var args = aslice.call(arguments), ids, ctx;
+		var args = aslice.call(arguments), ids, def;
 
 		// extract config, if it's specified
 		if (isType(args[0], 'Object')) {
@@ -870,13 +852,12 @@
 		}
 
 		// this must be after extractCfg
-		ctx = core.begetCtx('', userCfg);
+		def = core.createResourceDef('*curl', userCfg, false, '');
 
 		// thanks to Joop Ringelberg for helping troubleshoot the API
 		function CurlApi (ids, callback, waitFor) {
-			var promise = new Promise();
 			this['then'] = function (resolved, rejected) {
-				when(promise,
+				when(def,
 					// return the dependencies as arguments, not an array
 					function (deps) { if (resolved) resolved.apply(undef, deps); },
 					// just throw if the dev didn't specify an error handler
@@ -886,11 +867,11 @@
 			};
 			this['next'] = function (ids, cb) {
 				// chain api
-				return new CurlApi(ids, cb, promise);
+				return new CurlApi(ids, cb, def);
 			};
 			if (callback) this['then'](callback);
 			when(waitFor, function () {
-				_require([].concat(ids), promise, ctx);
+				core.getDeps(def, [].concat(ids));
 			});
 		}
 
@@ -963,7 +944,6 @@
 	define['amd'] = { 'plugins': true, 'jQuery': true, 'curl': version };
 
 	// allow curl to be a dependency
-	// TODO: use this? define('curl', function () { return _curl; });
 	cache['curl'] = _curl;
 
 
@@ -976,7 +956,6 @@
 		'core': core,
 		'cache': cache,
 		'cfg': userCfg,
-		'_require': _require,
 		'_define': _define,
 		'_curl': _curl,
 		'global': global,
