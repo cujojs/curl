@@ -112,6 +112,15 @@
 		}
 	}
 
+	function pluginParts (id) {
+		var parts = id.split('!', 2), last = parts.length - 1;
+		return {
+			resourceId: parts[last],
+			// resourceId can be zero length, so check for # of items in array
+			pluginId: last && parts[0]
+		};
+	}
+
 	function Begetter () {}
 
 	function beget (parent) {
@@ -220,25 +229,23 @@
 			// the global cfg.pathMap or on a plugin-specific altCfg.pathMap.
 			// also populates a pathList on cfg or plugin configs.
 			function fixAndPushPaths (coll, isPkg) {
-				var id, data, prefixPos, prefix, currCfg, info;
+				var id, pluginId, data, parts, pluginCfg, info;
 				for (var name in coll) {
 					data = coll[name];
-					currCfg = cfg;
+					pluginCfg = cfg;
 					// grab the package id, if specified. default to
 					// property name.
-					id = removeEndSlash(data['id'] || data['name'] || name);
-					prefixPos = id.indexOf('!');
-					if (prefixPos > 0) {
+					parts = pluginParts(removeEndSlash(data['id'] || data['name'] || name));
+					id = parts.resourceId;
+					pluginId = parts.pluginId;
+					if (pluginId) {
 						// plugin-specific path
-						prefix = id.substr(0, prefixPos);
-						currCfg = pluginCfgs[prefix];
-						if (!currCfg) {
-							currCfg = pluginCfgs[prefix] = beget(cfg);
-							currCfg.pathMap = beget(cfg.pathMap);
-							currCfg.pathList = [];
+						pluginCfg = pluginCfgs[pluginId];
+						if (!pluginCfg) {
+							pluginCfg = pluginCfgs[pluginId] = beget(cfg);
+							pluginCfg.pathMap = beget(cfg.pathMap);
+							pluginCfg.pathList = [];
 						}
-						// remove prefix from id
-						id = id.substr(prefixPos + 1);
 						// remove plugin-specific path from coll
 						delete coll[name];
 					}
@@ -250,23 +257,23 @@
 					}
 					info.specificity = (id.match(findSlashRx) || []).length;
 					if (id) {
-						currCfg.pathMap[id] = info;
-						currCfg.pathList.push(id);
+						pluginCfg.pathMap[id] = info;
+						pluginCfg.pathList.push(id);
 					}
 					else {
 						// naked plugin name signifies baseUrl for plugin
 						// resources. baseUrl could be relative to global
 						// baseUrl.
-						currCfg.baseUrl = core.resolveUrl(data, cfg);
+						pluginCfg.baseUrl = core.resolveUrl(data, cfg);
 					}
 				}
 			}
 
 			// adds the path matching regexp onto the cfg or plugin cfgs.
 			function convertPathMatcher (cfg) {
-				var pathList = cfg.pathList, pathMap = cfg.pathMap;
+				var pathMap = cfg.pathMap;
 				cfg.pathRx = new RegExp('^(' +
-					pathList.sort(function (a, b) { return pathMap[a].specificity < pathMap[b].specificity; } )
+					cfg.pathList.sort(function (a, b) { return pathMap[a].specificity < pathMap[b].specificity; } )
 						.join('|')
 						.replace(/\//g, '\\/') +
 					')(?=\\/|$)'
@@ -295,7 +302,7 @@
 		checkPreloads: function (cfg) {
 			var preloads = cfg['preloads'];
 			if (preloads && preloads.length > 0){
-				// chain from previous preload (for now. revisit when
+				// chain from previous preload, if any (revisit when
 				// doing package-specific configs).
 				when(preload, function () {
 					preload = new ResourceDef('*preload', core.begetCtx('', cfg), cfg);
@@ -311,13 +318,13 @@
 
 			var ctx, exports;
 
-			function normalize (childId) {
+			function toAbsId (childId) {
 				return core.normalizeName(childId, absId /*baseId*/);
 			}
 
 			function toUrl (n) {
-				// TODO: determine if we can skip call to normalize if all ids passed to this function are normalized or absolute
-				var path = core.resolvePathInfo(normalize(n), cfg).path;
+				// TODO: determine if we can skip call to toAbsId if all ids passed to this function are normalized or absolute
+				var path = core.resolvePathInfo(toAbsId(n), cfg).path;
 				return core.resolveUrl(path, cfg);
 			}
 
@@ -343,7 +350,7 @@
 			};
 
 			ctx.require['toUrl'] = toUrl;
-			ctx.require.normalize = normalize;
+			ctx.require.toAbsId = toAbsId;
 
 			return ctx;
 		},
@@ -422,12 +429,13 @@
 
 			// set type first since setting other properties could
 			// prevent us from setting this later
-			// TODO: do we need this at all?
-			el.type = 'text/javascript';
+			// actually, we don't even need to set this at all
+			//el.type = 'text/javascript';
 			// using dom0 event handlers instead of wordy w3c/ms
 			el.onload = el[orsc] = process;
 			el.onerror = fail;
-			el.charset = def.charset || 'utf-8';
+			// TODO: support other charsets
+			el.charset = 'utf-8';
 			el.async = true;
 			el.src = def.url;
 
@@ -588,23 +596,23 @@
 		},
 
 		fetchDep: function (depName, ctx) {
-			var fullId, delPos, resId, loaderId, loaderInfo, loaderDef,
-				pathInfo, def, cfg;
+			var fullId, resId, loaderId, loaderInfo, loaderDef,
+				pathInfo, def, cfg, parts;
 
 			cfg = userCfg; // default
 
 			// check for plugin loaderId
-			delPos = depName.indexOf('!');
+			parts = pluginParts(depName);
 
-			if (delPos >= 0) {
+			if (parts.pluginId) {
 				// get plugin info
-				loaderId = ctx.require.normalize(depName.substr(0, delPos));
+				loaderId = ctx.require.toAbsId(parts.pluginId);
 				// allow plugin-specific path mappings
 				cfg = userCfg.plugins[loaderId] || cfg;
 			}
 			else {
 				// obtain absolute id of resource
-				resId = ctx.require.normalize(depName.substr(delPos + 1));
+				resId = ctx.require.toAbsId(parts.resourceId);
 				// get path information for this resource
 				pathInfo = core.resolvePathInfo(resId, cfg);
 				// get custom module loader from package config
@@ -630,7 +638,7 @@
 				loaderDef = cache[loaderId];
 				if (!loaderDef) {
 					// TODO: is this right? should userCfg be used to resolve the loader url and path?
-					loaderInfo = core.resolvePathInfo(loaderId, userCfg, delPos > 0);
+					loaderInfo = core.resolvePathInfo(loaderId, userCfg, !!parts.pluginId);
 					loaderDef = cache[loaderId] = new ResourceDef(loaderId, core.begetCtx(loaderId, cfg), cfg);
 					loaderDef.ctx.isPreload = ctx.isPreload; // TODO: inherit from parent
 					loaderDef.url = core.resolveUrl(loaderInfo.path, userCfg, true);
@@ -648,14 +656,13 @@
 					function (plugin) {
 						var normalizedDef;
 
-						//resName = depName.substr(delPos + 1);
 						// check if plugin supports the normalize method
 						if ('normalize' in plugin) {
 							// dojo/has may return falsey values (0, actually)
-							resId = plugin['normalize'](depName.substr(delPos + 1), ctx.require.normalize, cfg) || '';
+							resId = plugin['normalize'](parts.resourceId, ctx.require.toAbsId, cfg) || '';
 						}
 						else {
-							resId = ctx.require.normalize(depName.substr(delPos + 1));
+							resId = ctx.require.toAbsId(parts.resourceId);
 						}
 
 						// use the full id (loaderId + id) to id plugin resources
@@ -820,7 +827,7 @@
 		// RValue require (CommonJS)
 		if (isType(ids, 'String')) {
 			// return resource
-			id = parentCtx.require.normalize(ids);
+			id = parentCtx.require.toAbsId(ids);
 			def = cache[id];
 			earlyExport = isPromise(def) && def.ctx.useExports && def.ctx.cjsVars.exports;
 			if (!(id in cache) || (isPromise(def) && !earlyExport)) {
