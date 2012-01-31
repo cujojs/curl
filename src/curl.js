@@ -130,16 +130,12 @@
 		return child;
 	}
 
-	function ResourceDef (id, ctx, cfg) {
+	function Promise () {
 
 		var self, thens, resolve, reject;
 
 		self = this;
 		thens = [];
-
-		this.id = id;
-		this.cfg = cfg;
-		this.ctx = ctx;
 
 		function then (resolved, rejected, progressed) {
 			// capture calls to callbacks
@@ -190,7 +186,7 @@
 
 	}
 
-	var Promise = ResourceDef; // subclassing isn't worth the extra bytes
+	var ResourceDef = Promise; // subclassing isn't worth the extra bytes
 
 	function isPromise (o) {
 		return o instanceof Promise;
@@ -208,6 +204,14 @@
 	}
 
 	core = {
+
+		createResourceDef: function (id, cfg, optCtxId) {
+			var def = new ResourceDef();
+			def.id = id;
+			def.ctx = core.begetCtx(optCtxId == undef ? id : optCtxId, cfg);
+			def.cfg = cfg;
+			return def;
+		},
 
 		extractCfg: function (cfg) {
 			var pluginCfgs;
@@ -305,7 +309,7 @@
 				// chain from previous preload, if any (revisit when
 				// doing package-specific configs).
 				when(preload, function () {
-					preload = new ResourceDef('*preload', core.begetCtx('', cfg), cfg);
+					preload = core.createResourceDef('*preload', cfg, '');
 					// TODO: figure out a better way to pass isPreload
 					preload.ctx.isPreload = true;
 					_require(preloads, preload, preload.ctx);
@@ -350,7 +354,7 @@
 			};
 
 			ctx.require['toUrl'] = toUrl;
-			ctx.require.toAbsId = toAbsId;
+			ctx.toAbsId = toAbsId;
 
 			return ctx;
 		},
@@ -595,7 +599,7 @@
 			return reduceLeadingDots(childId, baseId);
 		},
 
-		fetchDep: function (depName, ctx) {
+		fetchDep: function (depName, parentCtx) {
 			var fullId, resId, loaderId, loaderInfo, loaderDef,
 				pathInfo, def, cfg, parts;
 
@@ -606,17 +610,17 @@
 
 			if (parts.pluginId) {
 				// get plugin info
-				loaderId = ctx.require.toAbsId(parts.pluginId);
+				loaderId = parentCtx.toAbsId(parts.pluginId);
 				// allow plugin-specific path mappings
 				cfg = userCfg.plugins[loaderId] || cfg;
 			}
 			else {
 				// obtain absolute id of resource
-				resId = ctx.require.toAbsId(parts.resourceId);
+				resId = parentCtx.toAbsId(parts.resourceId);
 				// get path information for this resource
 				pathInfo = core.resolvePathInfo(resId, cfg);
 				// get custom module loader from package config
-				cfg = pathInfo.config || cfg;
+				cfg = pathInfo.config;
 				loaderId = cfg['moduleLoader'];
 			}
 
@@ -625,8 +629,8 @@
 				// normal AMD module
 				def = cache[resId];
 				if (!def) {
-					def = cache[resId] = new ResourceDef(resId, core.begetCtx(resId, cfg), cfg);
-					def.ctx.isPreload = ctx.isPreload; // TODO: inherit from parent
+					def = cache[resId] = core.createResourceDef(resId, cfg);
+					def.ctx.isPreload = parentCtx.isPreload; // TODO: inherit from parent
 					def.url = core.resolveUrl(pathInfo.path, cfg, true);
 					core.fetchResDef(def);
 				}
@@ -637,10 +641,10 @@
 				// fetch plugin or loader
 				loaderDef = cache[loaderId];
 				if (!loaderDef) {
-					// TODO: is this right? should userCfg be used to resolve the loader url and path?
+					// userCfg is used to resolve the loader url and path
 					loaderInfo = core.resolvePathInfo(loaderId, userCfg, !!parts.pluginId);
-					loaderDef = cache[loaderId] = new ResourceDef(loaderId, core.begetCtx(loaderId, cfg), cfg);
-					loaderDef.ctx.isPreload = ctx.isPreload; // TODO: inherit from parent
+					loaderDef = cache[loaderId] = core.createResourceDef(loaderId, cfg);
+					loaderDef.ctx.isPreload = parentCtx.isPreload; // TODO: inherit from parent
 					loaderDef.url = core.resolveUrl(loaderInfo.path, userCfg, true);
 					core.fetchResDef(loaderDef);
 				}
@@ -649,8 +653,8 @@
 				// if the plugin changes the id, we need to consolidate
 				// def promises below.  Note: exports objects will be different
 				// between pre-normalized and post-normalized defs! TODO: fix this somehow
-				def = new ResourceDef(depName, core.begetCtx(depName, cfg), cfg);
-				def.ctx.isPreload = ctx.isPreload; // TODO: inherit from parent
+				def = core.createResourceDef(depName, cfg);
+				def.ctx.isPreload = parentCtx.isPreload; // TODO: inherit from parent
 
 				when(loaderDef,
 					function (plugin) {
@@ -659,10 +663,10 @@
 						// check if plugin supports the normalize method
 						if ('normalize' in plugin) {
 							// dojo/has may return falsey values (0, actually)
-							resId = plugin['normalize'](parts.resourceId, ctx.require.toAbsId, cfg) || '';
+							resId = plugin['normalize'](parts.resourceId, parentCtx.toAbsId, cfg) || '';
 						}
 						else {
-							resId = ctx.require.toAbsId(parts.resourceId);
+							resId = parentCtx.toAbsId(parts.resourceId);
 						}
 
 						// use the full id (loaderId + id) to id plugin resources
@@ -673,8 +677,10 @@
 						// if this is our first time fetching this (normalized) def
 						if (!normalizedDef) {
 
-							normalizedDef = new ResourceDef(fullId, core.begetCtx(resId, cfg), cfg);
-							normalizedDef.ctx.isPreload = ctx.isPreload; // TODO: inherit from parent
+							// because we're using resId, plugins, such as wire!,
+							// can use paths relative to the resource
+							normalizedDef = core.createResourceDef(fullId, cfg, resId);
+							normalizedDef.ctx.isPreload = parentCtx.isPreload; // TODO: inherit from parent
 
 							// resName could be blank if the plugin doesn't specify an id (e.g. "domReady!")
 							// don't cache non-determinate "dynamic" resources (or non-existent resources)
@@ -827,7 +833,7 @@
 		// RValue require (CommonJS)
 		if (isType(ids, 'String')) {
 			// return resource
-			id = parentCtx.require.toAbsId(ids);
+			id = parentCtx.toAbsId(ids);
 			def = cache[id];
 			earlyExport = isPromise(def) && def.ctx.useExports && def.ctx.cjsVars.exports;
 			if (!(id in cache) || (isPromise(def) && !earlyExport)) {
@@ -913,7 +919,7 @@
 			var def = cache[id];
 			if (!def) {
 				var cfg = core.resolvePathInfo(id, userCfg).config;
-				def = cache[id] = new ResourceDef(id, core.begetCtx(id, cfg), cfg);
+				def = cache[id] = core.createResourceDef(id, cfg);
 			}
 			// check if this resource has already been resolved (can happen if
 			// a module was defined inside a built file and outside of it and
