@@ -57,7 +57,7 @@
 		orsc = 'onreadystatechange',
 		// messages
 		msgUsingExports = {},
-		cjsVars = {'require': 1, 'exports': 1, 'module': 1},
+		cjsVars = {'require': 0, 'exports': 1, 'module': 1},
 		core;
 
 	function isType (obj, type) {
@@ -215,10 +215,11 @@
 			def.id = id;
 			def.isPreload = isPreload;
 			def.cfg = cfg;
+
 			// replace cache with resolved value (overwrites self in cache)
 			def.then(function (res) { cache[id] = res; });
 
-			// functions that dependencies will use
+			// functions that dependencies will use:
 
 			function toAbsId (childId) {
 				return core.normalizeName(childId, ctxId);
@@ -257,13 +258,13 @@
 
 			}
 
-			def['require'] = def.require = localRequire;
-			def['exports'] = {};
-			def['module'] = {
+			def.require = def.require = localRequire;
+			def.exports = {};
+			def.module = {
 				'id': id,
-				// TODO: defer creation of 'module' so we don't have to run this function unnecessarily
+				// TODO: defer creation of 'module' so we don't have to run toUrl unnecessarily
 				'uri': toUrl(id),
-				'exports': def['exports']
+				'exports': def.exports
 			};
 
 			localRequire['toUrl'] = toUrl;
@@ -368,9 +369,7 @@
 				// chain from previous preload, if any (revisit when
 				// doing package-specific configs).
 				when(preload, function () {
-					preload = core.createResourceDef('*preload', cfg, false, '');
-					// TODO: figure out a better way to pass isPreload
-					preload.isPreload = true;
+					preload = core.createResourceDef('*preload', cfg, true, '');
 					core.getDeps(preload, preloads);
 				});
 			}
@@ -378,7 +377,7 @@
 		},
 
 		resolvePathInfo: function (id, cfg, isPlugin) {
-			// TODO: figure out why this gets called so often for the same file
+			// TODO: figure out why this gets called so often for the same file (toUrl?)
 			// searches through the configured path mappings and packages
 			var pathMap, pathInfo, path, config, found;
 
@@ -543,12 +542,12 @@
 			// for all cjs-wrapped modules, just in case.
 			// also, use module.exports if that was set
 			// (node.js convention).
-			moduleThis = def.cjs ? def['exports'] : undef;
+			moduleThis = def.cjs ? def.exports : undef;
 			resource = def.res.apply(moduleThis, def.deps);
 			if (resource === undef && (def.cjs || def.useExports || def.useModule)) {
 				// note: exports will equal module.exports unless
 				// module.exports was reassigned inside module.
-				resource = def['module']['exports'];
+				resource = def.module.exports;
 			}
 			return resource;
 		},
@@ -709,7 +708,6 @@
 								normalizedDef.resolve(res);
 								if (plugin['dynamic']) delete cache[fullId];
 							};
-							// using bracket property notation so closure won't clobber id
 							loaded['resolve'] = loaded;
 							loaded['reject'] = normalizedDef.reject;
 
@@ -783,8 +781,7 @@
 
 			}
 
-			// wait for preload
-			// TODO: when we're properly cascading contexts, move this lower, to resolveResDef maybe?
+			// wait for preload before fetching any other modules
 			when(parentDef.isPreload || preload, function () {
 
 				for (i = 0; i < len && !completed; i++) {
@@ -814,7 +811,7 @@
 
 				if (count == 0 && !completed) {
 					// there were none to fetch
-					overrideCallback(deps);
+					callback(deps);
 				}
 
 			});
