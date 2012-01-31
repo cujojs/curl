@@ -29,7 +29,7 @@
 	 */
 
 	var
-		version = '0.6',
+		version = '0.6.0',
 		head = doc && (doc['head'] || doc.getElementsByTagName('head')[0]),
 		// local cache of resource definitions (lightweight promises)
 		cache = {},
@@ -205,11 +205,14 @@
 
 	core = {
 
-		createResourceDef: function (id, cfg, optCtxId) {
+		createResourceDef: function (id, cfg, isPreload, optCtxId) {
 			var def = new ResourceDef();
 			def.id = id;
 			def.ctx = core.begetCtx(optCtxId == undef ? id : optCtxId, cfg);
+			def.ctx.isPreload = isPreload;
 			def.cfg = cfg;
+			// replace cache with resolved value (overwrites self in cache)
+			def.then(function (res) { cache[id] = res; });
 			return def;
 		},
 
@@ -309,7 +312,7 @@
 				// chain from previous preload, if any (revisit when
 				// doing package-specific configs).
 				when(preload, function () {
-					preload = core.createResourceDef('*preload', cfg, '');
+					preload = core.createResourceDef('*preload', cfg, false, '');
 					// TODO: figure out a better way to pass isPreload
 					preload.ctx.isPreload = true;
 					_require(preloads, preload, preload.ctx);
@@ -551,7 +554,6 @@
 					catch (ex) {
 						def.reject(ex);
 					}
-					cache[def.id] = resource; // replace ResourceDef with actual value
 					def.resolve(resource);
 				},
 				def.reject
@@ -629,8 +631,7 @@
 				// normal AMD module
 				def = cache[resId];
 				if (!def) {
-					def = cache[resId] = core.createResourceDef(resId, cfg);
-					def.ctx.isPreload = parentCtx.isPreload; // TODO: inherit from parent
+					def = cache[resId] = core.createResourceDef(resId, cfg, parentCtx.isPreload);
 					def.url = core.resolveUrl(pathInfo.path, cfg, true);
 					core.fetchResDef(def);
 				}
@@ -643,8 +644,7 @@
 				if (!loaderDef) {
 					// userCfg is used to resolve the loader url and path
 					loaderInfo = core.resolvePathInfo(loaderId, userCfg, !!parts.pluginId);
-					loaderDef = cache[loaderId] = core.createResourceDef(loaderId, cfg);
-					loaderDef.ctx.isPreload = parentCtx.isPreload; // TODO: inherit from parent
+					loaderDef = cache[loaderId] = core.createResourceDef(loaderId, cfg, parentCtx.isPreload);
 					loaderDef.url = core.resolveUrl(loaderInfo.path, userCfg, true);
 					core.fetchResDef(loaderDef);
 				}
@@ -652,9 +652,8 @@
 				// we need to use depName until plugin tells us normalized id.
 				// if the plugin changes the id, we need to consolidate
 				// def promises below.  Note: exports objects will be different
-				// between pre-normalized and post-normalized defs! TODO: fix this somehow
+				// between pre-normalized and post-normalized defs! does this matter?
 				def = core.createResourceDef(depName, cfg);
-				def.ctx.isPreload = parentCtx.isPreload; // TODO: inherit from parent
 
 				when(loaderDef,
 					function (plugin) {
@@ -679,8 +678,7 @@
 
 							// because we're using resId, plugins, such as wire!,
 							// can use paths relative to the resource
-							normalizedDef = core.createResourceDef(fullId, cfg, resId);
-							normalizedDef.ctx.isPreload = parentCtx.isPreload; // TODO: inherit from parent
+							normalizedDef = core.createResourceDef(fullId, cfg, parentCtx.isPreload, resId);
 
 							// resName could be blank if the plugin doesn't specify an id (e.g. "domReady!")
 							// don't cache non-determinate "dynamic" resources (or non-existent resources)
@@ -692,8 +690,8 @@
 							// but to be compatible with AMD spec, we have to
 							// piggy-back on the callback function parameter:
 							var loaded = function (res) {
-								if (!plugin['dynamic']) cache[fullId] = res;
 								normalizedDef.resolve(res);
+								if (plugin['dynamic']) delete cache[fullId];
 							};
 							// using bracket property notation so closure won't clobber id
 							loaded['resolve'] = loaded;
@@ -915,9 +913,12 @@
 		if (id != undef) {
 			// named define(), it is in the cache if we are loading a dependency
 			// (could also be a secondary define() appearing in a built file, etc.)
-			// id is an absolute id in this case, so we can get the config and context
 			var def = cache[id];
 			if (!def) {
+				// id is an absolute id in this case, so we can get the config
+				// and context isn't necessary. TODO: fix lack of cjs free vars!
+				// there's no way to allow a named define to participate in
+				// the preload phase since we can't cascade the context.
 				var cfg = core.resolvePathInfo(id, userCfg).config;
 				def = cache[id] = core.createResourceDef(id, cfg);
 			}
