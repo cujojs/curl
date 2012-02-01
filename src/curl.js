@@ -57,7 +57,7 @@
 		orsc = 'onreadystatechange',
 		// messages
 		msgUsingExports = {},
-		cjsVars = {'require': 0, 'exports': 1, 'module': 1},
+		cjsGetters,
 		core;
 
 	function isType (obj, type) {
@@ -243,7 +243,7 @@
 					// return resource
 					rvid = toAbsId(ids);
 					childDef = cache[rvid];
-					earlyExport = isPromise(childDef) && childDef.useExports && childDef.exports;
+					earlyExport = isPromise(childDef) && childDef.exports;
 					if (!(rvid in cache) || (isPromise(childDef) && !earlyExport)) {
 						throw new Error('Module is not resolved: '  + rvid);
 					}
@@ -258,19 +258,27 @@
 
 			}
 
-			def.require = def.require = localRequire;
-			def.exports = {};
-			def.module = {
-				'id': id,
-				// TODO: defer creation of 'module' so we don't have to run toUrl unnecessarily
-				'uri': toUrl(id),
-				'exports': def.exports
-			};
-
+			def.require = localRequire;
 			localRequire['toUrl'] = toUrl;
 			def.toAbsId = toAbsId;
 
 			return def;
+		},
+
+		getCjsRequire: function (def) {
+			return def.require;
+		},
+
+		getCjsExports: function (def) {
+			return def.exports || (def.exports = {});
+		},
+
+		getCjsModule: function (def) {
+			return def.module || (def.module = {
+				'id': def.id,
+				'uri': def.url || def.require['toUrl'],
+				'exports': core.getCjsExports(def)
+			});
 		},
 
 		extractCfg: function (cfg) {
@@ -535,7 +543,7 @@
 		},
 
 		executeDefFunc: function (def) {
-			var resource, moduleThis;
+			var resource, moduleThis, useExports;
 			// the force of AMD is strong so anything returned
 			// overrides exports.
 			// node.js assumes `this` === `exports` so we do that
@@ -543,11 +551,12 @@
 			// also, use module.exports if that was set
 			// (node.js convention).
 			moduleThis = def.cjs ? def.exports : undef;
+			useExports = def.exports || def.module;
 			resource = def.res.apply(moduleThis, def.deps);
-			if (resource === undef && (def.cjs || def.useExports || def.useModule)) {
+			if (resource === undef && useExports) {
 				// note: exports will equal module.exports unless
 				// module.exports was reassigned inside module.
-				resource = def.module.exports;
+				resource = def.module ? def.module.exports : def.exports;
 			}
 			return resource;
 		},
@@ -771,7 +780,7 @@
 					// only early-export to modules that also export since
 					// pure AMD modules don't expect to get an early export
 					// Note: this logic makes dojo 1.7 work, too.
-					if (msg == msgUsingExports && parentDef.useExports) {
+					if (msg == msgUsingExports && parentDef.exports) {
 						doOnce(childDef.exports);
 					}
 				}
@@ -786,16 +795,13 @@
 
 				for (i = 0; i < len && !completed; i++) {
 					name = names[i];
-					if (name in cjsVars) {
+					if (name in cjsGetters) {
 						// is this "require", "exports", or "module"?
-						// if "exports" or "module" indicate we should grab exports
-						if (name == 'exports') parentDef.useExports = true;
-						if (name == 'module') parentDef.useModule = true;
-						deps[i] = parentDef[name];
+						deps[i] = cjsGetters[name](parentDef);
 						checkDone();
 					}
 					// check for blanks. fixes #32.
-					// this could also help with the has! plugin
+					// this helps support yepnope.js, has.js, and the has! plugin
 					else if (names[i]) {
 						getDep(i, names[i]);
 					}
@@ -804,7 +810,7 @@
 					}
 				}
 
-				if (parentDef.useExports) {
+				if (parentDef.exports) {
 					// announce
 					parentDef.progress(msgUsingExports);
 				}
@@ -837,6 +843,9 @@
 		}
 
 	};
+
+	// hook-up cjs free variable getters
+	cjsGetters = {'require': core.getCjsRequire, 'exports': core.getCjsExports, 'module': core.getCjsModule};
 
 	function _curl (/* various */) {
 
