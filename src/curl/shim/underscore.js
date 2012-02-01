@@ -6,7 +6,7 @@
  * Licensed under the MIT License at:
  * 		http://www.opensource.org/licenses/mit-license.php
  */
-define(/*==='curl/shim/underscore',===*/ ['curl/_privileged'], function (priv) {
+define(/*=='curl/shim/underscore',==*/ ['curl/_privileged'], function (priv) {
 "use strict";
 
 	var core, _define;
