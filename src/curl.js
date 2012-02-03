@@ -854,7 +854,7 @@
 
 	function _curl (/* various */) {
 
-		var args = [].slice.call(arguments), ids, def;
+		var args = [].slice.call(arguments), ids;
 
 		// extract config, if it's specified
 		if (isType(args[0], 'Object')) {
@@ -862,12 +862,10 @@
 			core.checkPreloads(userCfg);
 		}
 
-		// this must be after extractCfg
-		def = core.createResourceDef('*', userCfg, false, '');
-
 		// thanks to Joop Ringelberg for helping troubleshoot the API
 		function CurlApi (ids, callback, waitFor) {
-			var then;
+			var then, def;
+			def = core.createResourceDef('*', userCfg, false, '');
 			this['then'] = then = function (resolved, rejected) {
 				when(def,
 					// return the dependencies as arguments, not an array
