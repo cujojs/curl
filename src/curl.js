@@ -46,11 +46,9 @@
 		// these are always handy :)
 		toString = ({}).toString,
 		undef,
-//		aslice = [].slice,
 		// RegExp's used later, "cached" here
 		absUrlRx = /^\/|^[^:]+:\/\//,
 		findLeadingDotsRx = /(?:^|\/)(\.)(\.?)\/?/g,
-//		findSlashRx = /\//g,
 		dontAddExtRx = /\?/,
 		removeCommentsRx = /\/\*[\s\S]*?\*\/|(?:[^\\])\/\/.*?[\n\r]/g,
 		findRValueRequiresRx = /require\s*\(\s*["']([^"']+)["']\s*\)|(?:[^\\]?)(["'])/g,
@@ -79,13 +77,8 @@
 		return descriptor;
 	}
 
-//	function endsWithSlash (str) {
-//		return str.charAt(str.length - 1) == '/';
-//	}
-
 	function joinPath (path, file) {
 		return removeEndSlash(path) + '/' + file;
-//		return (!path || endsWithSlash(path) ? path : path + '/') + file;
 	}
 
 	function removeEndSlash (path) {
@@ -229,7 +222,10 @@
 			}
 
 			function toUrl (n) {
-				// TODO: determine if we can skip call to toAbsId if all ids passed to this function are normalized or absolute
+				// even though internally, we don't seem to need to do
+				// toAbsId, the AMD spec says we need to do this for plugins.
+				// also, thesec states that we should not append an extension
+				// in this function.
 				return core.resolvePathInfo(toAbsId(n), cfg).url;
 			}
 
@@ -286,8 +282,9 @@
 		getDefUrl: function (def) {
 			// note: don't look up an anon module's id from it's own toUrl cuz
 			// the parent's config was used to find this module
-			// the toUrl fallback is for named modules in built files.
-			return def.url || (def.url = def.require['toUrl'](def.id));
+			// the toUrl fallback is for named modules in built files
+			// which must have absolute ids.
+			return def.url || (def.url = core.checkToAddJsExt(def.require['toUrl'](def.id)));
 		},
 
 		extractCfg: function (cfg) {
@@ -394,14 +391,13 @@
 
 		},
 
-		resolvePathInfo: function (id, cfg, isPlugin) {
-			// TODO: figure out why this gets called so often for the same file (toUrl?)
+		resolvePathInfo: function (id, cfg, forPlugin) {
 			// searches through the configured path mappings and packages
-			var pathMap, pathInfo, path, config, found;
+			var pathMap, pathInfo, path, pkgCfg, found;
 
 			pathMap = cfg.pathMap;
 
-			if (isPlugin && cfg.pluginPath && id.indexOf('/') < 0 && !(id in pathMap)) {
+			if (forPlugin && cfg.pluginPath && id.indexOf('/') < 0 && !(id in pathMap)) {
 				// prepend plugin folder path, if it's missing and path isn't in pathMap
 				// Note: this munges the concepts of ids and paths for plugins,
 				// but is generally safe since it's only for non-namespaced
@@ -434,13 +430,19 @@
 			return {
 				path: path,
 				config: pkgCfg || userCfg,
-				url: core.resolveUrl(path, cfg, true)
+				url: core.resolveUrl(path, cfg)
 			};
 		},
 
-		resolveUrl: function (path, cfg, addExt) {
+		resolveUrl: function (path, cfg) {
 			var baseUrl = cfg.baseUrl;
-			return (baseUrl && !absUrlRx.test(path) ? joinPath(baseUrl, path) : path) + (addExt && !dontAddExtRx.test(path) ? '.js' : '');
+			return baseUrl && !absUrlRx.test(path) ? joinPath(baseUrl, path) : path;
+		},
+
+		checkToAddJsExt: function (url) {
+			// don't add extension if a ? is found in the url (query params)
+			// i'd like to move this feature to a moduleLoader
+			return url + (dontAddExtRx.test(url) ? '' : '.js');
 		},
 
 		loadScript: function (def, success, failure) {
@@ -613,15 +615,6 @@
 						if (!args || args.ex) {
 							def.reject(new Error((args.ex || 'define() missing or duplicated: ${url}').replace('${url}', def.url)));
 						}
-//						if (!args) {
-//							// uh oh, nothing was added to the argsNet
-//							def.reject(new Error('define() missing or duplicated: ' + def.url));
-//						}
-//						else if (args.ex) {
-//							// the argsNet resource was already rejected, but it didn't know
-//							// its id, so reject this def now with better information
-//							def.reject(new Error(args.ex.replace('${url}', def.url)));
-//						}
 						else {
 							core.resolveResDef(def, args);
 						}
@@ -637,46 +630,56 @@
 
 		},
 
-//		normalizeName: function (childId, parentId) {
-//			return reduceLeadingDots(childId, parentId);
-//		},
-//
 		fetchDep: function (depName, parentDef) {
-			var parts, toAbsId, isPreload, resId, loaderId, pathInfo,
-				def, tempDef, resCfg;
+			var toAbsId, isPreload, parts, mainId, loaderId, pluginId,
+				resId, pathInfo, def, tempDef, resCfg;
 
 			toAbsId = parentDef.toAbsId;
 			isPreload = parentDef.isPreload;
 
 			// check for plugin loaderId
 			parts = pluginParts(depName);
+			// resId is not normalized since the plugin may need to do it
+			resId = parts.resourceId;
 
-			// get id of main resource to load (which could be a plugin)
-			resId = toAbsId(parts.pluginId || parts.resourceId);
-			pathInfo = core.resolvePathInfo(resId, userCfg, !!parts.pluginId);
+			// get id of first resource to load (which could be a plugin)
+			mainId = toAbsId(parts.pluginId || resId);
+			pathInfo = core.resolvePathInfo(mainId, userCfg, !!parts.pluginId);
 
-			// get custom module loader from package config or plugin prefix
-			loaderId = pathInfo.config['moduleLoader'];
-			if (loaderId) {
-				resId = loaderId; // not relative
-				pathInfo = core.resolvePathInfo(loaderId, userCfg);
+			// get custom module loader from package config if not a plugin
+			// TODO: figure out how to make module loaders work with plugins
+			if (parts.pluginId) {
+				loaderId = mainId;
+			}
+			else {
+				loaderId = pathInfo.config['moduleLoader'];
+				if (loaderId) {
+					// since we're not using toAbsId, transformers must be absolute
+					resId = mainId;
+					mainId = loaderId;
+					pathInfo = core.resolvePathInfo(loaderId, userCfg);
+				}
 			}
 
 			// find resource definition
-			def = cache[resId];
+			def = cache[mainId];
 			if (!def) {
-				def = cache[resId] = core.createResourceDef(resId, pathInfo.config, isPreload);
-				def.url = pathInfo.url;
+				def = cache[mainId] = core.createResourceDef(mainId, pathInfo.config, isPreload);
+				def.url = core.checkToAddJsExt(pathInfo.url);
 				core.fetchResDef(def);
 			}
 
-			if (loaderId) {
+			// plugin or transformer
+			if (mainId == loaderId) {
 
 				// we need to use depName until plugin tells us normalized id.
 				// if the plugin changes the id, we need to consolidate
 				// def promises below.  Note: exports objects will be different
 				// between pre-normalized and post-normalized defs! does this matter?
-				tempDef = cache[depName] = core.createResourceDef(depName);
+				// don't put this resource def in the cache because if the
+				// resId doesn't change, the check if this is a new
+				// normalizedDef (below) will think it's already being loaded.
+				tempDef = /*cache[depName] =*/ core.createResourceDef(depName);
 
 				// note: this means moduleLoaders can store config info in the
 				// plugins config, too.
@@ -689,10 +692,10 @@
 					// check if plugin supports the normalize method
 					if ('normalize' in plugin) {
 						// dojo/has may return falsey values (0, actually)
-						resId = plugin['normalize'](parts.resourceId, toAbsId, resCfg) || '';
+						resId = plugin['normalize'](resId, toAbsId, resCfg) || '';
 					}
 					else {
-						resId = toAbsId(parts.resourceId);
+						resId = toAbsId(resId);
 					}
 
 					// use the full id (loaderId + id) to id plugin resources
@@ -729,121 +732,16 @@
 					}
 
 					// chain defs (resolve when plugin.load executes)
-					if (def != normalizedDef) {
-						when(normalizedDef, def.resolve, def.reject);
+					if (tempDef != normalizedDef) {
+						when(normalizedDef, tempDef.resolve, tempDef.reject);
 					}
 
 				}, tempDef.reject);
 
 			}
 
-
-
-			/***************/
-
-//			if (parts.pluginId) {
-//				// get plugin info
-//				loaderId = toAbsId(parts.pluginId);
-//				// allow plugin-specific path mappings
-//				cfg = userCfg.plugins[loaderId] || cfg;
-//			}
-//			else {
-//				// obtain absolute id of resource
-//				resId = toAbsId(parts.resourceId);
-//				// get path information for this resource
-//				pathInfo = core.resolvePathInfo(resId, cfg);
-//				url = core.resolveUrl(pathInfo.path, cfg, true);
-//				// get custom module loader from package config
-//				loaderId = pathInfo.config['moduleLoader'];
-//			}
-//
-//			if (!loaderId) {
-//
-//				// normal AMD module
-//				def = cache[resId];
-//				if (!def) {
-//					def = cache[resId] = core.createResourceDef(resId, cfg, isPreload);
-//					def.url = url;
-//					core.fetchResDef(def);
-//				}
-//
-//			}
-//			else {
-//
-//				// fetch plugin or loader
-//				loaderDef = cache[loaderId];
-//				if (!loaderDef) {
-//					// userCfg is used to resolve the loader url and path
-//					loaderInfo = core.resolvePathInfo(loaderId, userCfg, !!parts.pluginId);
-//					loaderDef = cache[loaderId] = core.createResourceDef(loaderId, cfg, isPreload);
-//					loaderDef.url = core.resolveUrl(loaderInfo.path, userCfg, true);
-//					core.fetchResDef(loaderDef);
-//				}
-//
-//				// we need to use depName until plugin tells us normalized id.
-//				// if the plugin changes the id, we need to consolidate
-//				// def promises below.  Note: exports objects will be different
-//				// between pre-normalized and post-normalized defs! does this matter?
-//				def = core.createResourceDef(depName, cfg);
-//
-//				when(loaderDef,
-//					function (plugin) {
-//						var normalizedDef;
-//
-//						// check if plugin supports the normalize method
-//						if ('normalize' in plugin) {
-//							// dojo/has may return falsey values (0, actually)
-//							resId = plugin['normalize'](parts.resourceId, toAbsId, cfg) || '';
-//						}
-//						else {
-//							resId = toAbsId(parts.resourceId);
-//						}
-//
-//						// use the full id (loaderId + id) to id plugin resources
-//						// so multiple plugins may each process the same resource
-//						fullId = loaderId + '!' + resId;
-//						normalizedDef = cache[fullId];
-//
-//						// if this is our first time fetching this (normalized) def
-//						if (!normalizedDef) {
-//
-//							// because we're using resId, plugins, such as wire!,
-//							// can use paths relative to the resource
-//							normalizedDef = core.createResourceDef(fullId, cfg, isPreload, resId);
-//
-//							// resName could be blank if the plugin doesn't specify an id (e.g. "domReady!")
-//							// don't cache non-determinate "dynamic" resources (or non-existent resources)
-//							if (!plugin['dynamic']) {
-//								cache[fullId] = normalizedDef;
-//							}
-//
-//							// curl's plugins prefer to receive a deferred,
-//							// but to be compatible with AMD spec, we have to
-//							// piggy-back on the callback function parameter:
-//							var loaded = function (res) {
-//								normalizedDef.resolve(res);
-//								if (plugin['dynamic']) delete cache[fullId];
-//							};
-//							loaded['resolve'] = loaded;
-//							loaded['reject'] = normalizedDef.reject;
-//
-//							// load the resource!
-//							plugin.load(resId, normalizedDef.require, loaded, cfg);
-//
-//						}
-//
-//						// chain defs (resolve when plugin.load executes)
-//						if (def != normalizedDef) {
-//							when(normalizedDef, def.resolve, def.reject);
-//						}
-//
-//					},
-//					def.reject
-//				);
-//
-//			}
-
-			return def;
+			// return tempDef if this is a plugin-based resource
+			return tempDef || def;
 		},
 
 		getDeps: function (parentDef, names, overrideCallback) {
@@ -957,7 +855,6 @@
 	function _curl (/* various */) {
 
 		var args = [].slice.call(arguments), ids, def;
-//		var args = aslice.call(arguments), ids, def;
 
 		// extract config, if it's specified
 		if (isType(args[0], 'Object')) {
