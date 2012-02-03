@@ -46,6 +46,9 @@
 		// these are always handy :)
 		toString = ({}).toString,
 		undef,
+		// constants / flags
+		msgUsingExports = {},
+		interactive = {},
 		// RegExp's used later, "cached" here
 		absUrlRx = /^\/|^[^:]+:\/\//,
 		findLeadingDotsRx = /(?:^|\/)(\.)(\.?)\/?/g,
@@ -53,12 +56,11 @@
 		removeCommentsRx = /\/\*[\s\S]*?\*\/|(?:[^\\])\/\/.*?[\n\r]/g,
 		findRValueRequiresRx = /require\s*\(\s*["']([^"']+)["']\s*\)|(?:[^\\]?)(["'])/g,
 		// script ready states that signify it's loaded
-		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
-		orsc = 'onreadystatechange',
-		// messages
-		msgUsingExports = {},
+		readyStates = { 'loaded': 1, 'interactive': interactive, 'complete': 1 },
 		cjsGetters,
 		core;
+
+	function noop () {}
 
 	function isType (obj, type) {
 		return toString.call(obj).indexOf('[object ' + type) == 0;
@@ -130,7 +132,7 @@
 
 	function Promise () {
 
-		var self, thens, resolve, reject;
+		var self, thens, complete;
 
 		self = this;
 		thens = [];
@@ -139,10 +141,6 @@
 			// capture calls to callbacks
 			thens.push([resolved, rejected, progressed]);
 		}
-
-		resolve = function (val) { complete(true, val); };
-
-		reject = function (ex) { complete(false, ex); };
 
 		function notify (which, arg) {
 			// complete all callbacks
@@ -153,18 +151,17 @@
 			}
 		}
 
-		function complete (success, arg) {
+		complete = function promiseComplete (success, arg) {
 			// switch over to sync then()
 			then = success ?
 				function (resolved, rejected) { resolved && resolved(arg); } :
 				function (resolved, rejected) { rejected && rejected(arg); };
 			// we no longer throw during multiple calls to resolve or reject
 			// since we don't really provide useful information anyways.
-			resolve = reject =
-				function () { /*throw new Error('Promise already completed.');*/ };
+			complete = noop;
 			// complete all callbacks
 			notify(success ? 0 : 1, arg);
-		}
+		};
 
 		this.then = function (resolved, rejected, progressed) {
 			then(resolved, rejected, progressed);
@@ -172,11 +169,11 @@
 		};
 		this.resolve = function (val) {
 			self.resolved = val;
-			resolve(val);
+			complete(true, val);
 		};
 		this.reject = function (ex) {
 			self.rejected = ex;
-			reject(ex);
+			complete(false, ex);
 		};
 		this.progress = function (msg) {
 			notify(2, msg);
@@ -246,7 +243,7 @@
 						throw new Error('Module not resolved: '  + rvid);
 					}
 					if (cb) {
-						throw new Error('require(id, callback) not allowed.');
+						throw new Error('require(id, callback) not allowed');
 					}
 					return earlyExport || childDef;
 				}
@@ -384,7 +381,7 @@
 				// chain from previous preload, if any (revisit when
 				// doing package-specific configs).
 				when(preload, function () {
-					preload = core.createResourceDef('*p', cfg, true, '');
+					preload = core.createResourceDef(undef, cfg, true);
 					core.getDeps(preload, preloads);
 				});
 			}
@@ -455,10 +452,10 @@
 			function process (ev) {
 				ev = ev || global.event;
 				// detect when it's done loading
-				if (ev.type === 'load' || readyStates[this.readyState]) {
+				if (ev.type == 'load' || readyStates[el.readyState]) {
 					delete activeScripts[def.id];
 					// release event listeners
-					this.onload = this[orsc] = this.onerror = ''; // ie cries if we use undefined
+					el.onload = el.onreadystatechange = el.onerror = ''; // ie cries if we use undefined
 					success();
 				}
 			}
@@ -474,7 +471,7 @@
 			// actually, we don't even need to set this at all
 			//el.type = 'text/javascript';
 			// using dom0 event handlers instead of wordy w3c/ms
-			el.onload = el[orsc] = process;
+			el.onload = el.onreadystatechange = process;
 			el.onerror = fail;
 			// TODO: support other charsets?
 			el.charset = 'utf-8';
@@ -613,7 +610,7 @@
 
 						// if !args, nothing was added to the argsNet
 						if (!args || args.ex) {
-							def.reject(new Error((args.ex || 'define() missing or duplicated: ${url}').replace('${url}', def.url)));
+							def.reject(new Error((args.ex || 'define() missing or duplicated: url').replace('url', def.url)));
 						}
 						else {
 							core.resolveResDef(def, args);
@@ -769,7 +766,7 @@
 					deps[index] = dep; // got it!
 					checkDone();
 					// only run once for this dep (in case of early exports)
-					doOnce = function () {};
+					doOnce = noop;
 				};
 
 				function doSuccess (dep) {
@@ -838,7 +835,7 @@
 			var def;
 			if (!isType(global.opera, 'Opera')) {
 				for (var d in activeScripts) {
-					if (activeScripts[d].readyState == 'interactive') {
+					if (readyStates[activeScripts[d].readyState] == interactive) {
 						def = d;
 						break;
 					}
@@ -865,7 +862,7 @@
 		// thanks to Joop Ringelberg for helping troubleshoot the API
 		function CurlApi (ids, callback, waitFor) {
 			var then, def;
-			def = core.createResourceDef('*', userCfg, false, '');
+			def = core.createResourceDef('Curl', userCfg);
 			this['then'] = then = function (resolved, rejected) {
 				when(def,
 					// return the dependencies as arguments, not an array
@@ -896,7 +893,7 @@
 
 		if (id == undef) {
 			if (argsNet !== undef) {
-				argsNet = {ex: 'Multiple anonymous defines in ${url}.'};
+				argsNet = {ex: 'Multiple anonymous defines in url'};
 			}
 			else if (!(id = core.getCurrentDefName())/* intentional assignment */) {
 				// anonymous define(), defer processing until after script loads
