@@ -661,7 +661,7 @@
 			// find resource definition
 			def = cache[mainId];
 			if (!def) {
-				def = cache[mainId] = core.createResourceDef(mainId, pathInfo.config, isPreload);
+				def = cache[mainId] = core.createResourceDef(mainId, pathInfo.config, isPreload, pathInfo.path);
 				def.url = core.checkToAddJsExt(pathInfo.url);
 				core.fetchResDef(def);
 			}
