@@ -30,8 +30,8 @@
 
 	var
 		version = '0.6.0',
-		doc = global.document,
 		userCfg = global['curl'],
+		doc = global.document,
 		head = doc && (doc['head'] || doc.getElementsByTagName('head')[0]),
 		// local cache of resource definitions (lightweight promises)
 		cache = {},
@@ -269,11 +269,16 @@
 		},
 
 		getCjsModule: function (def) {
-			return def.module || (def.module = {
-				'id': def.id,
-				'uri': core.getDefUrl(def),
-				'exports': core.getCjsExports(def)
-			});
+			var module = def.module;
+			if (module) {
+				module = def.module = {
+					'id': def.id,
+					'uri': core.getDefUrl(def),
+					'exports': core.getCjsExports(def)
+				};
+				module.exports = module['exports'];
+			}
+			return module;
 		},
 
 		getDefUrl: function (def) {
