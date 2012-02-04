@@ -9,28 +9,21 @@
 define(/*=='curl/shim/underscore',==*/ ['curl/_privileged'], function (priv) {
 "use strict";
 
-	var core, _define;
+	var core, resolveResDef;
 
 	core = priv['core'];
-	_define = core['_define'];
+	resolveResDef = core['resolveResDef'];
 
 	// underscore exports its exports before it defines its properties/methods.
-	// override _define and defer the resolution of underscore a bit so it
+	// override resolveResDef and defer the resolution of underscore a bit so it
 	// can finish.
-	core['_define'] = function (args) {
-		if (args.id == 'underscore') {
-			soon(function () {
-				_define(args);
-			});
+	core['resolveResDef'] = function (def, args) {
+		if (def.id == 'underscore') {
+			setTimeout(function () { resolveResDef(def, args); }, 0);
 		}
 		else {
-			_define(args);
+			resolveResDef(def, args);
 		}
 	};
-
-	function soon (callback) {
-		// TODO: setImmediate and postMessage/MessageChannel
-		setTimeout(callback, 0);
-	}
 
 });
