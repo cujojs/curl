@@ -610,7 +610,7 @@
 
 						// if !args, nothing was added to the argsNet
 						if (!args || args.ex) {
-							def.reject(new Error((args.ex || 'define() missing or duplicated: url').replace('url', def.url)));
+							def.reject(new Error(((args && args.ex) || 'define() missing or duplicated: url').replace('url', def.url)));
 						}
 						else {
 							core.resolveResDef(def, args);
@@ -862,7 +862,7 @@
 		// thanks to Joop Ringelberg for helping troubleshoot the API
 		function CurlApi (ids, callback, waitFor) {
 			var then, def;
-			def = core.createResourceDef('Curl', userCfg);
+			def = core.createResourceDef(undef, userCfg);
 			this['then'] = then = function (resolved, rejected) {
 				when(def,
 					// return the dependencies as arguments, not an array
