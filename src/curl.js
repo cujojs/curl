@@ -270,7 +270,7 @@
 
 		getCjsModule: function (def) {
 			var module = def.module;
-			if (module) {
+			if (!module) {
 				module = def.module = {
 					'id': def.id,
 					'uri': core.getDefUrl(def),
