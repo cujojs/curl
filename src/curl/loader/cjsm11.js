@@ -12,7 +12,7 @@
  */
 (function (global, document) {
 
-define(/*==='curl/shim/cjsm11',===*/ function () {
+define(/*=='curl/loader/cjsm11',==*/ function () {
 
 	var head, globalEval /*, findRequiresRx, myId*/;
 
@@ -90,7 +90,7 @@ define(/*==='curl/shim/cjsm11',===*/ function () {
 				var moduleMap;
 
 				// find (and replace?) dependencies
-				moduleMap = priv.core.extractCjsDeps(source);
+				moduleMap = priv['core'].extractCjsDeps(source);
 				//source = parseDepModuleIds(source, moduleMap, config.replaceRequires);
 
 				// get deps
