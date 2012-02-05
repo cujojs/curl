@@ -1,6 +1,13 @@
-/*
-	(c) copyright 2011, unscriptable.com / John M. Hann
+/** MIT License (c) copyright B Cavalier & J Hann */
 
+/**
+ * curl async! plugin
+ *
+ * Licensed under the MIT License at:
+ * 		http://www.opensource.org/licenses/mit-license.php
+ *
+ */
+/*
 	async plugin takes another module as it's resource and defers callback
 	until that module is complete.  the module must return a promise-like
 	object (i.e. has a then method). usage:

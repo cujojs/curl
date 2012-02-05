@@ -1,14 +1,13 @@
 <!DOCTYPE HTML>
 <html>
 <head>
-<title>main curl test file</title>
+<title>test next()</title>
 
 <script>
 
 	curl = {
 		paths: {
-			curl: '../src/curl/',
-			text: '../src/curl/plugin/text'
+			curl: '../src/curl/'
 		}
 	};
 
@@ -27,20 +26,41 @@
 	}
 
 </script>
-<script src="../dist/curl/curl.js" type="text/javascript"></script>
+<script src="../src/curl.js" type="text/javascript"></script>
 
 <script type="text/javascript">
 
 	var start = new Date();
 	curl(
 		[
+			'js!stuff/plain_old.js'
+		],
+		function () {
+			console.log('first callback', arguments);
+		}
+	).then(
+		function () {
+			console.log('this is a then()', arguments)
+		}
+	).next(
+		[
+			'js!stuff/plain_old_2.js'
+		],
+		function () {
+			console.log('second callback', arguments);
+		}
+	).next(
+		[
 			'stuff/three',
 			'css!stuff/base',
-			//'require/i18n!stuff/nls/strings',
 			'text!stuff/template.html'
-		]
-	).then(
-		function (three, link, /*strings,*/ template) {
+		],
+		function () {
+			console.log('third callback', arguments);
+		}
+	)
+	.then(
+		function (three, link, template) {
 			console.log('total time:', new Date() - start);
 			if (document.body) {
 				document.body.appendChild(document.createTextNode('A module with dependencies loaded successfully if 3 == ' + three + '.'));

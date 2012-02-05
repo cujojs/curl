@@ -1,3 +1,3 @@
-define(['module'], function (module) {
+define(function (require, exports, module) {
 	this.testMessage = module.id;
 });

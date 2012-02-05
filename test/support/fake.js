@@ -7,7 +7,7 @@ define(function () {
 	plugin = {
 		load: function (name, resolver, callback, config) {
 			plugin.testValue = config.testValue;
-			callback({});
+			callback(config.testValue);
 		}
 	};
 

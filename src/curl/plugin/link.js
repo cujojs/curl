@@ -1,5 +1,11 @@
+/** MIT License (c) copyright B Cavalier & J Hann */
+
 /**
- * Copyright (c) 2010 unscriptable.com
+ * curl link! plugin
+ *
+ * Licensed under the MIT License at:
+ * 		http://www.opensource.org/licenses/mit-license.php
+ *
  */
 
 (function (global) {
@@ -65,6 +71,11 @@
 	}
 
 	define(/*=='link',==*/ {
+
+//		'normalize': function (resourceId, toAbsId) {
+//			// remove options
+//			return resourceId ? toAbsId(resourceId.split("!")[0]) : resourceId;
+//		},
 
 		'load': function (resourceId, require, callback, config) {
 			var url, link, fix;

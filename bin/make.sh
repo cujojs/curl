@@ -6,6 +6,8 @@ tmpfile=$(mktemp -t cram.XXXXXX)
 # use all of the remaining parameters as files to be concatenated
 shift
 
+echo "making $out"
+
 # concatenate all of the files to a temp file
 cat $@ | sed -e "s:\/\*==::g" -e "s:==\*\/::g" > "$tmpfile"
 

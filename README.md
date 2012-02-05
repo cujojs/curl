@@ -1,7 +1,7 @@
 curl (cujo resource loader)
 =====================
 
-version 0.5.4
+version 0.6
 
 See the [wiki](https://github.com/cujojs/curl/wiki) for information about using curl.js with jQuery.
 
@@ -19,8 +19,28 @@ Helpful link for updating submodules:
 What's New?
 =======
 
+* 0.6
+	* works with underscore fork at [amdjs](https://github.com/amdjs/underscore)
+	* tested and works with dojo 1.7.1 (using curl/shim/dojo16 as a preload)
+	* allows normal, non-AMD js files to return values to AMD modules (!exports
+	  option)
+	* unwrapped CommonJS Modules/1.1 compatibility (experimental)
+	* non-AMD module loading via moduleLoader config property
+	* updated to latest AMD plugin specifications
+	* preloads config array to ensure shims (or other modules) are loaded
+	  first
+	* package-specific configurations
+	* avoids circular dependencies when using cjsm modules
+	* folder reorganization. shims were moved into their own folder
+	* many bugs fixed, including #21, #22, #28, #34, #36, #39, #40
 * 0.5.4
+	* jQuery 1.7 support!!!
 	* curl.js indicates to jQuery that it is a jQuery-aware AMD loader (#31)
+	* AMD/CJSM Hybrid format (see Manual Conversion section of this
+	  page: http://requirejs.org/docs/commonjs.html)
+	* Now supports node's module.exports = x; export model
+	* bug fixes:
+		* multiple .next() calls now pass variables correctly
 	* curl.js now ignores blank or falsy module ids for better compatibility
 	  wth yepnope and has! (#32)
 * 0.5.3
@@ -57,10 +77,9 @@ What's New?
 
 TODO:
 
-* configuration options per package
-* finish i18n plugin (eta: September)
-* create dojo 1.6 tests
-* document plugin configuration options and how to use plugins
+* finish i18n plugin!
+* create dojo 1.7 shim, if necessary
+* document plugin configuration options and how to use each plugin
 * notes about using JSONP (it works for objects, arrays, functions, numbers
   and strings! use ?callback=define)
 
@@ -143,7 +162,7 @@ Promises-based API for executing callbacks.
 * ['dep1', 'dep2', 'dep3']: Module names or plugin-prefixed resource files
 * callback: Function to receive modules or resources
 * errorback: Function to call if an exception occurred while loading
-* For full CommonJS Promises/A compliance, use [when.js](https://github.com/briancavalier/when.js)
+* For full CommonJS Promises/A compliance, use [when.js](https://github.com/cujojs/when)
     * `when(curl(['dep1']).then(callback);`
 
 ---------
@@ -735,9 +754,9 @@ out of cujo.js.  Our goal is to make the advanced concepts in cujo.js more
 palatable by breaking them down into easier-to-grok chunks.  Other cujo.js
 libs include:
 
-* [canhaz](https://github.com/briancavalier/canhaz): a project and code bootstrapping tool that will save you tons of typing.
-* [wire](https://github.com/briancavalier/wire): A light, fast, flexible Javascript IOC container
-* [when.js](https://github.com/briancavalier/when.js): A small, fast Promises/A compliant promises implementation
+* [canhaz](https://github.com/cujojs/canhaz): a project and code bootstrapping tool that will save you tons of typing.
+* [wire](https://github.com/cujojs/wire): A light, fast, flexible Javascript IOC container
+* [when.js](https://github.com/cujojs/when): A small, fast Promises/A compliant promises implementation
 * [cram](https://github.com/cujojs/cram): a javascript compressor, concatenator, and optimizer meant to be used with curl.js
 
 Kudos

@@ -1,7 +1,14 @@
+/** MIT License (c) copyright B Cavalier & J Hann */
+
 /**
  * curl domReady loader plugin
  *
- * (c) copyright 2011, unscriptable.com
+ * Licensed under the MIT License at:
+ * 		http://www.opensource.org/licenses/mit-license.php
+ *
+ */
+
+/**
  *
  * allows the curl/domReady module to be used like a plugin
  * this is for better compatibility with other loaders.

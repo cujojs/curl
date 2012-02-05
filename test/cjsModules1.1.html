@@ -1,0 +1,70 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>CommonJS Modules 1.1 loading test</title>
+
+<script>
+
+	// mock console for IE
+	if (!window.console) console = {};
+	if (!('log' in console)) {
+		console._msg = [];
+		console.log = function (msg) {
+			var _msg = this._msg;
+			_msg.push(msg && msg.join ? msg.join(' ') : msg);
+			clearTimeout(this._timeout);
+			this._timeout = setTimeout(function () {
+				alert(_msg.join('\n'));
+			}, 100);
+		};
+	}
+
+	curl = {
+		paths: {
+			curl: '../src/curl'
+		},
+		packages: {
+			commonjs: {
+				path: 'support/commonjs',
+				config: {
+					injectScript: true,
+					moduleLoader: 'curl/loader/cjsm11'
+				}
+			}
+		}
+	};
+
+</script>
+<script src="../src/curl.js" type="text/javascript"></script>
+
+
+<script type="text/javascript">
+
+	curl(
+		[
+			// test modules:
+			'commonjs/nakedDependentCjsm1.1',
+			'commonjs/nakedSimpleCjsm1.1'
+		]
+	).then(
+		function (dep, simple) {
+			var test1 = dep.testMessage == simple.testMessage,
+				test2 = simple.id == 'commonjs/nakedSimpleCjsm1.1';
+			write((test1 ? 'SUCCESS' : 'FAILED') + ': require("./module")');
+			write((test2 ? 'SUCCESS' : 'FAILED') + ': module id is correct?');
+		}
+	);
+
+	function write (msg) {
+		curl('domReady!', function () {
+			document.body.appendChild(document.createElement('div')).innerHTML = msg;
+		});
+	}
+
+</script>
+
+</head>
+<body>
+
+</body>
+</html>
