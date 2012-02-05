@@ -20,14 +20,17 @@ What's New?
 =======
 
 * 0.6
+	* works with underscore fork at [amdjs](https://github.com/amdjs/underscore)
+	* tested and works with dojo 1.7.1 (using curl/shim/dojo16 as a preload)
+	* allows normal, non-AMD js files to return values to AMD modules (!exports
+	  option)
+	* unwrapped CommonJS Modules/1.1 compatibility (experimental)
+	* non-AMD module loading via moduleLoader config property
 	* updated to latest AMD plugin specifications
-	* underscore shim (curl/shim/underscore) that corrects underscore's
-	  not-quite-right AMD implementation
 	* preloads config array to ensure shims (or other modules) are loaded
 	  first
-	* CommonJS Modules/1.1 compatibility (experimental)
-	* non-AMD module loading via moduleLoader config property
-	* package-specific configuration, including paths
+	* package-specific configurations
+	* avoids circular dependencies when using cjsm modules
 	* folder reorganization. shims were moved into their own folder
 	* many bugs fixed, including #21, #22, #28, #34, #36, #39, #40
 * 0.5.4
