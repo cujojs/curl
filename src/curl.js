@@ -33,12 +33,9 @@
 		userCfg = global['curl'],
 		doc = global.document,
 		head = doc && (doc['head'] || doc.getElementsByTagName('head')[0]),
-		// local cache of resource definitions (lightweight promises)
-		cache = {},
-		// preload are files that must be loaded before any others
-		preload = false,
-		// net to catch anonymous define calls' arguments (non-IE browsers)
-		argsNet,
+		// constants / flags
+		msgUsingExports = {},
+		interactive = {},
 		// this is the list of scripts that IE is loading. one of these will
 		// be the "interactive" script. too bad IE doesn't send a readystatechange
 		// event to tell us exactly which one.
@@ -46,17 +43,20 @@
 		// these are always handy :)
 		toString = ({}).toString,
 		undef,
-		// constants / flags
-		msgUsingExports = {},
-		interactive = {},
-		// RegExp's used later, "cached" here
-		absUrlRx = /^\/|^[^:]+:\/\//,
-		findLeadingDotsRx = /(?:^|\/)(\.)(\.?)\/?/g,
-		dontAddExtRx = /\?/,
-		removeCommentsRx = /\/\*[\s\S]*?\*\/|(?:[^\\])\/\/.*?[\n\r]/g,
-		findRValueRequiresRx = /require\s*\(\s*["']([^"']+)["']\s*\)|(?:[^\\]?)(["'])/g,
 		// script ready states that signify it's loaded
 		readyStates = { 'loaded': 1, 'interactive': interactive, 'complete': 1 },
+		// local cache of resource definitions (lightweight promises)
+		cache = {},
+		// preload are files that must be loaded before any others
+		preload = false,
+		// net to catch anonymous define calls' arguments (non-IE browsers)
+		argsNet,
+		// RegExp's used later, "cached" here
+		dontAddExtRx = /\?/,
+		absUrlRx = /^\/|^[^:]+:\/\//,
+		findLeadingDotsRx = /(?:^|\/)(\.)(\.?)\/?/g,
+		removeCommentsRx = /\/\*[\s\S]*?\*\/|(?:[^\\])\/\/.*?[\n\r]/g,
+		findRValueRequiresRx = /require\s*\(\s*["']([^"']+)["']\s*\)|(?:[^\\]?)(["'])/g,
 		cjsGetters,
 		core;
 
@@ -944,6 +944,9 @@
 	apiContext = userCfg['apiContext'] || global;
 	apiContext[apiName] = _curl;
 
+	// allow curl to be a dependency
+	cache['curl'] = _curl;
+
 	// wrap inner _define so it can be replaced without losing define.amd
 	define = global['define'] = function () {
 		var args = core.fixArgs(arguments);
@@ -953,10 +956,6 @@
 
 	// indicate our capabilities:
 	define['amd'] = { 'plugins': true, 'jQuery': true, 'curl': version };
-
-	// allow curl to be a dependency
-	cache['curl'] = _curl;
-
 
 	// expose curl core for special plugins and modules
 	// Note: core overrides will only work in either of two scenarios:
