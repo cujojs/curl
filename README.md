@@ -3,7 +3,10 @@ curl (cujo resource loader)
 
 version 0.6
 
-See the [wiki](https://github.com/cujojs/curl/wiki) for information about using curl.js with jQuery.
+Check out the newly updated [wiki](https://github.com/cujojs/curl/wiki)!
+
+See the [wiki](https://github.com/cujojs/curl/wiki) for information about using
+curl.js with jQuery, dojo, or underscore.
 
 Please Note: this project has moved from unscriptable/curl to cujojs/curl.
 Any existing forks have been automatically moved to cujojs/curl. However,
