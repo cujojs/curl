@@ -29,7 +29,7 @@
 	 */
 
 	var
-		version = '0.6.0',
+		version = '0.6.1',
 		userCfg = global['curl'],
 		doc = global.document,
 		head = doc && (doc['head'] || doc.getElementsByTagName('head')[0]),
@@ -41,7 +41,8 @@
 		// event to tell us exactly which one.
 		activeScripts = {},
 		// these are always handy :)
-		toString = ({}).toString,
+		cleanPrototype = {},
+		toString = cleanPrototype.toString,
 		undef,
 		// script ready states that signify it's loaded
 		readyStates = { 'loaded': 1, 'interactive': interactive, 'complete': 1 },
@@ -126,7 +127,7 @@
 	function beget (parent) {
 		Begetter.prototype = parent;
 		var child = new Begetter();
-		Begetter.prototype = undef;
+		Begetter.prototype = cleanPrototype;
 		return child;
 	}
 
