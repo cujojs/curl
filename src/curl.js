@@ -67,7 +67,7 @@
 	}
 
     /**
-     * Adds extension to the given file name (path) if it is not specified.
+     * Adds extension to the given file name (path) if it is necessary.
      * 
      * @param {String} name
      *      File name to process.

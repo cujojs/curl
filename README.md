@@ -289,7 +289,7 @@ Auxiliary API
 -------------
 
 ```javascript
-curl.nameWithExt(name, defaultExt);
+var extendedName = curl.nameWithExt(name, defaultExt);
 ```
 
 Adds extension to the given file name (path) if it is necessary.
