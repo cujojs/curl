@@ -51,11 +51,6 @@
 		head = doc.head || (doc.head = doc.getElementsByTagName('head')[0]);
 	}
 
-	function nameWithExt (name, defaultExt) {
-		return name.lastIndexOf('.') <= name.lastIndexOf('/') ?
-			name + '.' + defaultExt : name;
-	}
-
 	function createLink (doc, href) {
 		var link = doc[createElement]('link');
 		link.rel = "stylesheet";
@@ -80,7 +75,7 @@
 		'load': function (resourceId, require, callback, config) {
 			var url, link, fix;
 
-			url = require['toUrl'](nameWithExt(resourceId, 'css'));
+			url = require['toUrl']( require['nameWithExt'](resourceId, 'css') );
 			fix = 'fixSchemalessUrls' in config ? config['fixSchemalessUrls'] : doc.location.protocol;
 			url = fix ? fixProtocol(url, fix) : url;
 			link = createLink(doc, url);

@@ -127,11 +127,6 @@
 		};
 	}
 
-	function nameWithExt (name, defaultExt) {
-		return name.lastIndexOf('.') <= name.lastIndexOf('/') ?
-			name + '.' + defaultExt : name;
-	}
-
 	function parseSuffixes (name) {
 		// creates a dual-structure: both an array and a hashmap
 		// suffixes[0] is the actual name
@@ -415,7 +410,7 @@
 						// TODO: this is a bit weird: find a better way to extract name?
 						opts = parseSuffixes(resourceId),
 						name = opts.shift(),
-						url = require['toUrl'](nameWithExt(name, 'css')),
+						url = require['toUrl']( require['nameWithExt'](name, 'css') ),
 						link = createLink(doc),
 						nowait = 'nowait' in opts ? opts['nowait'] != 'false' : !!config['cssDeferLoad'],
 						params = {
