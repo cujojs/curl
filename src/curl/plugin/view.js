@@ -54,11 +54,11 @@
  * Usage:
  * <pre><code>
  *      // loads some/folder/view.html
- *      define(['view!some/folder/view.html'], {});
+ *      define(['view!some/folder/view.html'], function(view) {...});
  *      
  *      // loads some/folder/view.html (assuming that 'html' is set as default extension)
  *      // and uses link plugin to load found CSS-files
- *      define(['view!some/folder/view!cssLoader=link'], {});
+ *      define(['view!some/folder/view!cssLoader=link'], function(view) {...});
  * </code></pre>
  *
  */
@@ -319,9 +319,7 @@
                 settings = convertSettings( extractSettings(sLoadSettings) );
                 sLoadSettings = null;
             }
-            conf = config || settings 
-                    ? mix({}, defaultConfig, config, settings) 
-                    : defaultConfig;
+            conf = mix({}, defaultConfig, config, settings);
             conf.api = mix({}, this);
             // Load and parse resource
             require(["text!" + require.toUrl( require.nameWithExt(sResourceName, conf.defaultExt) ), "require"], 

@@ -70,9 +70,9 @@ Usage
 
 ```javascript
 // loads some/folder/view.html
-define(['view!some/folder/view.html'], {});
+define(['view!some/folder/view.html'], function(view) {...});
 
 // loads some/folder/view.html (assuming that 'html' is set as default extension)
 // and uses link plugin to load found CSS-files
-define(['view!some/folder/view!cssLoader=link'], {});
+define(['view!some/folder/view!cssLoader=link'], function(view) {...});
 ```
