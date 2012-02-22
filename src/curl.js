@@ -888,7 +888,6 @@
 			});
 		}
 
-		ids = [].concat(args[0]); // force to array TODO: create unit test
 		return new CurlApi(ids, args[1]);
 
 	}
