@@ -523,12 +523,12 @@
 			// (string, object|function) sx|sf
 			// (object|function) x|f
 
-			var id, deps, defFunc, isDefFunc, len, cjs;
+			var id, deps, defFunc, defFuncArity, len, cjs;
 
 			len = args.length;
 
 			defFunc = args[len - 1];
-			isDefFunc = isType(defFunc, 'Function');
+			defFuncArity = isType(defFunc, 'Function') ? defFunc.length : -1;
 
 			if (len == 2) {
 				if (isType(args[0], 'Array')) {
@@ -545,15 +545,15 @@
 
 			// Hybrid format: assume that a definition function with zero
 			// dependencies and non-zero arity is a wrapped CommonJS module
-			if (!deps && isDefFunc && defFunc.length > 0) {
+			if (!deps && defFuncArity > 0) {
 				cjs = true;
-				deps = ['require', 'exports', 'module'].concat(core.extractCjsDeps(defFunc));
+				deps = ['require', 'exports', 'module'].slice(0, defFuncArity).concat(core.extractCjsDeps(defFunc));
 			}
 
 			return {
 				id: id,
 				deps: deps || [],
-				res: isDefFunc ? defFunc : function () { return defFunc; },
+				res: defFuncArity >= 0 ? defFunc : function () { return defFunc; },
 				cjs: cjs
 			};
 		},
@@ -857,7 +857,7 @@
 
 	function _curl (/* various */) {
 
-		var args = [].slice.call(arguments), ids;
+		var args = [].slice.call(arguments);
 
 		// extract config, if it's specified
 		if (isType(args[0], 'Object')) {
@@ -888,7 +888,7 @@
 			});
 		}
 
-		return new CurlApi(ids, args[1]);
+		return new CurlApi(args[0], args[1]);
 
 	}
 
