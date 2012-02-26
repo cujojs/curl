@@ -13,21 +13,6 @@
  */
 (function (global) {
 
-	/*
-	 * Basic operation:
-	 * When a dependency is encountered and it already exists, it's returned.
-	 * If it doesn't already exist, it is created and the dependency's script
-	 * is loaded. If there is a define call in the loaded script with a id,
-	 * it is resolved asap (i.e. as soon as the module's dependencies are
-	 * resolved). If there is a (single) define call with no id (anonymous),
-	 * the resource in the resNet is resolved after the script's onload fires.
-	 * IE requires a slightly different tactic. IE marks the readyState of the
-	 * currently executing script to 'interactive'. If we can find this script
-	 * while a define() is being called, we can match the define() to its id.
-	 * Opera marks scripts as 'interactive' but at inopportune times so we
-	 * have to handle it specifically.
-	 */
-
 	var
 		version = '0.6.1',
 		userCfg = global['curl'],
@@ -675,7 +660,6 @@
 			deps = [];
 			names = parentDef.depNames;
 			len = names.length;
-			completed = false;
 
 			if (names.length == 0) allResolved();
 
@@ -692,17 +676,21 @@
 			// Note: the correct handling of early exports relies on the
 			// fact that the exports pseudo-dependency is always listed
 			// before other module dependencies.
-			for (i = 0; i < len && !completed; i++) {
+			for (i = 0; i < len; i++) {
 				name = names[i];
 				// is this "require", "exports", or "module"?
 				if (name in cjsGetters) {
 					// a side-effect of cjsGetters is that the cjs
 					// property is also set on the def.
 					resolveCollector(cjsGetters[name](parentDef), i, true);
-					// if we are using the exports cjs variable,
+					// if we are using the `module` or `exports` cjs variables,
 					// signal any waiters/parents that we can export
 					// early (see progress callback in getDep below).
-					if (name == 'exports') {
+					// note: this may fire for `require` as well, if it
+					// is listed after `module` or `exports` in teh deps list,
+					// but that is okay since all waiters will only record
+					// it once.
+					if (parentDef.exports) {
 						parentDef.progress(msgUsingExports);
 					}
 				}
@@ -762,8 +750,6 @@
 			}
 
 			function allResolved () {
-				// TODO: determine if we can remove the completed flag
-				completed = true;
 				parentDef.resolve(deps);
 			}
 
