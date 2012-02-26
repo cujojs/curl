@@ -35,7 +35,6 @@
 		head = doc && (doc['head'] || doc.getElementsByTagName('head')[0]),
 //		// constants / flags
 		msgUsingExports = {},
-//		msgExportsReady = {},
 		msgFactoryExecuted = {},
 		interactive = {},
 		// this is the list of scripts that IE is loading. one of these will
@@ -88,7 +87,6 @@
 
 	function removeEndSlash (path) {
 		return path && path.charAt(path.length - 1) == '/' ? path.substr(0, path.length - 1) : path;
-		//return endsWithSlash(path) ? path.substr(0, path.length - 1) : path;
 	}
 
 	function reduceLeadingDots (childId, baseId) {
@@ -103,7 +101,7 @@
 			isRelative = true;
 			return '';
 		});
-		// TODO: throw if removeLevels > baseId levels
+		// TODO: throw if removeLevels > baseId levels in debug module
 		if (isRelative) {
 			levels = baseId.split('/');
 			levels.splice(levels.length - removeLevels, removeLevels);
@@ -293,7 +291,7 @@
 
 		createResourceDef: function (cfg, id, isPreload, optCtxId) {
 			var def, origResolve, execute, resolvedValue;
-console.log('creating resource def for', id);
+
 			def = core.createContext(cfg, id, isPreload);
 			def.ctxId = optCtxId == undef ? id : optCtxId;
 			origResolve = def.resolve;
@@ -302,38 +300,30 @@ console.log('creating resource def for', id);
 				def.deps = deps;
 				try {
 					resolvedValue = core.executeDefFunc(def);
-console.log('definition function executed', def.id);//console.log('exported:', resolvedValue);
 				}
 				catch (ex) {
 					def.reject(ex);
 				}
 			});
-			// only execute and resolve once, and do it after executing
-			// definition function by overriding promise resolve function
-			def.resolve = /*countdown(1,*/
-				function resolve (deps) {
-					execute(deps);
-					// put resolvedValue in cache
-					cache[def.id] = resolvedValue;
-console.log('>>>>> resolving', def.id);
-					origResolve(resolvedValue);
-				}
-			/*)*/;
 
-//			// track exports
-			def.exportsReady = /*countdown(1,*/
-				function executeFactory (deps) {
-console.log('exportsReady called. can export?', def.exports, def.id);
-					// only resolve early if we also use exports (to avoid
-					// circular dependencies). def.exports will have already
-					// been set by the getDeps loop before we get here.
-					if (def.exports) {
-						execute(deps);
-console.log('notifying parents of', def.id);
-						def.progress(msgFactoryExecuted);
-					}
+			// definition function by overriding promise resolve function
+			def.resolve = function resolve (deps) {
+				execute(deps);
+				// put resolvedValue in cache
+				cache[def.id] = resolvedValue;
+				origResolve(resolvedValue);
+			};
+
+			// track exports
+			def.exportsReady = function executeFactory (deps) {
+				// only resolve early if we also use exports (to avoid
+				// circular dependencies). def.exports will have already
+				// been set by the getDeps loop before we get here.
+				if (def.exports) {
+					execute(deps);
+					def.progress(msgFactoryExecuted);
 				}
-			/*)*/;
+			};
 
 			return def;
 		},
@@ -667,56 +657,13 @@ console.log('notifying parents of', def.id);
 
 		defineResource: function (def, args) {
 
-//			var resource, execute, depsPromise;
-
 			// wait for preload before fetching any other modules
 			when(def.isPreload || preload, function () {
-console.log('defineResource', def.id);
 				def.res = args.res;
 				def.cjs = args.cjs;
 				def.depNames = args.deps;
 				core.getDeps(def);
 			});
-
-//				// only execute and resolve once
-//				execute = countdown(1,
-//					function executeAndResolve () {
-//						try {
-//							resource = core.executeDefFunc(def);
-//console.log('definition function executed', def.id);console.log('exported:', resource);
-//							cache[def.id] = resource;
-//							def.resolve(resource);
-//						}
-//						catch (ex) {
-//							def.reject(ex);
-//						}
-//					}
-//				);
-//
-//				when(def.depNames.length == 0 || core.getDeps(def),
-//					function depsResolved (deps) {
-//console.log('resolving', def.id);
-//						// could be `true` or array becaues of `when` above
-//						def.deps = deps === true ? [] : deps;
-//						execute();
-//					},
-//					def.reject,
-//					function depsExported (deps) {
-//console.log('got depsExported', def.id);
-//						// only execute when exports are ready if we also use
-//						// exports since pure AMD modules don't expect to get
-//						// an early exports object.
-//						// Note: this logic makes dojo 1.7 work, too.
-//						if (def.exports) {
-//							def.deps = deps;
-//							execute();
-//						}
-//					}
-//				);
-//
-//			});
-//
-//			return def;
 
 		},
 
@@ -735,7 +682,6 @@ console.log('defineResource', def.id);
 			function collect (dep, index, alsoExport) {
 				deps[index] = dep;
 				if (alsoExport) exportCollector(dep, index);
-//console.log('collected',index,'for',parentDef.id);
 			}
 
 			// reducer-collectors
@@ -748,7 +694,6 @@ console.log('defineResource', def.id);
 			// before other module dependencies.
 			for (i = 0; i < len && !completed; i++) {
 				name = names[i];
-console.log('getting', name, 'for', parentDef.id);
 				// is this "require", "exports", or "module"?
 				if (name in cjsGetters) {
 					// a side-effect of cjsGetters is that the cjs
@@ -772,20 +717,16 @@ console.log('getting', name, 'for', parentDef.id);
 				}
 			}
 
-//console.log('end of getDeps', len, completed, parentDef.id);
-
 			return parentDef;
 
 			function getDep (name, index) {
 				var resolveOnce, exportOnce, childDef, earlyExport;
 
 				resolveOnce = countdown(1, function (dep) {
-console.log('resolved:', name, 'to', parentDef.id);
 					exportOnce(dep);
 					resolveCollector(dep, index);
 				});
 				exportOnce = countdown(1, function (dep) {
-console.log('exported:', name, 'to', parentDef.id);
 					exportCollector(dep, index);
 				});
 
@@ -915,7 +856,6 @@ console.log('exported:', name, 'to', parentDef.id);
 				// don't put this resource def in the cache because if the
 				// resId doesn't change, the check if this is a new
 				// normalizedDef (below) will think it's already being loaded.
-				// TODO: can this be a context or Promise instead of a resourceDef?
 				tempDef = /*cache[depName] =*/ new Promise();
 
 				// note: this means moduleLoaders can store config info in the
@@ -950,7 +890,6 @@ console.log('exported:', name, 'to', parentDef.id);
 						normalizedDef = core.createPluginDef(resCfg, fullId, isPreload, resId);
 
 						// don't cache non-determinate "dynamic" resources (or non-existent resources)
-// TODO: it looks like createResourceDef is caching resources anyways. check into this and fix it
 						if (!dynamic) {
 							cache[fullId] = normalizedDef;
 						}
