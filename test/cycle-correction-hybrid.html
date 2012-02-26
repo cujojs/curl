@@ -19,27 +19,20 @@
 
 <script type="text/javascript">
 
-	curl(
-		[
-			'loop/hybrid-loop1',
-			'domReady!'
-		]
-	).then(
+	// doing .next to isolate the domReady resolution from the other modules
+	curl(['domReady!']).next(['loop/hybrid-loop1']).then(
 		function (loop1) {
-			// ensure next-turn so that cycle can resolve
-			setTimeout(function () {
-				// test add, subtract, and multiple
-				try {
-					loop1.add(1, 2);
-					loop1.subtract(1, 2);
-					loop1.multiply(1, 2);
-					success();
-				}
-				catch (ex) {
-					fail(ex);
-				}
-			}, 0);
-
+console.log('curl thinks resources are ready');
+			// test add, subtract, and multiple
+			try {
+				loop1.add(1, 2);
+				loop1.subtract(1, 2);
+				loop1.multiply(1, 2);
+				success();
+			}
+			catch (ex) {
+				fail(ex);
+			}
 		},
 		fail
 	);

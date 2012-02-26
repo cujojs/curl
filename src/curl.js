@@ -9,7 +9,7 @@
  * Licensed under the MIT License at:
  * 		http://www.opensource.org/licenses/mit-license.php
  *
- * @version 0.6
+ * @version 0.6.1
  */
 (function (global) {
 
@@ -33,8 +33,10 @@
 		userCfg = global['curl'],
 		doc = global.document,
 		head = doc && (doc['head'] || doc.getElementsByTagName('head')[0]),
-		// constants / flags
+//		// constants / flags
 		msgUsingExports = {},
+//		msgExportsReady = {},
+		msgFactoryExecuted = {},
 		interactive = {},
 		// this is the list of scripts that IE is loading. one of these will
 		// be the "interactive" script. too bad IE doesn't send a readystatechange
@@ -162,6 +164,10 @@
 			complete = noop;
 			// complete all callbacks
 			notify(success ? 0 : 1, arg);
+			// no more notifications
+			notify = noop;
+			// release memory
+			thens = undef;
 		};
 
 		this.then = function (resolved, rejected, progressed) {
@@ -182,8 +188,6 @@
 
 	}
 
-	var ResourceDef = Promise; // subclassing isn't worth the extra bytes
-
 	function isPromise (o) {
 		return o instanceof Promise;
 	}
@@ -192,31 +196,51 @@
 		// we can't just sniff for then(). if we do, resources that have a
 		// then() method will make dependencies wait!
 		if (isPromise(promiseOrValue)) {
-			promiseOrValue.then(callback, errback, progback);
+			return promiseOrValue.then(callback, errback, progback);
 		}
 		else {
-			callback(promiseOrValue);
+			return callback(promiseOrValue);
+		}
+	}
+
+	/**
+	 * Returns a function that when executed, executes a lambda function,
+	 * but only executes it the number of times stated by howMany.
+	 * When done executing, it executes the completed function. Each callback
+	 * function receives the same parameters that are supplied to the
+	 * returned function each time it executes.  In other words, they
+	 * are passed through.
+	 * @private
+	 * @param howMany {Number} must be greater than zero
+	 * @param lambda {Function} executed each time
+	 * @param completed {Function} only executes once when the counter
+	 *   reaches zero
+	 * @returns {Function}
+	 */
+	function countdown (howMany, lambda, completed) {
+		return function () {
+			var result;
+			if (--howMany >= 0 && lambda) result = lambda.apply(undef, arguments);
+			// we want ==, not <=, since some callers expect call-once functionality
+			if (howMany == 0 && completed) completed(result);
+			return result;
 		}
 	}
 
 	core = {
 
-		createResourceDef: function (id, cfg, isPreload, optCtxId) {
-			var def, ctxId;
+		createContext: function (cfg, baseId, isPreload) {
 
-			ctxId = optCtxId == undef ? id : optCtxId;
+			var def;
 
-			def = new ResourceDef();
-			def.id = id;
+			def = new Promise();
+			def.ctxId = def.id = baseId || ''; // '' == global
 			def.isPreload = isPreload;
-
-			// replace cache with resolved value (overwrites self in cache)
-			def.then(function (res) { cache[id] = res; });
 
 			// functions that dependencies will use:
 
 			function toAbsId (childId) {
-				return reduceLeadingDots(childId, ctxId);
+				return reduceLeadingDots(childId, def.ctxId);
 			}
 
 			function toUrl (n) {
@@ -230,8 +254,8 @@
 			function localRequire (ids, callback) {
 				var cb, rvid, childDef, earlyExport;
 
-				// this is a public function, so remove ability for callback
-				// fixes issue #41
+				// this is public, so send pure function
+				// also fixes issue #41
 				cb = callback && function () { callback.apply(undef, arguments[0]); };
 
 				// RValue require (CommonJS)
@@ -240,7 +264,10 @@
 					rvid = toAbsId(ids);
 					childDef = cache[rvid];
 					earlyExport = isPromise(childDef) && childDef.exports;
-					if (!(rvid in cache) || (isPromise(childDef) && !earlyExport)) {
+					if (!(rvid in cache)) {
+						// this should only happen when devs attempt their own
+						// manual wrapping of cjs modules or get confused with
+						// the callback syntax:
 						throw new Error('Module not resolved: '  + rvid);
 					}
 					if (cb) {
@@ -248,15 +275,74 @@
 					}
 					return earlyExport || childDef;
 				}
-
-				// pass the callback, so the main def won't get resolved!
-				core.getDeps(def, ids, cb);
-
+				else {
+					// use same id so that relative modules are normalized correctly
+					childDef = core.createContext(cfg, def.id);
+					// pass the callback, so the main def won't get resolved!
+					childDef.depNames = ids;
+					when(core.getDeps(childDef), cb);
+				}
 			}
 
 			def.require = localRequire;
 			localRequire['toUrl'] = toUrl;
 			def.toAbsId = toAbsId;
+
+			return def;
+		},
+
+		createResourceDef: function (cfg, id, isPreload, optCtxId) {
+			var def, origResolve, execute, resolvedValue;
+console.log('creating resource def for', id);
+			def = core.createContext(cfg, id, isPreload);
+			def.ctxId = optCtxId == undef ? id : optCtxId;
+			origResolve = def.resolve;
+
+			execute = countdown(1, function (deps) {
+				def.deps = deps;
+				try {
+					resolvedValue = core.executeDefFunc(def);
+console.log('definition function executed', def.id);//console.log('exported:', resolvedValue);
+				}
+				catch (ex) {
+					def.reject(ex);
+				}
+			});
+			// only execute and resolve once, and do it after executing
+			// definition function by overriding promise resolve function
+			def.resolve = /*countdown(1,*/
+				function resolve (deps) {
+					execute(deps);
+					// put resolvedValue in cache
+					cache[def.id] = resolvedValue;
+console.log('>>>>> resolving', def.id);
+					origResolve(resolvedValue);
+				}
+			/*)*/;
+
+//			// track exports
+			def.exportsReady = /*countdown(1,*/
+				function executeFactory (deps) {
+console.log('exportsReady called. can export?', def.exports, def.id);
+					// only resolve early if we also use exports (to avoid
+					// circular dependencies). def.exports will have already
+					// been set by the getDeps loop before we get here.
+					if (def.exports) {
+						execute(deps);
+console.log('notifying parents of', def.id);
+						def.progress(msgFactoryExecuted);
+					}
+				}
+			/*)*/;
+
+			return def;
+		},
+
+		createPluginDef: function (cfg, id, isPreload, ctxId) {
+			var def;
+
+			def = core.createContext(cfg, id, isPreload);
+			def.ctxId = ctxId;
 
 			return def;
 		},
@@ -277,7 +363,7 @@
 					'uri': core.getDefUrl(def),
 					'exports': core.getCjsExports(def)
 				};
-				module.exports = module['exports'];
+				module.exports = module['exports']; // oh closure compiler!
 			}
 			return module;
 		},
@@ -382,13 +468,15 @@
 		},
 
 		checkPreloads: function (cfg) {
-			var preloads = cfg['preloads'];
-			if (preloads && preloads.length > 0){
-				// chain from previous preload, if any (revisit when
-				// doing package-specific configs).
+			var preloads;
+			preloads = cfg['preloads'];
+			if (preloads && preloads.length > 0) {
+				// chain from previous preload, if any.
+				// TODO: revisit when doing package-specific configs.
 				when(preload, function () {
-					preload = core.createResourceDef(undef, cfg, true);
-					core.getDeps(preload, preloads);
+					preload = core.createContext(cfg, undef, true);
+					preload.depNames = preloads;
+					core.getDeps(preload);
 				});
 			}
 
@@ -572,30 +660,175 @@
 			if (resource === undef && def.exports) {
 				// note: exports will equal module.exports unless
 				// module.exports was reassigned inside module.
-				resource = def.module ? def.module.exports : def.exports;
+				resource = def.module ? (def.exports = def.module.exports) : def.exports;
 			}
 			return resource;
 		},
 
-		resolveResDef: function (def, args) {
+		defineResource: function (def, args) {
 
-			def.cjs = args.cjs;
+//			var resource, execute, depsPromise;
 
-			// get the dependencies and then resolve/reject
-			core.getDeps(def, args.deps,
-				function (deps) {
-					var resource;
-					def.deps = deps;
-					def.res = args.res;
-					try {
-						resource = core.executeDefFunc(def);
+			// wait for preload before fetching any other modules
+			when(def.isPreload || preload, function () {
+console.log('defineResource', def.id);
+				def.res = args.res;
+				def.cjs = args.cjs;
+				def.depNames = args.deps;
+				core.getDeps(def);
+			});
+
+//				// only execute and resolve once
+//				execute = countdown(1,
+//					function executeAndResolve () {
+//						try {
+//							resource = core.executeDefFunc(def);
+//console.log('definition function executed', def.id);console.log('exported:', resource);
+//							cache[def.id] = resource;
+//							def.resolve(resource);
+//						}
+//						catch (ex) {
+//							def.reject(ex);
+//						}
+//					}
+//				);
+//
+//				when(def.depNames.length == 0 || core.getDeps(def),
+//					function depsResolved (deps) {
+//console.log('resolving', def.id);
+//						// could be `true` or array becaues of `when` above
+//						def.deps = deps === true ? [] : deps;
+//						execute();
+//					},
+//					def.reject,
+//					function depsExported (deps) {
+//console.log('got depsExported', def.id);
+//						// only execute when exports are ready if we also use
+//						// exports since pure AMD modules don't expect to get
+//						// an early exports object.
+//						// Note: this logic makes dojo 1.7 work, too.
+//						if (def.exports) {
+//							def.deps = deps;
+//							execute();
+//						}
+//					}
+//				);
+//
+//			});
+//
+//			return def;
+
+		},
+
+		getDeps: function (parentDef) {
+
+			var i, names, deps, len, dep, completed, name,
+				exportCollector, resolveCollector;
+
+			deps = [];
+			names = parentDef.depNames;
+			len = names.length;
+			completed = false;
+
+			if (names.length == 0) allResolved();
+
+			function collect (dep, index, alsoExport) {
+				deps[index] = dep;
+				if (alsoExport) exportCollector(dep, index);
+//console.log('collected',index,'for',parentDef.id);
+			}
+
+			// reducer-collectors
+			exportCollector = countdown(len, collect, allExportsReady);
+			resolveCollector = countdown(len, collect, allResolved);
+
+			// initiate the resolution of all dependencies
+			// Note: the correct handling of early exports relies on the
+			// fact that the exports pseudo-dependency is always listed
+			// before other module dependencies.
+			for (i = 0; i < len && !completed; i++) {
+				name = names[i];
+console.log('getting', name, 'for', parentDef.id);
+				// is this "require", "exports", or "module"?
+				if (name in cjsGetters) {
+					// a side-effect of cjsGetters is that the cjs
+					// property is also set on the def.
+					resolveCollector(cjsGetters[name](parentDef), i, true);
+					// if we are using the exports cjs variable,
+					// signal any waiters/parents that we can export
+					// early (see progress callback in getDep below).
+					if (name == 'exports') {
+						parentDef.progress(msgUsingExports);
 					}
-					catch (ex) {
-						def.reject(ex);
-					}
-					def.resolve(resource);
 				}
-			);
+				// check for blanks. fixes #32.
+				// this helps support yepnope.js, has.js, and the has! plugin
+				else if (!name) {
+					resolveCollector(undef, i, true);
+				}
+				// normal module or plugin resource
+				else {
+					getDep(name, i);
+				}
+			}
+
+//console.log('end of getDeps', len, completed, parentDef.id);
+
+			return parentDef;
+
+			function getDep (name, index) {
+				var resolveOnce, exportOnce, childDef, earlyExport;
+
+				resolveOnce = countdown(1, function (dep) {
+console.log('resolved:', name, 'to', parentDef.id);
+					exportOnce(dep);
+					resolveCollector(dep, index);
+				});
+				exportOnce = countdown(1, function (dep) {
+console.log('exported:', name, 'to', parentDef.id);
+					exportCollector(dep, index);
+				});
+
+				// get child def / dep
+				childDef = core.fetchDep(name, parentDef);
+
+				// check if childDef can export. if it can, then
+				// we missed the notification and it will never fire in the
+				// when() below.
+				earlyExport = isPromise(childDef) && childDef.exports;
+				if (earlyExport) {
+					exportOnce(earlyExport);
+				}
+
+				when(childDef,
+					resolveOnce,
+					parentDef.reject,
+					parentDef.exports && function (msg) {
+						// messages are only sent from childDefs that support
+						// exports, and we only notify parents that understand
+						// exports too.
+						if (childDef.exports) {
+							if (msg == msgUsingExports) {
+								// if we're using exports cjs variable on both sides
+								exportOnce(childDef.exports);
+							}
+							else if (msg == msgFactoryExecuted) {
+								resolveOnce(childDef.exports);
+							}
+						}
+					}
+				);
+			}
+
+			function allResolved () {
+				// TODO: determine if we can remove the completed flag
+				completed = true;
+				parentDef.resolve(deps);
+			}
+
+			function allExportsReady () {
+				parentDef.exportsReady && parentDef.exportsReady(deps);
+			}
 
 		},
 
@@ -619,7 +852,7 @@
 							def.reject(new Error(((args && args.ex) || 'define() missing or duplicated: url').replace('url', def.url)));
 						}
 						else {
-							core.resolveResDef(def, args);
+							core.defineResource(def, args);
 						}
 					}
 
@@ -667,7 +900,7 @@
 			// find resource definition
 			def = cache[mainId];
 			if (!def) {
-				def = cache[mainId] = core.createResourceDef(mainId, pathInfo.config, isPreload, !!parts.pluginId ? pathInfo.path : undef);
+				def = cache[mainId] = core.createResourceDef(pathInfo.config, mainId, isPreload, !!parts.pluginId ? pathInfo.path : undef);
 				def.url = core.checkToAddJsExt(pathInfo.url);
 				core.fetchResDef(def);
 			}
@@ -682,7 +915,8 @@
 				// don't put this resource def in the cache because if the
 				// resId doesn't change, the check if this is a new
 				// normalizedDef (below) will think it's already being loaded.
-				tempDef = /*cache[depName] =*/ core.createResourceDef(depName);
+				// TODO: can this be a context or Promise instead of a resourceDef?
+				tempDef = /*cache[depName] =*/ new Promise();
 
 				// note: this means moduleLoaders can store config info in the
 				// plugins config, too.
@@ -690,8 +924,9 @@
 
 				// wait for plugin resource def
 				when(def, function(plugin) {
-					var normalizedDef, fullId;
+					var normalizedDef, fullId, dynamic;
 
+					dynamic = plugin['dynamic'];
 					// check if plugin supports the normalize method
 					if ('normalize' in plugin) {
 						// dojo/has may return falsey values (0, actually)
@@ -712,10 +947,11 @@
 
 						// because we're using resId, plugins, such as wire!,
 						// can use paths relative to the resource
-						normalizedDef = core.createResourceDef(fullId, resCfg, isPreload, resId);
+						normalizedDef = core.createPluginDef(resCfg, fullId, isPreload, resId);
 
 						// don't cache non-determinate "dynamic" resources (or non-existent resources)
-						if (!plugin['dynamic']) {
+// TODO: it looks like createResourceDef is caching resources anyways. check into this and fix it
+						if (!dynamic) {
 							cache[fullId] = normalizedDef;
 						}
 
@@ -724,7 +960,7 @@
 						// piggy-back on the callback function parameter:
 						var loaded = function (res) {
 							normalizedDef.resolve(res);
-							if (plugin['dynamic']) delete cache[fullId];
+							if (!dynamic) cache[fullId] = res;
 						};
 						loaded['resolve'] = loaded;
 						loaded['reject'] = normalizedDef.reject;
@@ -736,7 +972,7 @@
 
 					// chain defs (resolve when plugin.load executes)
 					if (tempDef != normalizedDef) {
-						when(normalizedDef, tempDef.resolve, tempDef.reject);
+						when(normalizedDef, tempDef.resolve, tempDef.reject, tempDef.progress);
 					}
 
 				}, tempDef.reject);
@@ -745,91 +981,6 @@
 
 			// return tempDef if this is a plugin-based resource
 			return tempDef || def;
-		},
-
-		getDeps: function (parentDef, names, overrideCallback) {
-			var deps, count, len, i, name, completed, callback;
-
-			deps = [];
-			count = len = names.length;
-			completed = false;
-			callback = overrideCallback || parentDef.resolve;
-
-			function checkDone () {
-				if (--count == 0) {
-					// Note: IE may have obtained the dependencies sync, thus the completed flag
-					completed = true;
-					callback(deps);
-				}
-			}
-
-			function getDep (index, depName) {
-				var childDef, doOnce;
-
-				childDef = core.fetchDep(depName, parentDef);
-
-				doOnce = function (dep) {
-					deps[index] = dep; // got it!
-					checkDone();
-					// only run once for this dep (in case of early exports)
-					doOnce = noop;
-				};
-
-				function doSuccess (dep) {
-					doOnce(dep);
-				}
-
-				function doFailure (ex) {
-					completed = true;
-					parentDef.reject(ex);
-				}
-
-				function doProgress (msg) {
-					// only early-export to modules that also export since
-					// pure AMD modules don't expect to get an early export
-					// Note: this logic makes dojo 1.7 work, too.
-					if (msg == msgUsingExports && parentDef.exports) {
-						doOnce(childDef.exports);
-					}
-				}
-
-				// hook into promise callbacks.
-				when(childDef, doSuccess, doFailure, doProgress);
-
-			}
-
-			// wait for preload before fetching any other modules
-			when(parentDef.isPreload || preload, function () {
-
-				for (i = 0; i < len && !completed; i++) {
-					name = names[i];
-					if (name in cjsGetters) {
-						// is this "require", "exports", or "module"?
-						deps[i] = cjsGetters[name](parentDef);
-						checkDone();
-					}
-					// check for blanks. fixes #32.
-					// this helps support yepnope.js, has.js, and the has! plugin
-					else if (names[i]) {
-						getDep(i, names[i]);
-					}
-					else {
-						checkDone();
-					}
-				}
-
-				if (parentDef.exports) {
-					// announce
-					parentDef.progress(msgUsingExports);
-				}
-
-				if (count == 0 && !completed) {
-					// there were none to fetch
-					callback(deps);
-				}
-
-			});
-
 		},
 
 		getCurrentDefName: function () {
@@ -867,24 +1018,29 @@
 
 		// thanks to Joop Ringelberg for helping troubleshoot the API
 		function CurlApi (ids, callback, waitFor) {
-			var then, def;
-			def = core.createResourceDef(undef, userCfg);
+			var then, ctx;
+			ctx = core.createContext(userCfg);
 			this['then'] = then = function (resolved, rejected) {
-				when(def,
+				when(ctx,
 					// return the dependencies as arguments, not an array
-					function (deps) { if (resolved) resolved.apply(undef, deps); },
+					function (deps) {
+						if (resolved) resolved.apply(undef, deps);
+					},
 					// just throw if the dev didn't specify an error handler
-					function (ex) { if (rejected) rejected(ex); else throw ex; }
+					function (ex) {
+						if (rejected) rejected(ex); else throw ex;
+					}
 				);
 				return this;
 			};
 			this['next'] = function (ids, cb) {
 				// chain api
-				return new CurlApi(ids, cb, def);
+				return new CurlApi(ids, cb, ctx);
 			};
 			if (callback) then(callback);
 			when(waitFor, function () {
-				core.getDeps(def, [].concat(ids));
+				ctx.depNames = [].concat(ids);
+				core.getDeps(ctx);
 			});
 		}
 
@@ -914,14 +1070,14 @@
 				// there's no way to allow a named define to fetch dependencies
 				// in the preload phase since we can't cascade the parent def.
 				var cfg = core.resolvePathInfo(id, userCfg).config;
-				def = cache[id] = core.createResourceDef(id, cfg);
+				def = cache[id] = core.createResourceDef(cfg, id);
 			}
 			// check if this resource has already been resolved (can happen if
 			// a module was defined inside a built file and outside of it and
 			// dev didn't coordinate it explicitly)
 			if (isPromise(def)) {
 				def.useNet = false;
-				core.resolveResDef(def, args);
+				core.defineResource(def, args);
 			}
 		}
 
@@ -968,7 +1124,7 @@
 		'cfg': userCfg,
 		'_define': _define,
 		'_curl': _curl,
-		'ResourceDef': ResourceDef
+		'Promise': Promise
 	};
 
 }(this));
