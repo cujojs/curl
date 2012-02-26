@@ -212,13 +212,14 @@
 
 	core = {
 
-		createContext: function (cfg, baseId, isPreload) {
+		createContext: function (cfg, baseId, depNames, isPreload) {
 
 			var def;
 
 			def = new Promise();
 			def.ctxId = def.id = baseId || ''; // '' == global
 			def.isPreload = isPreload;
+			def.depNames = depNames;
 
 			// functions that dependencies will use:
 
@@ -260,10 +261,7 @@
 				}
 				else {
 					// use same id so that relative modules are normalized correctly
-					childDef = core.createContext(cfg, def.id);
-					// pass the callback, so the main def won't get resolved!
-					childDef.depNames = ids;
-					when(core.getDeps(childDef), cb);
+					when(core.getDeps(core.createContext(cfg, def.id, ids)), cb);
 				}
 			}
 
@@ -277,7 +275,7 @@
 		createResourceDef: function (cfg, id, isPreload, optCtxId) {
 			var def, origResolve, execute, resolvedValue;
 
-			def = core.createContext(cfg, id, isPreload);
+			def = core.createContext(cfg, id, undef, isPreload);
 			def.ctxId = optCtxId == undef ? id : optCtxId;
 			origResolve = def.resolve;
 
@@ -316,7 +314,7 @@
 		createPluginDef: function (cfg, id, isPreload, ctxId) {
 			var def;
 
-			def = core.createContext(cfg, id, isPreload);
+			def = core.createContext(cfg, id, undef, isPreload);
 			def.ctxId = ctxId;
 
 			return def;
@@ -449,9 +447,7 @@
 				// chain from previous preload, if any.
 				// TODO: revisit when doing package-specific configs.
 				when(preload, function () {
-					preload = core.createContext(cfg, undef, true);
-					preload.depNames = preloads;
-					core.getDeps(preload);
+					preload = core.getDeps(core.createContext(cfg, undef, preloads, true));
 				});
 			}
 
@@ -944,7 +940,7 @@
 		// thanks to Joop Ringelberg for helping troubleshoot the API
 		function CurlApi (ids, callback, waitFor) {
 			var then, ctx;
-			ctx = core.createContext(userCfg);
+			ctx = core.createContext(userCfg, undef, [].concat(ids));
 			this['then'] = then = function (resolved, rejected) {
 				when(ctx,
 					// return the dependencies as arguments, not an array
@@ -963,10 +959,7 @@
 				return new CurlApi(ids, cb, ctx);
 			};
 			if (callback) then(callback);
-			when(waitFor, function () {
-				ctx.depNames = [].concat(ids);
-				core.getDeps(ctx);
-			});
+			when(waitFor, function () { core.getDeps(ctx); });
 		}
 
 		return new CurlApi(args[0], args[1]);
