@@ -40,18 +40,17 @@
 			'css!base.css',
 			'text!template.html',
 			'link!resources/dojo.css',
-			'js!stuff/plain_old.js'
+			'js!stuff/plain_old.js',
+			'domReady!'
 		]
 	).then(
 		function (three, baseCss, /*strings,*/ template, dojoCss) {
-			if (document.body) {
-				document.body.appendChild(document.createTextNode('A module with dependencies loaded successfully if 3 == ' + three + '.'));
-				document.body.appendChild(document.createElement('br'));
-				document.body.appendChild(document.createTextNode('A plain-old js file loaded if whizzah! == ' + testDomain.foo.bar));
-				document.body.appendChild(document.createElement('br'));
-				document.body.appendChild(document.createTextNode('There should be a success message below if the text file loaded:'));
-				document.body.appendChild(document.createElement('div')).innerHTML = template;
-			}
+			document.body.appendChild(document.createTextNode('A module with dependencies loaded successfully if 3 == ' + three + '.'));
+			document.body.appendChild(document.createElement('br'));
+			document.body.appendChild(document.createTextNode('A plain-old js file loaded if whizzah! == ' + testDomain.foo.bar));
+			document.body.appendChild(document.createElement('br'));
+			document.body.appendChild(document.createTextNode('There should be a success message below if the text file loaded:'));
+			document.body.appendChild(document.createElement('div')).innerHTML = template;
 		}
 	);
 
