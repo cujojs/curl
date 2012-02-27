@@ -22,7 +22,6 @@
 	// doing .next to isolate the domReady resolution from the other modules
 	curl(['domReady!']).next(['loop/hybrid-loop1']).then(
 		function (loop1) {
-console.log('curl thinks resources are ready');
 			// test add, subtract, and multiple
 			try {
 				loop1.add(1, 2);
