@@ -1,7 +1,7 @@
 curl (cujo resource loader)
 =====================
 
-version 0.6
+version 0.6.1
 
 See the [wiki](https://github.com/cujojs/curl/wiki) for information about using curl.js with jQuery.
 
@@ -19,6 +19,11 @@ Helpful link for updating submodules:
 What's New?
 =======
 
+* 0.6.1
+	* better CommonJS modules compatibility and circular dependency checking
+	* fixes an issue in which curl.js could attempt to download the same module
+	  file twice if the module is required using relative paths from
+	  different locations
 * 0.6
 	* works with underscore fork at [amdjs](https://github.com/amdjs/underscore)
 	* tested and works with dojo 1.7.1 (using curl/shim/dojo16 as a preload)
