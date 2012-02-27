@@ -28,7 +28,9 @@ What's New?
 	  file twice if the module is required using relative paths from
 	  different locations
 * 0.6
-	* works with underscore fork at [amdjs](https://github.com/amdjs/underscore)
+	* works with underscore fork at [amdjs](https://github.com/amdjs/underscore) 
+ 	  NOTE: use the repo [here](https://github.com/unscriptable/underscore) temporarily 
+	  until our pull request is accepted.
 	* tested and works with dojo 1.7.1 (using curl/shim/dojo16 as a preload)
 	* allows normal, non-AMD js files to return values to AMD modules (!exports
 	  option)
