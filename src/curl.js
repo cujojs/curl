@@ -9,12 +9,12 @@
  * Licensed under the MIT License at:
  * 		http://www.opensource.org/licenses/mit-license.php
  *
- * @version 0.6.1
+ * @version 0.6.2
  */
 (function (global) {
 
 	var
-		version = '0.6.1',
+		version = '0.6.2',
 		userCfg = global['curl'],
 		doc = global.document,
 		head = doc && (doc['head'] || doc.getElementsByTagName('head')[0]),

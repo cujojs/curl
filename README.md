@@ -1,8 +1,6 @@
 curl (cujo resource loader)
 =====================
 
-version 0.6.1
-
 Check out the newly updated [wiki](https://github.com/cujojs/curl/wiki)!
 
 See the [wiki](https://github.com/cujojs/curl/wiki) for information about using
@@ -22,13 +20,16 @@ Helpful link for updating submodules:
 What's New?
 =======
 
+* 0.6.2
+	* curl no longer repeatedly downloads modules that don't return any value
+	  (bug introduced in 0.6 refactor) fixes issue #63
 * 0.6.1
 	* better CommonJS modules compatibility and circular dependency checking
 	* fixes an issue in which curl.js could attempt to download the same module
 	  file twice if the module is required using relative paths from
 	  different locations
 * 0.6
-	* works with underscore fork at [amdjs](https://github.com/amdjs/underscore) 
+	* works with underscore fork at [amdjs](https://github.com/amdjs/underscore)
 	* tested and works with dojo 1.7.1 (using curl/shim/dojo16 as a preload)
 	* allows normal, non-AMD js files to return values to AMD modules (!exports
 	  option)
@@ -136,10 +137,10 @@ How to get support
 
 1. Go to the issues section of the curl repo (https://github.com/cujojs/curl/issues)
 	and search for an answer to your question or problem.
-2. If no answer exists, file a new ticket!  Somebody will typically respond within a 
+2. If no answer exists, file a new ticket!  Somebody will typically respond within a
 	few hours.
 
-It's that easy. 
+It's that easy.
 
 ----------------------------------------
 
@@ -383,7 +384,7 @@ If there are no dependencies between two files, loading them sequentially is
 a waste of time. These files could be loaded and executed in parallel (i.e
 at the same time).
 
-An asynchronous loader does just that: it loads javascript files (and 
+An asynchronous loader does just that: it loads javascript files (and
 other types of files) in parallel whenever possible.
 
 curl.js has lots of company. Other async loaders include LABjs, Steal.js,
@@ -397,8 +398,8 @@ What is AMD?
 ============
 
 Asynchronous Module Definition is the CommonJS proposed standard for
-javascript modules that can be loaded by asynchronous loaders. It defines 
-a simple API that developers can use to write their javascript modules so 
+javascript modules that can be loaded by asynchronous loaders. It defines
+a simple API that developers can use to write their javascript modules so
 that they may be loaded by any AMD-compliant loader.
 
 [CommonJS AMD Proposal](http://wiki.commonjs.org/wiki/Modules/AsynchronousDefinition)
@@ -413,7 +414,7 @@ Ultimately, both proposals (AMD and Modules 1.1) are in preparation for an
 official [javascript modules](http://wiki.ecmascript.org/doku.php?id=harmony:modules)
 specification and eventual implementation in browsers.
 
-If you don't want to wait for official javascript modules, then don't.  The future 
+If you don't want to wait for official javascript modules, then don't.  The future
 is now.  AMD works now -- and it's awesome.
 
 AMD's API focuses on one globally-available function: `define()` and some
@@ -422,7 +423,7 @@ CommonJS-inspired variables, `require()`, `exports`, and `module`.
 loaded before running a set of code. This code resides in a callback function
 that is executed asynchronously, i.e. it runs later, not in the current
 "thread".  Specifically, it executes when all of the dependencies are loaded
-and ready.  
+and ready.
 
 The proposal does not mandate that `require()` be specified globally.  In fact,
 at a global level, the concerns of a loader are about application bootstrapping
@@ -454,8 +455,8 @@ RequireJS <http://requirejs.org/>
 backdraft loader <http://bdframework.org/bdLoad>
 
 The beauty of AMD loaders is their ability to remove the drudgery of manually
-managing dependencies.  Since all dependencies are listed within the 
-modules, the loader will ensure that everything is loaded into the browser -- 
+managing dependencies.  Since all dependencies are listed within the
+modules, the loader will ensure that everything is loaded into the browser --
 and in the right order.
 
 ----------------------------------------
@@ -578,7 +579,7 @@ By default, curl.js will look in the same folder as the current document's locat
 For instance, if your web page is located at `http://my-domain/apps/myApp.html`,
 curl.js will look for the JsonRest module at `http://my-domain/apps/dojo/store/JsonRest.js`.
 
-You can tell curl.js to find modules in other locations by specifying a baseUrl or 
+You can tell curl.js to find modules in other locations by specifying a baseUrl or
 individual paths for each of your libraries.  For example, if you specify a baseUrl of
 `/resources/` and the following paths:
 
