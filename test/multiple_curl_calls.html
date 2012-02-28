@@ -8,7 +8,7 @@
 			baseUrl: '',
 			paths: {
 				curl: '../src/curl',
-				dojo: '//ajax.googleapis.com/ajax/libs/dojo/1.6/dojo/resources'
+				jquery: '//ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min'
 			}
 		};
 
@@ -17,7 +17,7 @@
 
 <script type="text/javascript">
 
-	curl(['curl/_privileged'], function (priv) {
+	curl(['curl/_privileged', 'domReady!'], function (priv) {
 
 		// override curl's insertScript function with a spy
 		function Spy (orig, context) {
@@ -36,7 +36,7 @@
 		var origLoadScript = priv.core.loadScript,
 			Promise = priv.Promise;
 			module1 = 'stuff/one',
-			module2 = 'css!dojo/dojo.css';
+			module2 = 'jquery';
 
 		function runTest (moduleId, howMany) {
 
@@ -89,9 +89,7 @@
 	});
 
 	function write (msg) {
-		curl(['domReady!'], function () {
-			document.body.appendChild(document.createElement('div')).innerHTML = msg;
-		});
+		document.body.appendChild(document.createElement('div')).innerHTML = msg;
 	}
 
 </script>
