@@ -5,20 +5,6 @@
 
 <script>
 
-	// mock console for IE
-	if (!window.console) console = {};
-	if (!('log' in console)) {
-		console._msg = [];
-		console.log = function (msg) {
-			var _msg = this._msg;
-			_msg.push(msg && msg.join ? msg.join(' ') : msg);
-			clearTimeout(this._timeout);
-			this._timeout = setTimeout(function () {
-				alert(_msg.join('\n'));
-			}, 100);
-		};
-	}
-
 	curl = {
 		paths: {
 			curl: '../src/curl'
@@ -27,9 +13,14 @@
 			commonjs: {
 				path: 'support/commonjs',
 				config: {
-					injectScript: true,
 					moduleLoader: 'curl/loader/cjsm11'
 				}
+			}
+		},
+		plugins: {
+			'curl/loader/cjsm11': {
+				//injectScript: true,
+				injectSourceUrl: true
 			}
 		}
 	};
