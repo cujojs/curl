@@ -94,7 +94,7 @@ define(/*=='curl/loader/cjsm11',==*/ function () {
 				require(moduleMap, function () {
 
 					// wrap source in a define
-					source = wrapSource(source, resourceId, config['injectSourceUrl'] && require.toUrl(resourceId));
+					source = wrapSource(source, resourceId, config['injectSourceUrl'] !== false && require.toUrl(resourceId));
 
 					if (config['injectScript']) {
 						injectScript(source);
