@@ -9,12 +9,12 @@
  * Licensed under the MIT License at:
  * 		http://www.opensource.org/licenses/mit-license.php
  *
- * @version 0.6.1
+ * @version 0.6.2
  */
 (function (global) {
 
 	var
-		version = '0.6.1',
+		version = '0.6.2',
 		userCfg = global['curl'],
 		doc = global.document,
 		head = doc && (doc['head'] || doc.getElementsByTagName('head')[0]),
@@ -820,9 +820,10 @@
 				}
 			}
 
-			// find resource definition
+			// find resource definition. ALWAYS check via (id in cache) b/c
+			// falsey values could be in there.
 			def = cache[mainId];
-			if (!def) {
+			if (!(mainId in cache)) {
 				def = cache[mainId] = core.createResourceDef(pathInfo.config, mainId, isPreload, !!parts.pluginId ? pathInfo.path : undef);
 				def.url = core.checkToAddJsExt(pathInfo.url);
 				core.fetchResDef(def);
@@ -865,7 +866,7 @@
 					normalizedDef = cache[fullId];
 
 					// if this is our first time fetching this (normalized) def
-					if (!normalizedDef) {
+					if (!(fullId in cache)) {
 
 						// because we're using resId, plugins, such as wire!,
 						// can use paths relative to the resource
@@ -983,7 +984,7 @@
 			// named define(), it is in the cache if we are loading a dependency
 			// (could also be a secondary define() appearing in a built file, etc.)
 			var def = cache[id];
-			if (!def) {
+			if (!(id in cache)) {
 				// id is an absolute id in this case, so we can get the config.
 				// there's no way to allow a named define to fetch dependencies
 				// in the preload phase since we can't cascade the parent def.
