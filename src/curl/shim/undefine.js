@@ -14,7 +14,7 @@
  * but the same name.
  *
  * usage:
- *  curl({ preload: ['curl/undefine'] }, function () {
+ *  curl({ preload: ['curl/shim/undefine'] }, function () {
  * 		curl(['module1'], function (module1) {
  * 			curl.undefine('module1');
  * 		}
