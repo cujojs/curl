@@ -15,9 +15,19 @@
  *
  * usage:
  *  curl({ preload: ['curl/shim/undefine'] }, function () {
- * 		curl(['module1'], function (module1) {
- * 			curl.undefine('module1');
- * 		}
+ * 		// define a mock here
+ * 		define('mock1', function (mock1) { blah });
+ * 		// use mock1 here...
+ *
+ * 		// undefine mock1
+ * 		curl.undefine('mock1');
+ * 		// redefine mock1
+ * 		define('module1', function (module1) { blah });
+ * 		// use mock1 here...
+ *
+ * 		// undefine mock1
+ * 		curl.undefine('mock1');
+ * 		// etc.
  * 	});
  *
  * The undefine call takes one parameter which could be
