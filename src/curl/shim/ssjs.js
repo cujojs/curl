@@ -8,32 +8,52 @@
  * Licensed under the MIT License at:
  * 		http://www.opensource.org/licenses/mit-license.php
  *
+ * TODO: support environments that implement XMLHttpRequest such as Wakanda
  */
-define.amd.node = define.amd.ringo = define.amd.rhino = true;
+define.amd.ssjs = true;
 (function (freeRequire, globalLoad) {
-define(function (require, exports) {
-"use strict";
+define(/*=='curl/shim/ssjs',==*/ function (require, exports) {
+	"use strict";
 
-	var priv, http, localLoadFunc, remoteLoadFunc;
+	var priv, config, hasProtocolRx, extractProtocolRx, protocol,
+		http, localLoadFunc, remoteLoadFunc,
+		undef;
+
+	// first, bail if we're in a browser!
+	if (typeof window == 'object' && (window.clientInformation || window.navigator)) {
+		return;
+	}
 
 	priv = require('curl/_privileged');
+	config = priv.cfg;
+    hasProtocolRx = /^\w+:/;
+	extractProtocolRx = /(^\w+:)?.*$/;
+
+    protocol = fixProtocol(config.defaultProtocol)
+		|| extractProtocol(config.baseUrl)
+		|| 'http:';
 
 	// sniff for capabilities
-	if (freeRequire) {
+
+	if (globalLoad) {
+		// rhino & ringo make this so easy
+		localLoadFunc = remoteLoadFunc = loadScriptViaLoad;
+	}
+	else if (freeRequire) {
 		localLoadFunc = loadScriptViaRequire;
 		// try to find an http client
 		try {
-			http = freeRequire('http'); // node
+			// node
+			http = freeRequire('http');
 			remoteLoadFunc = loadScriptViaNodeHttp;
 		}
 		catch (ex) {
-			http = freeRequire('ringo/httpclient'); // ringo
-			remoteLoadFunc = loadScriptViaRingoHttp;
+			remoteLoadFunc = failIfInvoked;
 		}
-		
+
 	}
-	else if (globalLoad) {
-		localLoadFunc = remoteLoadFunc = loadScriptViaLoad;
+	else {
+		localLoadFunc = remoteLoadFunc = failIfInvoked;
 	}
 
 	function stripExtension (url) {
@@ -46,11 +66,10 @@ define(function (require, exports) {
 		// remote urls always have a protocol or a // at the beginning
 		urlOrPath = def.url;
 		if (/^\/\//.test(urlOrPath)) {
-			// if there's no protocol, i guess we should assume http?
-			// TODO: make this configurable somehow
-			def.url = 'http:' + def.url;
+			// if there's no protocol, use configured protocol
+			def.url = protocol + def.url;
 		}
-		if (/^\w+:/.test(def.url)) {
+		if (hasProtocolRx.test(def.url)) {
 			return remoteLoadFunc(def, success, fail);
 		}
 		else {
@@ -81,14 +100,32 @@ define(function (require, exports) {
 	}
 
 	function loadScriptViaNodeHttp (def, success, fail) {
-		var options;
-		// Note: the next line also checks for protocol-less urls: TODO: consolidate?
+		var options, source;
 		options = freeRequire('url').parse(def.url, false, true);
-		http.get(options, success).on('error', fail);
+		source = http.get(options, success).on('error', fail);
+		executeScript(source);
 	}
 
-	function loadScriptViaRingoHttp (def, success, fail) {
-		http.get(def.url, '', success, fail);
+	function failIfInvoked (def) {
+		throw new Error('ssjs: unable to load module in current environment: ' + def.url);
+	}
+
+	function executeScript (source) {
+		eval(source);
+	}
+
+    function extractProtocol (url) {
+        var protocol;
+        protocol = url && url.replace(extractProtocolRx,
+			function (m, p) { return p; }
+		);
+        return protocol;
+    }
+
+	function fixProtocol (protocol) {
+		return protocol && protocol[protocol.length - 1] != ':'
+			? protocol += ':'
+			: protocol;
 	}
 
 });
