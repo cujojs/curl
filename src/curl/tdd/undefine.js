@@ -13,7 +13,12 @@
  * environments in which mocks and stubs can have different functionality,
  * but the same name.
  *
- * usage:
+ * The undefine call takes one parameter which could be
+ * 	 true: remove all modules
+ * 	 string: remove the module of the given id
+ * 	 array: remove all of the modules of the given ids
+ *
+ * @example 1
  *  curl({ preload: ['curl/shim/undefine'] }, function () {
  * 		// define a mock here
  * 		define('mock1', function (mock1) { blah });
@@ -30,10 +35,13 @@
  * 		// etc.
  * 	});
  *
- * The undefine call takes one parameter which could be
- * 	true: remove all modules
- * 	string: remove the module of the given id
- * 	array: remove all of the modules of the given ids
+ * @example 2
+ * You can also grab a reference to the undefine module directly like this:
+ *
+ * define(['curl/tdd/undefine'], function (undefine) {
+ *     undefine('mockABC');
+ *     define('mockABC', makeNewMockFor(myObj));
+ * });
  *
  */
 define(['require', 'curl/_privileged'], function (require, priv) {
@@ -43,7 +51,7 @@ define(['require', 'curl/_privileged'], function (require, priv) {
 
 	cache = priv['cache'];
 
-	priv._curl['undefine'] = function (which) {
+	function undefine (which) {
 		var modules, i;
 		if (which === true) {
 			// list everything except curl essentials
@@ -61,6 +69,10 @@ define(['require', 'curl/_privileged'], function (require, priv) {
 		for (i = 0; i < modules.length; i++) {
 			delete cache[modules[i]];
 		}
-	};
+	}
+
+	priv._curl['undefine'] = undefine;
+
+	return undefine;
 
 });
