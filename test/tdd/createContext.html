@@ -1,0 +1,85 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>createContext test</title>
+
+<script>
+	curl = {
+			baseUrl: '../',
+			paths: {
+				curl: '../src/curl'
+			}
+		};
+
+</script>
+<script src="../../src/curl.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+
+	curl(
+		['curl/tdd/createContext'],
+		function (createContext) {
+			var ctx, one;
+
+			one = 6;
+
+			try {
+				ctx = createContext();
+
+				// mock of stuff/one
+				ctx.define('stuff/one', function () { return one; });
+
+				// uut is stuff/three
+				ctx.require(['stuff/three'], function (three) {
+					// stuff/three requires stuff/one and stuff/two
+					// stuff/two also requires stuff/one
+					// let's see if they got our mock stuff/one
+					if (three == 13) {
+						write('SUCCESS: mock successfully overrode actual module');
+					}
+					else {
+						write('FAILED: mock was fetched from server');
+					}
+
+					// test splat signature
+					ctx.undefine('stuff/one', 'stuff/two', 'stuff/three');
+
+					// test again without mocks
+					ctx.require(['stuff/three'], function (three) {
+						// original stuff/one should be used now
+						if (three == 3) {
+							write('SUCCESS: module was loaded from server after undefine');
+						}
+						else {
+							write('FAILED: mock was still used rather than actual module');
+						}
+					});
+
+					// test array signatue
+					ctx.undefine(['stuff/one', 'stuff/two', 'stuff/three']);
+				});
+
+			}
+			catch (ex) {
+				write('FAILED: ' + ex.message);
+			}
+
+		},
+		function (ex) {
+			write('ERROR: ' + ex.message);
+		}
+	);
+
+	function write (msg) {
+		curl('domReady!', function () {
+			document.body.appendChild(document.createElement('div')).innerHTML = msg;
+		});
+	}
+
+</script>
+
+</head>
+<body>
+
+</body>
+</html>
