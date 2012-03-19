@@ -17,8 +17,8 @@
 <script type="text/javascript">
 
 	curl(
-		['curl/tdd/createContext'],
-		function (createContext) {
+		['curl/tdd/createContext', 'require'],
+		function (createContext, require) {
 			var ctx, one;
 
 			one = 6;
@@ -48,15 +48,67 @@
 					ctx.require(['stuff/three'], function (three) {
 						// original stuff/one should be used now
 						if (three == 3) {
-							write('SUCCESS: module was loaded from server after undefine');
+							write('SUCCESS: module was loaded from server after undefine()');
 						}
 						else {
-							write('FAILED: mock was still used rather than actual module');
+							write('FAILED: mock was still used rather than actual module after undefine()');
 						}
+
+						// test array signature
+						ctx.undefine(['stuff/one', 'stuff/two', 'stuff/three']);
+
+						// ensure all are now undefined
+						try {
+							require('stuff/one');
+							write('FAILED: stuff/one module is still defined after undefine()')
+						}
+						catch (ex) {
+							write('SUCCESS: stuff/one module was undefined correctly by undefine()');
+						}
+						try {
+							require('stuff/two');
+							write('FAILED: stuff/two module is still defined after undefine()')
+						}
+						catch (ex) {
+							write('SUCCESS: stuff/two module was undefined correctly by undefine()');
+						}
+						try {
+							require('stuff/three');
+							write('FAILED: stuff/three module is still defined after undefine()')
+						}
+						catch (ex) {
+							write('SUCCESS: stuff/three module was undefined correctly by undefine()');
+						}
+
+						// test release
+						ctx.define('foo', 'foo');
+						ctx.define('bar', 'bar');
+						ctx.define('baz', 'baz');
+						ctx.release();
+						try {
+							require('foo');
+							write('FAILED: foo module is still defined after ctx.release()')
+						}
+						catch (ex) {
+							write('SUCCESS: foo module was undefined correctly by ctx.release()');
+						}
+						try {
+							require('bar');
+							write('FAILED: bar module is still defined after ctx.release()')
+						}
+						catch (ex) {
+							write('SUCCESS: bar module was undefined correctly by ctx.release()');
+						}
+						try {
+							require('baz');
+							write('FAILED: baz module is still defined after ctx.release()')
+						}
+						catch (ex) {
+							write('SUCCESS: baz module was undefined correctly by ctx.release()');
+						}
+
 					});
 
-					// test array signatue
-					ctx.undefine(['stuff/one', 'stuff/two', 'stuff/three']);
 				});
 
 			}
