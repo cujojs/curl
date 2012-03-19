@@ -130,22 +130,6 @@ define(['curl', 'curl/_privileged'], function (curl, priv) {
 			},
 
 			/**
-			 * Redefines a named module by removing it from the cache and
-			 * then defining it again.  Just a convenient way to call
-			 * `ctx.undefine(id); ctx.define(id, stub);`.
-			 * @param id {String} absolute id of the mock or stub module
-			 * @param [deps] {Array} array of modules that this mock or stub
-			 *   requires. These modules will be fetched in the usual way if
-			 *   they are not also defined as stubs beforehand.
-			 * @param [func] {Function|Object} factory function or object
-			 *   that defines the mock or stub.
-			 */
-			redefine: function () {
-				_release([arguments[0]]);
-				_define.apply(undef, arguments);
-			},
-
-			/**
 			 * Requires a module or modules in the usual way, but allows
 			 * it/them to be removed from the cache by calling `undefine`.
 			 * @param idOrArray {String|Array} a module id if using `require`
@@ -155,26 +139,6 @@ define(['curl', 'curl/_privileged'], function (curl, priv) {
 			 * `require` asynchronously.
 			 */
 			require: function (idOrArray) {
-				return _require(idOrArray, arguments[1]);
-			},
-
-			/**
-			 * Undefines a module or modules and then requires a module
-			 * or modules in the usual way, but allows it/them to be
-			 * removed from the cache by calling `undefine`.
-			 * @param idOrArray {String|Array} a module id if using `require`
-			 *   as an R-Value or an array if using `require` in async
-			 *   mode.
-			 * @param [callback] {Function} the function to call when using
-			 * `require` asynchronously.
-			 */
-			rerequire: function (idOrArray) {
-				if (typeof idOrArray == 'string') {
-					_release([].slice.call(arguments));
-				}
-				else {
-					_release(idOrArray);
-				}
 				return _require(idOrArray, arguments[1]);
 			},
 
