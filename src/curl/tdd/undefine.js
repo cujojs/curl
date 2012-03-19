@@ -19,7 +19,7 @@
  * 	 array: remove all of the modules of the given ids
  *
  * @example 1
- *  curl({ preload: ['curl/shim/undefine'] }, function () {
+ *  curl({ preloads: ['curl/tdd/undefine'] }, function () {
  * 		// define a mock here
  * 		define('mock1', function (mock1) { blah });
  * 		// use mock1 here...
@@ -44,7 +44,7 @@
  * });
  *
  */
-define(['require', 'curl/_privileged'], function (require, priv) {
+define(['curl/_privileged'], function (priv) {
 "use strict";
 
 	var cache;
