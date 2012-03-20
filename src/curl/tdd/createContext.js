@@ -103,40 +103,57 @@ define(['curl', 'curl/_privileged'], function (curl, priv) {
 		promise.then(release, release);
 
 		function saveConfig (config) {
+
 			context = config;
-			// TODO: assert config is correct
+
+			// assert config is reasonable
 			if (!isFunction(config.setup) || config.setup.length == 0) {
 				throw new Error('createContext: config.setup should be function (require, define) {}');
 			}
 			if (!isFunction(config.run) || config.run.length == 0) {
 				throw new Error('createContext: config.run should be function (moduleToTest, doneCallback) {}');
 			}
+
 //			if (config.queued !== false) {
 				scheduleTests();
 //			}
-			return this;
+
+			return this; // for chaining the .run()
 		}
 
 		function scheduleTests () {
+			var doOnce;
+
+			doOnce = function () {
+				// resolve when done with tests, but only once
+				doOnce = function () {};
+				promise.resolve();
+			};
+
 			// when the queue is empty
 			when(queue, function () {
+
 				// set up resources/modules
 				when(setup(), function () {
+
 					// get module to test
 					_require(context.module, function (module) {
 						// run tests
-						context.run(module, function () {
-							// resolve when done with tests
-							promise.resolve();
-						});
+						context.run(module, doOnce);
 						// if tests are sync, resolve now
 						if (context.run.length < 2) {
 							promise.resolve();
 						}
 					});
+
 				});
+
 			});
+
+			// make next set of tests wait for us
 			queue = promise;
+
+			// let caller wait for test to finish, too
 			return promise;
 		}
 
@@ -145,6 +162,7 @@ define(['curl', 'curl/_privileged'], function (curl, priv) {
 			// count requires and then release to caller
 			countdown = 0;
 			promise = new Promise();
+
 			function trackedRequire (idOrArray, callback) {
 				var result, cb;
 				if (isArray(idOrArray)) {
@@ -156,7 +174,15 @@ define(['curl', 'curl/_privileged'], function (curl, priv) {
 				}
 				result = _require(idOrArray, cb);
 			}
+
+			// ensure moduleToTest isn't in cache already (could have been
+			// a previous moduleToTest's dependency)
+			delete cache[context.moduleId];
+
+			// do any defines or requires
 			context.setup(trackedRequire, _define);
+
+			// resolve if we didn't have any async requires
 			if (countdown == 0) promise.resolve();
 		}
 
@@ -209,7 +235,26 @@ define(['curl', 'curl/_privileged'], function (curl, priv) {
 		/***** return API *****/
 
 		return {
+
+			/*Configures the set of tests.
+			 * @function
+			 * @param config {Object}
+			 * @param config.moduleId {String} the id of the module to test
+			 * @param config.setup {Function} function (require, define) {}
+			 *   declare any mocks or stubs in this function using the
+			 *   require and define functions provided.
+			 * @param config.run {Function} function (module, callback) {}
+			 *   provide and call a callback function if your tests are async
+			 *   or the test context won't know when to run the next test.
+			 * @returns {Object} this test context so you can call .run()
+			 */
 			config: saveConfig,
+
+			/**
+			 * Runs the set of tests.
+			 * @function
+			 * @returns {Promise} resolves when the tests are done
+			 */
 			run: scheduleTests
 		};
 
