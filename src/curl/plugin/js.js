@@ -49,7 +49,7 @@ define(/*=='js',==*/ ['curl/_privileged'], function (priv) {
 
 		// default deadline is very far in the future (5 min)
 		// devs should set something reasonable if they want to use it
-		deadline = new Date().valueOf() + (def.timeoutMsec || 300) * 1000;
+		deadline = new Date().valueOf() + (def.timeoutMsec || 300000);
 
 		// initial script processing
 		function process () {
@@ -64,6 +64,7 @@ define(/*=='js',==*/ ['curl/_privileged'], function (priv) {
 		}
 
 		function fail (ex) {
+			// Exception is squashed by curl.js unfortunately
 			completed = true;
 			failure(ex);
 		}
