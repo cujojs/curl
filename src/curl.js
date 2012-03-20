@@ -369,10 +369,10 @@
 			// the global cfg.pathMap or on a plugin-specific altCfg.pathMap.
 			// also populates a pathList on cfg or plugin configs.
 			function fixAndPushPaths (coll, isPkg) {
-				var id, pluginId, data, parts, pluginCfg, info;
+				var id, pluginId, data, parts, currCfg, info;
 				for (var name in coll) {
 					data = coll[name];
-					pluginCfg = cfg;
+					currCfg = cfg;
 					// grab the package id, if specified. default to
 					// property name.
 					parts = pluginParts(removeEndSlash(data['id'] || data['name'] || name));
@@ -380,11 +380,11 @@
 					pluginId = parts.pluginId;
 					if (pluginId) {
 						// plugin-specific path
-						pluginCfg = pluginCfgs[pluginId];
-						if (!pluginCfg) {
-							pluginCfg = pluginCfgs[pluginId] = beget(cfg);
-							pluginCfg.pathMap = beget(cfg.pathMap);
-							pluginCfg.pathList = [];
+						currCfg = pluginCfgs[pluginId];
+						if (!currCfg) {
+							currCfg = pluginCfgs[pluginId] = beget(cfg);
+							currCfg.pathMap = beget(cfg.pathMap);
+							currCfg.pathList = [];
 						}
 						// remove plugin-specific path from coll
 						delete coll[name];
@@ -396,16 +396,15 @@
 						info = { path: removeEndSlash(data) };
 					}
 					info.specificity = id.split('/').length;
-//					info.specificity = (id.match(findSlashRx) || []).length;
 					if (id) {
-						pluginCfg.pathMap[id] = info;
-						pluginCfg.pathList.push(id);
+						currCfg.pathMap[id] = info;
+						currCfg.pathList.push(id);
 					}
 					else {
 						// naked plugin name signifies baseUrl for plugin
 						// resources. baseUrl could be relative to global
 						// baseUrl.
-						pluginCfg.baseUrl = core.resolveUrl(data, cfg);
+						currCfg.baseUrl = core.resolveUrl(data, cfg);
 					}
 				}
 			}
