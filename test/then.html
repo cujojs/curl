@@ -61,6 +61,18 @@
 		}
 	);
 
+	// test x-domain 404
+	curl(
+		['http://cujojs.com/this-doesnt-exist']
+	).then(
+		function (WAT) {
+			write('FAILED: then() called when xdomain module doesn\' exist');
+		},
+		function (ex) {
+			write('SUCCESS: fail brach called when xdomain module doesn\'t exist. Message: ' + ex.message);
+		}
+	);
+
 	// test js! plugin
 	curl(
 		['js!stuff/plain_old.js!exports=testDomain.foo']
