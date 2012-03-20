@@ -9,6 +9,7 @@
  */
 
 /**
+ * TODO: rewrite this!
  * Adds the ability to define temporary mocks and stubs. Devs can create
  * a test context on which they define named modules and then release
  * them so that the next set of tests has a clean environment and can
@@ -21,6 +22,8 @@
  * The define function returned still uses the global cache.
  * Any pre-existing modules in the cache are available.  Be careful not
  * to have concurrent test contexts since they also share the global cache.
+ *
+ * Modules may be pre-cached to prevent repeated fetches.
  *
  * @example 1
  * curl(['curl/tdd/createContext', 'require'], function (createContext, require) {
@@ -50,9 +53,38 @@
 define(['curl', 'curl/_privileged'], function (curl, priv) {
 "use strict";
 
-	var cache, undef;
+	var cache, Promise, queue, undef;
 
 	cache = priv['cache'];
+
+	Promise = priv['core'].Promise;
+
+	/*	var context = createContext(require);
+	 *	context.config({
+	 *		moduleId: 'pkg/moduleToTest',
+	 *		setup: function (require, define) {
+	 *			define('mock1', function () {});
+	 *			require(['mock2', 'mock3']);
+	 *			require(['supportModule'], function (support) {
+	 *				define('mock4', function () { return support.foo(42); });
+	 *			});
+	 *		},
+	 *		run: function (moduleToTest, doneCallback) {
+	 *			// insert tests here
+	 *		}
+	 *	});
+	 *	// you have to call run()
+	 *	context.run();
+	 */
+
+	function when (promiseOrValue, callback) {
+		if (promiseOrValue instanceof Promise) {
+			promiseOrValue.then(callback);
+		}
+		else {
+			callback();
+		}
+	}
 
 	/**
 	 * Creates a test context that has `define`, `undefine`, and `release`
@@ -60,22 +92,84 @@ define(['curl', 'curl/_privileged'], function (curl, priv) {
 	 * @param require {Function}
 	 */
 	function createContext (require) {
-		var moduleIds;
+		var moduleIds, context, promise;
 
 		if (!require) require = curl;
 
 		moduleIds = [];
+		context = {};
+		promise = new Promise();
+
+		promise.then(release, release);
+
+		function saveConfig (config) {
+			context = config;
+			// TODO: assert config is correct
+			if (!isFunction(config.setup) || config.setup.length == 0) {
+				throw new Error('createContext: config.setup should be function (require, define) {}');
+			}
+			if (!isFunction(config.run) || config.run.length == 0) {
+				throw new Error('createContext: config.run should be function (moduleToTest, doneCallback) {}');
+			}
+//			if (config.queued !== false) {
+				scheduleTests();
+//			}
+			return this;
+		}
+
+		function scheduleTests () {
+			// when the queue is empty
+			when(queue, function () {
+				// set up resources/modules
+				when(setup(), function () {
+					// get module to test
+					_require(context.module, function (module) {
+						// run tests
+						context.run(module, function () {
+							// resolve when done with tests
+							promise.resolve();
+						});
+						// if tests are sync, resolve now
+						if (context.run.length < 2) {
+							promise.resolve();
+						}
+					});
+				});
+			});
+			queue = promise;
+			return promise;
+		}
+
+		function setup () {
+			var countdown, promise;
+			// count requires and then release to caller
+			countdown = 0;
+			promise = new Promise();
+			function trackedRequire (idOrArray, callback) {
+				var result, cb;
+				if (isArray(idOrArray)) {
+					countdown++;
+					cb = function () {
+						callback.apply(this, arguments);
+						if (--countdown == 0) promise.resolve();
+					};
+				}
+				result = _require(idOrArray, cb);
+			}
+			context.setup(trackedRequire, _define);
+			if (countdown == 0) promise.resolve();
+		}
 
 		function _define (id) {
 
 			// throw if dev didn't name module
-			if (typeof id != 'string' || arguments.length == 1) {
-				throw new Error('Attempt to define an inline module without a module id: ' + arguments);
+			if (!isString(id) || arguments.length == 1) {
+				throw new Error('createContext: attempt to define an inline module without a module id: ' + arguments);
 			}
 
 			// throw if this id is already in the cache
 			if (id in cache) {
-				throw new Error('Attempt to define a module that is already defined: ' + id);
+				throw new Error('createContext: attempt to define a module that is already defined: ' + id);
 			}
 
 			// save name for later release
@@ -85,68 +179,57 @@ define(['curl', 'curl/_privileged'], function (curl, priv) {
 			define.apply(undef, arguments);
 		}
 
-		function _release (ids) {
+		function _require (idOrArray, callback) {
+			var arr, id;
+
+			// throw if dev didn't name modules
+			if (!isString(idOrArray) || !isArray(idOrArray)) {
+				throw new Error('createContext: require() needs an array or a string: ' + arguments);
+			}
+
+			// save module ids for later release if they're not already cached
+			// modules may be pre-cached to prevent repeated fetches
+			arr = [].concat(idOrArray);
+			while ((id = arr.pop())) {
+				if (!(id in cache)) {
+					moduleIds.push(id);
+				}
+			}
+
+			return require(idOrArray, callback);
+		}
+
+		function release () {
 			var id;
-			while ((id = ids.pop())) {
+			while ((id = moduleIds.pop())) {
 				delete cache[id];
 			}
 		}
 
-		function _require (idOrArray, callback) {
-			moduleIds.concat(idOrArray);
-			return require(idOrArray, callback);
-		}
+		/***** return API *****/
 
 		return {
-
-			/**
-			 * Defines a named module that can be removed from the cache
-			 * by a subsequent call to this test context's `undefine` or
-			 * `release` methods.
-			 * @param id {String} absolute id of the mock or stub module
-			 * @param [deps] {Array} array of modules that this mock or stub
-			 *   requires. These modules will be fetched in the usual way if
-			 *   they are not also defined as stubs beforehand.
-			 * @param [func] {Function|Object} factory function or object
-			 *   that defines the mock or stub.
-			 */
-			define: function () { _define.apply(undef, arguments); },
-
-			/**
-			 * Removes the mocks or stubs from the cache for the next set
-			 * of tests.  List one or more ids as parameters.
-			 * @param idOrArray {String|Array} id of module to remove from
-			 *   cache or an array of ids.
-			 * @param [id2...] {String} if id is a string, the remaining
-			 *   arguments are assumed to be ids of other modules to remove.
-			 */
-			undefine: function (idOrArray) {
-				if (typeof idOrArray == 'string') {
-					_release([].slice.call(arguments));
-				}
-				else {
-					_release(idOrArray);
-				}
-			},
-
-			/**
-			 * Requires a module or modules in the usual way, but allows
-			 * it/them to be removed from the cache by calling `undefine`.
-			 * @param idOrArray {String|Array} a module id if using `require`
-			 *   as an R-Value or an array if using `require` in async
-			 *   mode.
-			 * @param [callback] {Function} the function to call when using
-			 * `require` asynchronously.
-			 */
-			require: function (idOrArray) {
-				return _require(idOrArray, arguments[1]);
-			},
-
-			/**
-			 * Removes all mocks and stubs defined by this test context.
-			 */
-			release: function () { _release(moduleIds); }
+			config: saveConfig,
+			run: scheduleTests
 		};
+
+		/***** other functions *****/
+
+		function toString (obj) {
+			return Object.prototype.toString.call(obj);
+		}
+
+		function isArray (obj) {
+			return toString(obj) == '[object Array]';
+		}
+
+		function isFunction (obj) {
+			return toString(obj) == '[object Function]';
+		}
+
+		function isString (obj) {
+			return toString(obj) == '[object String]';
+		}
 
 	}
 
