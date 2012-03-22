@@ -25,6 +25,7 @@
  *
  * Modules may be pre-cached to prevent repeated fetches.
  *
+ * TODO: fix examples
  * @example 1
  * curl(['curl/tdd/createContext', 'require'], function (createContext, require) {
  *  	var testContext = createContext();
@@ -53,231 +54,209 @@
 define(['curl', 'curl/_privileged'], function (curl, priv) {
 "use strict";
 
-	var cache, Promise, queue, undef;
+	var cache, Promise, defineResource, queue, undef;
 
 	cache = priv['cache'];
-
 	Promise = priv['core'].Promise;
+	defineResource = priv['core'].defineResource;
 
 	/*	var context = createContext(require);
-	 *	context.config({
-	 *		moduleId: 'pkg/moduleToTest',
-	 *		setup: function (require, define) {
+	 *	context.setup(
+	 *		function (require, complete) {
 	 *			define('mock1', function () {});
 	 *			require(['mock2', 'mock3']);
 	 *			require(['supportModule'], function (support) {
 	 *				define('mock4', function () { return support.foo(42); });
 	 *			});
-	 *		},
-	 *		run: function (moduleToTest, doneCallback) {
+	 *		}
+	 *	).teardown(
+	 *		function (require, complete) {
+	 *			// clean up any globals, etc
+	 *		}
+	 *	).run(
+	 *		function (require, complete) {
 	 *			// insert tests here
 	 *		}
 	 *	});
-	 *	// you have to call run()
-	 *	context.run();
 	 */
 
-	function when (promiseOrValue, callback) {
+	function when (promiseOrValue, callback, errback) {
+		var promise;
+
+		promise = new Promise();
+
 		if (promiseOrValue instanceof Promise) {
-			promiseOrValue.then(callback);
+			promiseOrValue
+				.then(callback, errback)
+				.then(promise.resolve, promise.reject);
 		}
 		else {
-			callback();
+			try {
+				callback();
+				promise.resolve();
+			}
+			catch (ex) {
+				promise.reject(ex);
+			}
 		}
+
+		return promise;
 	}
 
+	function sequenceReturnedPromises (functions) {
+		var promise;
+
+		promise = new Promise();
+
+		function nextFunc (func) {
+			when(func(), function () {
+				var next = functions.unshift();
+				if (next) nextFunc(next);
+				else promise.resolve();
+			}, promise.reject);
+		}
+
+		nextFunc(functions.unshift());
+
+		return promise;
+	}
+
+	function listenForNewModules (callback) {
+		var listeners;
+		// add to listeners
+		listeners = listenForNewModules.listeners;
+		listeners.push(callback);
+		// return a function to remove from listeners
+		return function unlisten () {
+			var i = listeners.length;
+			while (i >= 0 && callback != listeners[--i]) {}
+			if (i >= 0) {
+				listeners.splice(i, 1);
+			}
+		};
+	}
+	listenForNewModules.listeners = [];
+
+	priv['core'].defineResource = function (def) {
+		var i, listener;
+		// notify listeners
+		i = 0;
+		while ((listener = listenForNewModules.listeners[i++])) {
+			listener(def.id);
+		}
+		// do the usual thing
+		return defineResource.apply(this, arguments);
+	};
+
 	/**
-	 * Creates a test context that has `define`, `undefine`, and `release`
-	 * methods.
-	 * @param require {Function}
+	 * Creates a test context.
+	 * @param require {Function|Undefined}
+	 * @param setup {Function}
+	 * @param teardown {Function}
 	 */
-	function createContext (require) {
-		var moduleIds, context, promise;
+	function createContext (require, setup, teardown) {
+		var context;
 
 		if (!require) require = curl;
 
-		moduleIds = [];
 		context = {};
-		promise = new Promise();
 
-		promise.then(release, release);
+		function createTrackedRequire (require, devUsedRequire, modulesAllFetched) {
+			var callCount = 0;
+			return function trackedRequire (idOrArray, callback) {
+				var cb;
 
-		function saveConfig (config) {
+				callCount++;
 
-			context = config;
+				cb = function () {
+					callback.apply(this, arguments);
+					// if this is the last require
+					if (--callCount == 0) modulesAllFetched();
+				};
 
-			// assert config is reasonable
-			if (!isFunction(config.setup) || config.setup.length == 0) {
-				throw new Error('createContext: config.setup should be function (require, define) {}');
+				trackedRequire.notAsync = function () { return callCount == 0; };
+
+				// preserve AMD API
+				trackedRequire.toUrl = require.toUrl;
+
+				return require(idOrArray, cb);
 			}
-			if (!isFunction(config.run) || config.run.length == 0) {
-				throw new Error('createContext: config.run should be function (moduleToTest, doneCallback) {}');
-			}
-
-//			if (config.queued !== false) {
-				scheduleTests();
-//			}
-
-			return this; // for chaining the .run()
 		}
 
-		function scheduleTests () {
-			var doOnce;
+		function waitForTestFunc (func) {
+			var dfdR, dfdC, trackedRequire, promise;
 
-			doOnce = function () {
-				// resolve when done with tests, but only once
-				doOnce = function () {};
-				promise.resolve();
-			};
+			function needToWaitForComplete () { dfdC = dfdC || new Promise(); }
+			function needToWaitForRequires () { dfdR = dfdR || new Promise(); }
+			function funcIsComplete () { dfdC && dfdC.resolve(); }
+			function requiresAreComplete () { dfdR && dfdR.resolve(); }
 
-			// when the queue is empty
-			when(queue, function () {
+			promise = new Promise();
 
-				// set up resources/modules
-				when(setup(), function () {
+			// if dev didn't specify they wanted the funcIsComplete callback,
+			// there's no need for the second deferred.
+			if (func.length == 2) needToWaitForComplete();
 
-					// get module to test
-					_require(context.module, function (module) {
-						// run tests
-						context.run(module, doOnce);
-						// if tests are sync, resolve now
-						if (context.run.length < 2) {
-							promise.resolve();
-						}
-					});
+			trackedRequire = createTrackedRequire(
+				require,
+				needToWaitForRequires,
+				requiresAreComplete
+			);
 
-				});
+			// run test function
+			func(trackedRequire, funcIsComplete);
 
+			// wait for deferreds
+			when(dfdR, function () {
+				when(dfdC, promise.resolve());
 			});
 
-			// make next set of tests wait for us
-			queue = promise;
-
-			// let caller wait for test to finish, too
 			return promise;
 		}
 
-		function setup () {
-			var countdown, promise;
-			// count requires and then release to caller
-			countdown = 0;
-			promise = new Promise();
+		/***** API *****/
 
-			function trackedRequire (idOrArray, callback) {
-				var result, cb;
-				if (isArray(idOrArray)) {
-					countdown++;
-					cb = function () {
-						callback.apply(this, arguments);
-						if (--countdown == 0) promise.resolve();
-					};
+		context.run = function runTests (run) {
+			var promise;
+
+			queue = promise = when(queue, function () {
+				var unlisten, moduleIds;
+
+				moduleIds = {};
+
+				function discoveredNewModule (id) {
+					moduleIds[id] = true;
 				}
-				result = _require(idOrArray, cb);
-			}
 
-			// ensure moduleToTest isn't in cache already (could have been
-			// a previous moduleToTest's dependency)
-			delete cache[context.moduleId];
-
-			// do any defines or requires
-			context.setup(trackedRequire, _define);
-
-			// resolve if we didn't have any async requires
-			if (countdown == 0) promise.resolve();
-		}
-
-		function _define (id) {
-
-			// throw if dev didn't name module
-			if (!isString(id) || arguments.length == 1) {
-				throw new Error('createContext: attempt to define an inline module without a module id: ' + arguments);
-			}
-
-			// throw if this id is already in the cache
-			if (id in cache) {
-				throw new Error('createContext: attempt to define a module that is already defined: ' + id);
-			}
-
-			// save name for later release
-			moduleIds.push(id);
-
-			// define module the usual way
-			define.apply(undef, arguments);
-		}
-
-		function _require (idOrArray, callback) {
-			var arr, id;
-
-			// throw if dev didn't name modules
-			if (!isString(idOrArray) || !isArray(idOrArray)) {
-				throw new Error('createContext: require() needs an array or a string: ' + arguments);
-			}
-
-			// save module ids for later release if they're not already cached
-			// modules may be pre-cached to prevent repeated fetches
-			arr = [].concat(idOrArray);
-			while ((id = arr.pop())) {
-				if (!(id in cache)) {
-					moduleIds.push(id);
+				function releaseModules () {
+					for (var id in moduleIds) {
+						delete cache[id];
+					}
+					moduleIds = {};
 				}
-			}
 
-			return require(idOrArray, callback);
-		}
+				function allDone () {
+					releaseModules();
+					unlisten();
+					promise.resolve();
+				}
 
-		function release () {
-			var id;
-			while ((id = moduleIds.pop())) {
-				delete cache[id];
-			}
-		}
+				unlisten = listenForNewModules(discoveredNewModule);
 
-		/***** return API *****/
+				sequenceReturnedPromises([
+					waitForTestFunc(setup),
+					waitForTestFunc(run),
+					waitForTestFunc(teardown)
+				]).then(allDone, allDone);
 
-		return {
-
-			/*Configures the set of tests.
-			 * @function
-			 * @param config {Object}
-			 * @param config.moduleId {String} the id of the module to test
-			 * @param config.setup {Function} function (require, define) {}
-			 *   declare any mocks or stubs in this function using the
-			 *   require and define functions provided.
-			 * @param config.run {Function} function (module, callback) {}
-			 *   provide and call a callback function if your tests are async
-			 *   or the test context won't know when to run the next test.
-			 * @returns {Object} this test context so you can call .run()
-			 */
-			config: saveConfig,
-
-			/**
-			 * Runs the set of tests.
-			 * @function
-			 * @returns {Promise} resolves when the tests are done
-			 */
-			run: scheduleTests
+			});
 		};
 
-		/***** other functions *****/
-
-		function toString (obj) {
-			return Object.prototype.toString.call(obj);
-		}
-
-		function isArray (obj) {
-			return toString(obj) == '[object Array]';
-		}
-
-		function isFunction (obj) {
-			return toString(obj) == '[object Function]';
-		}
-
-		function isString (obj) {
-			return toString(obj) == '[object String]';
-		}
+		return context;
 
 	}
 
 	return createContext;
 
 });
+
