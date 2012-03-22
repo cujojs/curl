@@ -201,8 +201,8 @@
 	 * @returns {Function}
 	 */
 	function countdown (howMany, lambda, completed) {
+		var result;
 		return function () {
-			var result;
 			if (--howMany >= 0 && lambda) result = lambda.apply(undef, arguments);
 			// we want ==, not <=, since some callers expect call-once functionality
 			if (howMany == 0 && completed) completed(result);
@@ -261,7 +261,7 @@
 				}
 				else {
 					// use same id so that relative modules are normalized correctly
-					when(core.getDeps(core.createContext(cfg, def.id, ids)), cb);
+					when(core.getDeps(core.createContext(cfg, def.id, ids, isPreload)), cb);
 				}
 			}
 
@@ -279,10 +279,11 @@
 			def.ctxId = optCtxId == undef ? id : optCtxId;
 			origResolve = def.resolve;
 
+			// using countdown to only execute definition function once
 			execute = countdown(1, function (deps) {
 				def.deps = deps;
 				try {
-					resolvedValue = core.executeDefFunc(def);
+					return core.executeDefFunc(def);
 				}
 				catch (ex) {
 					def.reject(ex);
@@ -291,21 +292,25 @@
 
 			// definition function by overriding promise resolve function
 			def.resolve = function resolve (deps) {
-				execute(deps);
-				// put resolvedValue in cache
-				cache[def.id] = resolvedValue;
-				origResolve(resolvedValue);
+				when(isPreload || preload, function () {
+					resolvedValue = execute(deps);
+					// put resolvedValue in cache
+					cache[def.id] = resolvedValue;
+					origResolve(resolvedValue);
+				});
 			};
 
 			// track exports
 			def.exportsReady = function executeFactory (deps) {
-				// only resolve early if we also use exports (to avoid
-				// circular dependencies). def.exports will have already
-				// been set by the getDeps loop before we get here.
-				if (def.exports) {
-					execute(deps);
-					def.progress(msgFactoryExecuted);
-				}
+				when(isPreload || preload, function () {
+					// only resolve early if we also use exports (to avoid
+					// circular dependencies). def.exports will have already
+					// been set by the getDeps loop before we get here.
+					if (def.exports) {
+						resolvedValue = execute(deps);
+						def.progress(msgFactoryExecuted);
+					}
+				});
 			};
 
 			return def;
@@ -638,13 +643,10 @@
 
 		defineResource: function (def, args) {
 
-			// wait for preload before fetching any other modules
-			when(def.isPreload || preload, function () {
-				def.res = args.res;
-				def.cjs = args.cjs;
-				def.depNames = args.deps;
-				core.getDeps(def);
-			});
+			def.res = args.res;
+			def.cjs = args.cjs;
+			def.depNames = args.deps;
+			core.getDeps(def);
 
 		},
 
