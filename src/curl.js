@@ -543,9 +543,11 @@
 			// using dom0 event handlers instead of wordy w3c/ms
 			el.onload = el.onreadystatechange = process;
 			el.onerror = fail;
+			// js! plugin uses alternate mimetypes
+			el.type = def.mimetype || 'text/javascript';
 			// TODO: support other charsets?
 			el.charset = 'utf-8';
-			el.async = true;
+			el.async = !def.order;
 			el.src = def.url;
 
 			// loading will start when the script is inserted into the dom.
