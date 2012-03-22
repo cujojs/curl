@@ -773,7 +773,7 @@
 
 						// if !args, nothing was added to the argsNet
 						if (!args || args.ex) {
-							def.reject(new Error(((args && args.ex) || 'define() missing or duplicated: url').replace('url', def.url)));
+							def.reject(new Error(((args && args.ex) || 'define() missing or duplicated: ' + def.url)));
 						}
 						else {
 							core.defineResource(def, args);
