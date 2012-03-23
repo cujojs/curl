@@ -273,7 +273,7 @@
 		},
 
 		createResourceDef: function (cfg, id, isPreload, optCtxId) {
-			var def, origResolve, execute, resolvedValue;
+			var def, origResolve, execute;
 
 			def = core.createContext(cfg, id, undef, isPreload);
 			def.ctxId = optCtxId == undef ? id : optCtxId;
@@ -290,13 +290,11 @@
 				}
 			});
 
-			// definition function by overriding promise resolve function
+			// intercept resolve function to execute definition function
+			// before resolving
 			def.resolve = function resolve (deps) {
 				when(isPreload || preload, function () {
-					resolvedValue = execute(deps);
-					// put resolvedValue in cache
-					cache[def.id] = resolvedValue;
-					origResolve(resolvedValue);
+					origResolve((cache[def.id] = execute(deps)));
 				});
 			};
 
@@ -307,7 +305,7 @@
 					// circular dependencies). def.exports will have already
 					// been set by the getDeps loop before we get here.
 					if (def.exports) {
-						resolvedValue = execute(deps);
+						execute(deps);
 						def.progress(msgFactoryExecuted);
 					}
 				});
