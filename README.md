@@ -287,20 +287,6 @@ as defined in the CommonJS Modules 1.1 proposal.
 * module: Any javascript object, function, constructor, or primitive
 * name: String used to name a module (not necessary nor recommended)
 
----------
-
-Auxiliary API
--------------
-
-```javascript
-var extendedName = curl.nameWithExt(name, defaultExt);
-```
-
-Adds extension to the given file name (path) if it is necessary.
-
-* name: file name to process.
-* defaultExt: the extension that will be added if the file name does not have any extension.
-
 ----------------------------------------
 
 Very Simple Example
