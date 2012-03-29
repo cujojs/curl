@@ -1,3 +1,0 @@
-[submodule "test/cssx"]
-	path = test/cssx
-	url = git://github.com/unscriptable/cssx.git

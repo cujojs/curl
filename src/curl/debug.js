@@ -54,7 +54,7 @@ define(['require', 'curl/_privileged'], function (require, priv) {
 	function count () {
 		totalWaiting = 0;
 		for (var p in cache) {
-			if (cache[p] instanceof priv['ResourceDef']) totalWaiting++;
+			if (cache[p] instanceof priv['Promise']) totalWaiting++;
 		}
 	}
 	count();
@@ -64,7 +64,7 @@ define(['require', 'curl/_privileged'], function (require, priv) {
 		if (prevTotal != totalWaiting) {
 			console.log('curl: ********** modules waiting: ' + totalWaiting);
 			for (var p in cache) {
-				if (cache[p] instanceof priv['ResourceDef']) {
+				if (cache[p] instanceof priv['Promise']) {
 					console.log('curl: ********** module waiting: ' + p);
 				}
 			}
