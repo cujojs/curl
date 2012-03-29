@@ -58,7 +58,7 @@ define(/*=='curl/loader/cjsm11',==*/ function () {
 	head = document && (document['head'] || document.getElementsByTagName('head')[0]);
 
 	function wrapSource (source, resourceId, fullUrl) {
-		var sourceUrl = fullUrl ? '//@ sourceURL=' + fullUrl.replace(/\s/g, '%20') + '.js' : '';
+		var sourceUrl = fullUrl ? '////@ sourceURL=' + fullUrl.replace(/\s/g, '%20') + '.js' : '';
 		return "define('" + resourceId + "'," +
 			"['require','exports','module'],function(require,exports,module){" +
 			source + "\n});\n" + sourceUrl + "\n";
@@ -101,7 +101,7 @@ define(/*=='curl/loader/cjsm11',==*/ function () {
 					}
 					else {
 						//eval(source);
-						globalEval.call(source);
+						globalEval(source);
 					}
 
 					// call loaded now that the module is defined
@@ -115,4 +115,4 @@ define(/*=='curl/loader/cjsm11',==*/ function () {
 
 });
 
-}(this, this.document, function () { eval(this.toString()); }));
+}(this, this.document, function () { /* FB needs direct eval here */ eval(arguments[0]); }));
