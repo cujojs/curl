@@ -53,21 +53,6 @@
 		return toString.call(obj).indexOf('[object ' + type) == 0;
 	}
 
-    /**
-     * Adds extension to the given file name (path) if it is necessary.
-     * 
-     * @param {String} name
-     *      File name to process.
-     * @param {String} defaultExt
-     *      The extension that will be added if the file name does not have any extension.
-     * @return {String}
-     *      Processed file name.
-     */
-    function nameWithExt(name, defaultExt) {
-        return defaultExt && name.lastIndexOf('.') <= name.lastIndexOf('/') ?
-            name + '.' + defaultExt : name;
-    }
-
 	function normalizePkgDescriptor (descriptor) {
 		var path, main;
 
@@ -280,11 +265,8 @@
 				}
 			}
 
-            // Useful functions for plugins
-            localRequire['toUrl'] = toUrl;
-            localRequire['nameWithExt'] = nameWithExt;
-            
-            def.require = localRequire;
+			def.require = localRequire;
+			localRequire['toUrl'] = toUrl;
 			def.toAbsId = toAbsId;
 
 			return def;
@@ -1036,9 +1018,6 @@
 	apiName = userCfg['apiName'] || 'curl';
 	apiContext = userCfg['apiContext'] || global;
 	apiContext[apiName] = _curl;
-
-    // useful functions
-	_curl['nameWithExt'] = nameWithExt;
 
 	// allow curl to be a dependency
 	cache['curl'] = _curl;

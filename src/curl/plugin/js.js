@@ -141,69 +141,73 @@
 		}
 	}
 
-	define(/*=='js',==*/ {
+	define(/*=='js',==*/ ["./util/base"], function(basicUtil) {
+	    
+	    return {
 
-		// the !options force us to cache ids in the plugin
-		'dynamic': true,
-
-		'load': function (name, require, callback, config) {
-
-			var order, exportsPos, exports, prefetch, def, promise;
-
-			order = name.indexOf('!order') > 0; // can't be zero
-			exportsPos = name.indexOf('!exports=');
-			exports = exportsPos > 0 && name.substr(exportsPos + 9); // must be last option!
-			prefetch = 'prefetch' in config ? config['prefetch'] : true;
-			name = order || exportsPos > 0 ? name.substr(0, name.indexOf('!')) : name;
-
-			// if we've already fetched this resource, get it out of the cache
-			if (name in cache) {
-				callback(cache[name]);
-			}
-			else {
-				cache[name] = undef;
-				def = {
-					name: name,
-					url: require['toUrl']( require['nameWithExt'](name, 'js') ),
-					order: order,
-					exports: exports,
-					timeoutMsec: config['timeout']
-				};
-				promise = {
-					'resolve': function (o) {
-						cache[name] = o;
-						(callback['resolve'] || callback)(o);
-					},
-					'reject': callback['reject'] || function (ex) { throw ex; }
-				};
-
-				// if this script has to wait for another
-				// or if we're loading, but not executing it
-				if (order && !supportsAsyncFalse && waitForOrderedScript) {
-					// push onto the stack of scripts that will be fetched
-					// from cache. do this before fetch in case IE has file cached.
-					queue.push([def, promise]);
-					// if we're prefetching
-					if (prefetch) {
-						// go get the file under an unknown mime type
-						def.mimetype = 'text/cache';
-						loadScript(def,
-							// remove the fake script when loaded
-							function (el) { el.parentNode.removeChild(el); },
-							false
-						);
-						def.mimetype = '';
-					}
-				}
-				// otherwise, just go get it
-				else {
-					waitForOrderedScript = waitForOrderedScript || order;
-					fetch(def, promise);
-				}
-			}
-
-		}
-
-	});
+    		// the !options force us to cache ids in the plugin
+    		'dynamic': true,
+    
+    		'load': function (name, require, callback, config) {
+    
+    			var order, exportsPos, exports, prefetch, def, promise;
+    
+    			order = name.indexOf('!order') > 0; // can't be zero
+    			exportsPos = name.indexOf('!exports=');
+    			exports = exportsPos > 0 && name.substr(exportsPos + 9); // must be last option!
+    			prefetch = 'prefetch' in config ? config['prefetch'] : true;
+    			name = order || exportsPos > 0 ? name.substr(0, name.indexOf('!')) : name;
+    
+    			// if we've already fetched this resource, get it out of the cache
+    			if (name in cache) {
+    				callback(cache[name]);
+    			}
+    			else {
+    				cache[name] = undef;
+    				def = {
+    					name: name,
+    					url: require['toUrl'](basicUtil.nameWithExt(name, 'js')),
+    					order: order,
+    					exports: exports,
+    					timeoutMsec: config['timeout']
+    				};
+    				promise = {
+    					'resolve': function (o) {
+    						cache[name] = o;
+    						(callback['resolve'] || callback)(o);
+    					},
+    					'reject': callback['reject'] || function (ex) { throw ex; }
+    				};
+    
+    				// if this script has to wait for another
+    				// or if we're loading, but not executing it
+    				if (order && !supportsAsyncFalse && waitForOrderedScript) {
+    					// push onto the stack of scripts that will be fetched
+    					// from cache. do this before fetch in case IE has file cached.
+    					queue.push([def, promise]);
+    					// if we're prefetching
+    					if (prefetch) {
+    						// go get the file under an unknown mime type
+    						def.mimetype = 'text/cache';
+    						loadScript(def,
+    							// remove the fake script when loaded
+    							function (el) { el.parentNode.removeChild(el); },
+    							false
+    						);
+    						def.mimetype = '';
+    					}
+    				}
+    				// otherwise, just go get it
+    				else {
+    					waitForOrderedScript = waitForOrderedScript || order;
+    					fetch(def, promise);
+    				}
+    			}
+    
+    		}
+    
+    	};
+    	
+    });
 
 }(this, this.document));

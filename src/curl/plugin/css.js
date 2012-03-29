@@ -344,107 +344,111 @@
 
 /***** finally! the actual plugin *****/
 
-	define(/*=='css',==*/ {
+	define(/*=='css',==*/ ["./util/base"], function(basicUtil) {
+	    
+	    return {
 
-		'normalize': function (resourceId, normalize) {
-			var resources, normalized;
-
-			if (!resourceId) return resourceId;
-
-			resources = resourceId.split(",");
-			normalized = [];
-
-			for (var i = 0, len = resources.length; i < len; i++) {
-				normalized.push(normalize(resources[i]));
-			}
-
-			return normalized.join(',');
-		},
-
-		'load': function (resourceId, require, callback, config) {
-			var resources = (resourceId || '').split(","),
-				loadingCount = resources.length;
-
-			// all detector functions must ensure that this function only gets
-			// called once per stylesheet!
-			function loaded () {
-				// load/error handler may have executed before stylesheet is
-				// fully parsed / processed in Opera, so use setTimeout.
-				// Opera will process before the it next enters the event loop
-				// (so 0 msec is enough time).
-				if(--loadingCount == 0){
-					// TODO: move this setTimeout to loadHandler
-					setTimeout(function () { callback(createSheetProxy(link.sheet || link.styleSheet)); }, 0);
-				}
-			}
-
-			if (!resourceId) {
-				// return the run-time API
-				callback({
-					'translateUrls': function (cssText, baseId) {
-						var baseUrl;
-						baseUrl = require['toUrl'](baseId);
-						baseUrl = baseUrl.substr(0, baseUrl.lastIndexOf('/') + 1);
-						return translateUrls(cssText, baseUrl);
-					},
-					'injectStyle': function (cssText) {
-						return createStyle(cssText);
-					},
-
-					'proxySheet': function (sheet) {
-						// for W3C, `sheet` is a reference to a <style> node so we need to
-						// return the sheet property.
-						if (sheet.sheet /* instanceof CSSStyleSheet */) sheet = sheet.sheet;
-						return createSheetProxy(sheet);
-					}
-				});
-			}
-			else {
-
-				// `after` will become truthy once the loop executes a second time
-				for (var i = resources.length - 1, after; i >= 0; i--, after = true) {
-
-					resourceId = resources[i];
-
-					var
-						// TODO: this is a bit weird: find a better way to extract name?
-						opts = parseSuffixes(resourceId),
-						name = opts.shift(),
-						url = require['toUrl']( require['nameWithExt'](name, 'css') ),
-						link = createLink(doc),
-						nowait = 'nowait' in opts ? opts['nowait'] != 'false' : !!config['cssDeferLoad'],
-						params = {
-							link: link,
-							url: url,
-							wait: config['cssWatchPeriod'] || 50
-						};
-
-					if (nowait) {
-						callback(createSheetProxy(link.sheet || link.styleSheet));
-					}
-					else {
-						// hook up load detector(s)
-						loadDetector(params, loaded);
-					}
-
-					// go!
-					link.href = url;
-
-					if (after) {
-						head.insertBefore(link, insertedSheets[after].previousSibling);
-					}
-					else {
-						head.appendChild(link);
-					}
-					insertedSheets[url] = link;
-				}
-
-			}
-
-		},
-
-		'plugin-builder': './builder/css'
-
-	});
+    		'normalize': function (resourceId, normalize) {
+    			var resources, normalized;
+    
+    			if (!resourceId) return resourceId;
+    
+    			resources = resourceId.split(",");
+    			normalized = [];
+    
+    			for (var i = 0, len = resources.length; i < len; i++) {
+    				normalized.push(normalize(resources[i]));
+    			}
+    
+    			return normalized.join(',');
+    		},
+    
+    		'load': function (resourceId, require, callback, config) {
+    			var resources = (resourceId || '').split(","),
+    				loadingCount = resources.length;
+    
+    			// all detector functions must ensure that this function only gets
+    			// called once per stylesheet!
+    			function loaded () {
+    				// load/error handler may have executed before stylesheet is
+    				// fully parsed / processed in Opera, so use setTimeout.
+    				// Opera will process before the it next enters the event loop
+    				// (so 0 msec is enough time).
+    				if(--loadingCount == 0){
+    					// TODO: move this setTimeout to loadHandler
+    					setTimeout(function () { callback(createSheetProxy(link.sheet || link.styleSheet)); }, 0);
+    				}
+    			}
+    
+    			if (!resourceId) {
+    				// return the run-time API
+    				callback({
+    					'translateUrls': function (cssText, baseId) {
+    						var baseUrl;
+    						baseUrl = require['toUrl'](baseId);
+    						baseUrl = baseUrl.substr(0, baseUrl.lastIndexOf('/') + 1);
+    						return translateUrls(cssText, baseUrl);
+    					},
+    					'injectStyle': function (cssText) {
+    						return createStyle(cssText);
+    					},
+    
+    					'proxySheet': function (sheet) {
+    						// for W3C, `sheet` is a reference to a <style> node so we need to
+    						// return the sheet property.
+    						if (sheet.sheet /* instanceof CSSStyleSheet */) sheet = sheet.sheet;
+    						return createSheetProxy(sheet);
+    					}
+    				});
+    			}
+    			else {
+    
+    				// `after` will become truthy once the loop executes a second time
+    				for (var i = resources.length - 1, after; i >= 0; i--, after = true) {
+    
+    					resourceId = resources[i];
+    
+    					var
+    						// TODO: this is a bit weird: find a better way to extract name?
+    						opts = parseSuffixes(resourceId),
+    						name = opts.shift(),
+    						url = require['toUrl'](basicUtil.nameWithExt(name, 'css')),
+    						link = createLink(doc),
+    						nowait = 'nowait' in opts ? opts['nowait'] != 'false' : !!config['cssDeferLoad'],
+    						params = {
+    							link: link,
+    							url: url,
+    							wait: config['cssWatchPeriod'] || 50
+    						};
+    
+    					if (nowait) {
+    						callback(createSheetProxy(link.sheet || link.styleSheet));
+    					}
+    					else {
+    						// hook up load detector(s)
+    						loadDetector(params, loaded);
+    					}
+    
+    					// go!
+    					link.href = url;
+    
+    					if (after) {
+    						head.insertBefore(link, insertedSheets[after].previousSibling);
+    					}
+    					else {
+    						head.appendChild(link);
+    					}
+    					insertedSheets[url] = link;
+    				}
+    
+    			}
+    
+    		},
+    
+    		'plugin-builder': './builder/css'
+    
+    	};
+    	
+    });
 
 })(this);

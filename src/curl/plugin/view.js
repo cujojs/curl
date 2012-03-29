@@ -65,10 +65,6 @@
 
 
     var 
-        // RegExp to extract tag attributes and their values
-        attrRegExp = /(\w+)\s*=\s*("|')\s*(.*?)\s*\2/g,
-        // RegExp to extract settings and their values
-        settingRegExp = /(\w+)\s*=\s*(.*?)\s*(?:;|$)/g,
         // Default configuration
         defaultConfig = {
             cssLoader: "css",
@@ -105,67 +101,6 @@
             }
         }
         return settings;
-    }
-
-    /**
-     * Extracts attributes and their values from tag's text.
-     * 
-     * @param {String} sTag
-     *      Tag's text to process.
-     * @return {Object}
-     *      Attributes map. Keys are attribute names, values - corresponding values.
-     */
-    function extractAttributes(sTag) {
-        var result = {},
-            attr;
-        while (attr = attrRegExp.exec(sTag)) {
-            result[ attr[1] ] = attr[3];
-        }
-        return result;
-    }
-
-    /**
-     * Extracts operation settings from configuration string.
-     * The configuration string should have the following format:
-     * name=value[;name=value...]
-     * where <code>name</code> - a setting name, <code>value</code> - the setting value.
-     * 
-     * @param {String} sConfig
-     *      Represents settings and their values.
-     * @return {Object}
-     *      Settings map. Keys are setting names, values - corresponding values.
-     */
-    function extractSettings(sConfig) {
-        var result = {},
-            setting;
-        while (setting = settingRegExp.exec(sConfig)) {
-            result[ setting[1] ] = setting[2];
-        }
-        return result;
-    }
-
-    /**
-     * Mix contents (fields and methods) of several objects.
-     * 
-     * @param {Object} destination
-     *      Object that will accumulate contents of other objects.
-     * @param {Object} [...]
-     *      Object whose contents is copied.
-     * @return {Object}
-     *      Modified destination object.
-     */
-    function mix(destination) {
-        var nL = arguments.length, 
-            nI, sKey, source;
-        for (nI = 1; nI < nL; nI++) {
-            source = arguments[nI];
-            if (source != null && typeof source === "object") {
-                for (sKey in source) {
-                    destination[sKey] = source[sKey];
-                }
-            }
-        }
-        return destination;
     }
 
     /**
@@ -214,131 +149,130 @@
         }
         return result;
     };
-
-    /**
-     * Parses the given text and search for &lt;link&gt; tags that are related to CSS-files.
-     * Found tags are removed from the text, extracted resource names form dependency list. 
-     * 
-     * @param {String} sText
-     *      Text to process.
-     * @param {Object} settings
-     *      Processing settings/configuration. Besides settings the object contains 'api' field
-     *      that represents the module API.
-     * @return {Object}
-     *      Parsing result. The object has the following fields (name - type - description):
-     *      <ul>
-     *      <li>resource - String - text after processing.
-     *      <li>depList - Array - list of found dependencies.
-     *      </ul>
-     */
-    defaultConfig.parse = function(sText, settings) {
-        var sStart = "<link ",
-            sEnd = ">",
-            nI = sText.indexOf(sStart),
-            nStartLen = sStart.length,
-            nEndLen = sEnd.length,
-            deps = [],
-            nK, sTag, tagResult;
-        while (nI > -1) {
-            nK = sText.indexOf(sEnd, nI + nStartLen);
-            if (nK > -1) {
-                if (nK) {
-                    nK += nEndLen;
-                    sTag = sText.substring(nI, nK);
-                    tagResult = settings.processTag(sTag, 
-                                                    extractAttributes(
-                                                        sTag.substring(nStartLen, sTag.length - nEndLen) ), 
-                                                    settings);
-                    if (tagResult) {
-                        if (tagResult.dependency) {
-                            if (typeof tagResult.dependency === "string") {
-                                deps.push(tagResult.dependency);
+    
+    define(["./util/base", "./util/object", "./util/string"], function(basicUtil, objUtil, strUtil) {
+    
+        /**
+         * Parses the given text and search for &lt;link&gt; tags that are related to CSS-files.
+         * Found tags are removed from the text, extracted resource names form dependency list. 
+         * 
+         * @param {String} sText
+         *      Text to process.
+         * @param {Object} settings
+         *      Processing settings/configuration. Besides settings the object contains 'api' field
+         *      that represents the module API.
+         * @return {Object}
+         *      Parsing result. The object has the following fields (name - type - description):
+         *      <ul>
+         *      <li>resource - String - text after processing.
+         *      <li>depList - Array - list of found dependencies.
+         *      </ul>
+         */
+        defaultConfig.parse = function(sText, settings) {
+            var sStart = "<link ",
+                sEnd = ">",
+                nI = sText.indexOf(sStart),
+                nStartLen = sStart.length,
+                nEndLen = sEnd.length,
+                deps = [],
+                nK, sTag, tagResult;
+            while (nI > -1) {
+                nK = sText.indexOf(sEnd, nI + nStartLen);
+                if (nK > -1) {
+                    if (nK) {
+                        nK += nEndLen;
+                        sTag = sText.substring(nI, nK);
+                        tagResult = settings.processTag(sTag, 
+                                                        strUtil.extractAttributes(
+                                                            sTag.substring(nStartLen, sTag.length - nEndLen) ), 
+                                                        settings);
+                        if (tagResult) {
+                            if (tagResult.dependency) {
+                                if (typeof tagResult.dependency === "string") {
+                                    deps.push(tagResult.dependency);
+                                }
+                                else {
+                                    deps.push.apply(deps, tagResult.dependency);
+                                }
+                            }
+                            if (tagResult.text !== sTag) {
+                                sText = sText.substring(0, nI) + tagResult.text + sText.substring(nK);
                             }
                             else {
-                                deps.push.apply(deps, tagResult.dependency);
+                                nI = nK;
                             }
-                        }
-                        if (tagResult.text !== sTag) {
-                            sText = sText.substring(0, nI) + tagResult.text + sText.substring(nK);
                         }
                         else {
                             nI = nK;
                         }
                     }
                     else {
-                        nI = nK;
+                        nI = nK + nEndLen;
                     }
+                    nI = sText.indexOf(sStart, nI);
                 }
                 else {
-                    nI = nK + nEndLen;
+                    break;
                 }
-                nI = sText.indexOf(sStart, nI);
             }
-            else {
-                break;
-            }
-        }
-        return {
-            resource: sText,
-            depList: deps
+            return {
+                resource: sText,
+                depList: deps
+            };
         };
-    };
+        
+        return {
+        
+            // Auxiliary API
+            
+            'convertSettings': convertSettings,
+            
+            'filterTag': defaultConfig.filterTag,
+            
+            'processTag': defaultConfig.processTag,
+            
+            'parse': defaultConfig.parse,
+            
+            // Plugin API
     
-    define({
-        
-        // Auxiliary API
-        
-        'convertSettings': convertSettings,
-        
-        'extractAttributes': extractAttributes,
-        
-        'extractSettings': extractSettings,
-        
-        'mix': mix,
-        
-        'filterTag': defaultConfig.filterTag,
-        
-        'processTag': defaultConfig.processTag,
-        
-        'parse': defaultConfig.parse,
-        
-        // Plugin API
-
-        'normalize': function(sResourceName, normalize, config) {
-            // This function is called once before load.
-            // So here we extract and save settings for later use.
-            var nI = sResourceName.indexOf("!");
-            sLoadSettings = nI > -1 ? sResourceName.substring(nI + 1) : null;
-            return normalize( nI > -1 ? sResourceName.substring(0, nI) : sResourceName );
-        },
-
-        'load': function(sResourceName, require, callback, config) {
-            var conf, settings;
-            // Prepare operation settings
-            if (sLoadSettings) {
-                settings = convertSettings( extractSettings(sLoadSettings) );
-                sLoadSettings = null;
-            }
-            conf = mix({}, defaultConfig, config, settings);
-            conf.api = mix({}, this);
-            // Load and parse resource
-            require(["text!" + require.toUrl( require.nameWithExt(sResourceName, conf.defaultExt) ), "require"], 
-                function(sText, req) {
-                    var parseResult = conf.parse(sText, conf),
-                        sText = (parseResult && typeof parseResult === "object" 
-                                    ? parseResult.resource : parseResult);
-                    
-                    if (parseResult && parseResult.depList && parseResult.depList.length) {
-                        req(parseResult.depList, function() {
+            'normalize': function(sResourceName, normalize, config) {
+                // This function is called once before load.
+                // So here we extract and save settings for later use.
+                var nI = sResourceName.indexOf("!");
+                sLoadSettings = nI > -1 ? sResourceName.substring(nI + 1) : null;
+                return normalize( nI > -1 ? sResourceName.substring(0, nI) : sResourceName );
+            },
+    
+            'load': function(sResourceName, require, callback, config) {
+                var mix = objUtil.mix,
+                    conf, settings;
+                // Prepare operation settings
+                if (sLoadSettings) {
+                    settings = convertSettings( strUtil.extractSettings(sLoadSettings) );
+                    sLoadSettings = null;
+                }
+                conf = mix({}, defaultConfig, config, settings);
+                conf.api = mix({}, this);
+                // Load and parse resource
+                require(["text!" + require.toUrl( basicUtil.nameWithExt(sResourceName, conf.defaultExt) ), "require"], 
+                    function(sText, req) {
+                        var parseResult = conf.parse(sText, conf),
+                            sText = (parseResult && typeof parseResult === "object" 
+                                        ? parseResult.resource : parseResult);
+                        
+                        if (parseResult && parseResult.depList && parseResult.depList.length) {
+                            req(parseResult.depList, function() {
+                                callback(sText);
+                            });
+                        }
+                        else {
                             callback(sText);
-                        });
-                    }
-                    else {
-                        callback(sText);
-                    }
-            });
-        }
-
+                        }
+                });
+            }
+    
+        };
+    
     });
 
 })();

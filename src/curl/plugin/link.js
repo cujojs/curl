@@ -65,26 +65,30 @@
 		return url.replace(isProtocolRelativeRx, protocol + '//');
 	}
 
-	define(/*=='link',==*/ {
+	define(/*=='link',==*/ ["./util/base"], function(basicUtil) {
+	    
+	    return {
 
-//		'normalize': function (resourceId, toAbsId) {
-//			// remove options
-//			return resourceId ? toAbsId(resourceId.split("!")[0]) : resourceId;
-//		},
-
-		'load': function (resourceId, require, callback, config) {
-			var url, link, fix;
-
-			url = require['toUrl']( require['nameWithExt'](resourceId, 'css') );
-			fix = 'fixSchemalessUrls' in config ? config['fixSchemalessUrls'] : doc.location.protocol;
-			url = fix ? fixProtocol(url, fix) : url;
-			link = createLink(doc, url);
-			head.appendChild(link);
-
-			callback(link.sheet || link.styleSheet);
-
-		}
-
-	});
+//    		'normalize': function (resourceId, toAbsId) {
+//    			// remove options
+//    			return resourceId ? toAbsId(resourceId.split("!")[0]) : resourceId;
+//    		},
+    
+    		'load': function (resourceId, require, callback, config) {
+    			var url, link, fix;
+    
+    			url = require['toUrl'](basicUtil.nameWithExt(resourceId, 'css'));
+    			fix = 'fixSchemalessUrls' in config ? config['fixSchemalessUrls'] : doc.location.protocol;
+    			url = fix ? fixProtocol(url, fix) : url;
+    			link = createLink(doc, url);
+    			head.appendChild(link);
+    
+    			callback(link.sheet || link.styleSheet);
+    
+    		}
+    
+    	};
+    	
+    });
 
 })(this);
