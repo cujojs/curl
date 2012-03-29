@@ -101,7 +101,7 @@ define(/*=='curl/loader/cjsm11',==*/ function () {
 					}
 					else {
 						//eval(source);
-						globalEval(source);
+						globalEval.call(source);
 					}
 
 					// call loaded now that the module is defined
@@ -115,4 +115,4 @@ define(/*=='curl/loader/cjsm11',==*/ function () {
 
 });
 
-}(this, this.document, function (source) { eval(source); }));
+}(this, this.document, function () { eval(this.toString()); }));
