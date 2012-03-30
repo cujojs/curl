@@ -60,7 +60,9 @@
 		main = descriptor['main'] || 'main';
 		descriptor.config = descriptor['config'];
 		descriptor.main = main.charAt(0) == '.' ?
-			removeEndSlash(reduceLeadingDots(main, path)) :
+			// reduceLeadingDots expects a module id, not a path, so we add an
+			// extra slash to fool reduceLeadingDots:
+			removeEndSlash(reduceLeadingDots(main, path + '/')) :
 			joinPath(path, main);
 
 		return descriptor;
