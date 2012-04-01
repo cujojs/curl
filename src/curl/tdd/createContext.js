@@ -28,7 +28,13 @@
  * TODO: fix examples
  * @example 1
  * curl(['curl/tdd/createContext', 'require'], function (createContext, require) {
- *  	var testContext = createContext();
+ *  	var testContext = createContext(require);
+ *
+ *  	testcontext.isolate(function () {
+ *  		// after `isolate()` is done, any modules are removed from cache
+ *
+ *
+ *  	}
  *
  *  	// define mocks under this test context
  *  	testContext.define('mock1', { methodA: function () {} });
@@ -254,9 +260,9 @@ define(['curl', 'curl/_privileged'], function (curl, priv) {
 
 		return context;
 
+
 	}
 
 	return createContext;
 
 });
-
