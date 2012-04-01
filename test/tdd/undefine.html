@@ -19,35 +19,32 @@
 <script type="text/javascript">
 
 	curl(
-		['stuff/one', 'stuff/two', 'stuff/three', 'curl/tdd/undefine'],
-		function (one, two, three, undefine) {
-			// test undefine on curl API
-			try {
-				curl.undefine('stuff/one');
-			}
-			catch (ex) {
-				write('FAILED: curl.undefine is not defined.')
-			}
+		['stuff/one', 'stuff/two', 'stuff/three', 'curl/tdd/undefine', 'require'],
+		function (one, two, three, undefine, require) {
+			// test undefine on a module id
+			undefine('stuff/one');
 			try {
 				require('stuff/one');
-				write('FAILED: module still in cache.')
+				write('FAILED: module still in cache.');
 			}
 			catch (ex) {
-				write('SUCCESS: module not in cache.')
+				write('SUCCESS: module stuff/one not in cache.');
 			}
-			// test undefine as a module
-			try {
-				undefine('stuff/one');
-			}
-			catch (ex) {
-				write('FAILED: curl/tdd/undefine is not defined.')
-			}
+			// test undefine on an array of module ids
+			undefine(['stuff/two', 'stuff/three']);
 			try {
 				require('stuff/two');
-				write('FAILED: module still in cache.')
+				write('FAILED: module stuff/two still in cache.');
 			}
 			catch (ex) {
-				write('SUCCESS: module not in cache.')
+				write('SUCCESS: module stuff/two not in cache.');
+			}
+			try {
+				require('stuff/three');
+				write('FAILED: module stuff/three still in cache.');
+			}
+			catch (ex) {
+				write('SUCCESS: module stuff/three not in cache.');
 			}
 		},
 		function (ex) {
