@@ -421,7 +421,7 @@
 				cfg.pathRx = new RegExp('^(' +
 					cfg.pathList.sort(function (a, b) { return pathMap[a].specificity < pathMap[b].specificity; } )
 						.join('|')
-						.replace(/\//g, '\\/') +
+						.replace(/\/|\./g, '\\$&') +
 					')(?=\\/|$)'
 				);
 				delete cfg.pathList;

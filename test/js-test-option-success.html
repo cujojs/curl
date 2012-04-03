@@ -7,7 +7,8 @@
 
 	curl = {
 		paths: {
-			curl: '../src/curl'
+			curl: '../src/curl',
+			'plain_old.js': 'stuff/plain_old.js'
 		},
 		pluginPath: 'curl/plugin'
 	};
@@ -20,7 +21,7 @@
 
 	curl(
 		[
-			'js!stuff/plain_old.js!order',
+			'js!plain_old.js!order',
 			'js!stuff/plain_old_2.js?foo!order!exports=testDomain.awesome.sauce',
 			'domReady!'
 		]
