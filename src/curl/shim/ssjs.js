@@ -13,7 +13,7 @@
 define.amd.ssjs = true;
 (function (freeRequire, globalLoad) {
 define(/*=='curl/shim/ssjs',==*/ function (require, exports) {
-	"use strict";
+"use strict";
 
 	var priv, config, hasProtocolRx, extractProtocolRx, protocol,
 		http, localLoadFunc, remoteLoadFunc,
