@@ -151,7 +151,7 @@ define(['curl', 'curl/_privileged', './undefine'], function (curl, priv, undefin
 			callback = arguments[1];
 
 			// enqueue cache snapshot
-			enqueue(function () {
+			enqueue(function _copyCache () {
 				cacheSnapshot = copyCache(priv['cache']);
 			});
 
@@ -167,7 +167,7 @@ define(['curl', 'curl/_privileged', './undefine'], function (curl, priv, undefin
 			promise = new Promise();
 
 			// enqueue cache restore and a hook for outside code
-			enqueue(function () {
+			enqueue(function _restoreCache () {
 				restoreCache(priv['cache'], cacheSnapshot);
 				if (callback) callback();
 				promise.resolve();
@@ -202,9 +202,15 @@ define(['curl', 'curl/_privileged', './undefine'], function (curl, priv, undefin
 	 *   has async tasks.
 	 */
 	function enqueue (promiseProvider) {
-		when(runQueue, function () {
-			runQueue = promiseProvider();
-		});
+		var next;
+
+		function dequeue () {
+			when(promiseProvider(), next.resolve, next.reject);
+		}
+
+		next = new Promise();
+		when(runQueue, dequeue, runQueue && runQueue.reject);
+		runQueue = next;
 	}
 
 	/**
@@ -237,18 +243,21 @@ define(['curl', 'curl/_privileged', './undefine'], function (curl, priv, undefin
 		}
 
 		// wait for promises
-		requiresDone.then(function () {
-			otherAsyncDone.then(promise.resolve);
+		requiresDone.then(function _otherAsyncDone () {
+			otherAsyncDone.then(promise.resolve, promise.reject);
 		});
 
 		// return a queueable function
-		return function () {
+		return function _waitForAsyncTasks () {
+
 			// call function
 			func(trackedRequire, otherAsyncDone);
+
 			// check if there were no async `require` calls
 			if (trackedRequire.notAsync()) {
 				requiresDone.resolve();
 			}
+
 			// return promise
 			return promise;
 		};
