@@ -263,7 +263,7 @@
 				}
 				else {
 					// use same id so that relative modules are normalized correctly
-					when(core.getDeps(core.createContext(cfg, def.id, ids, isPreload)), cb);
+					when(core.getDeps(core.createContext(cfg, def.ctxId, ids, isPreload)), cb);
 				}
 			}
 
