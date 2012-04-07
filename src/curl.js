@@ -1015,21 +1015,23 @@
 
 	/***** define public API *****/
 
-	var apiName, apiContext, define;
+	var apiName, apiContext, defineName, defineContext, define;
 
 	// allow curl to be renamed and added to a specified context
 	apiName = userCfg['apiName'] || 'curl';
+	defineName = userCfg['defineName'] || 'define';
 	apiContext = userCfg['apiContext'] || global;
+	defineContext = userCfg['defineContext'] || global;
 	apiContext[apiName] = _curl;
+	defineContext[defineName] = define = function () {
+		// wrap inner _define so it can be replaced without losing define.amd
+		var args = core.fixArgs(arguments);
+		_define(args);
+	};
 
 	// allow curl to be a dependency
 	cache['curl'] = _curl;
 
-	// wrap inner _define so it can be replaced without losing define.amd
-	define = global['define'] = function () {
-		var args = core.fixArgs(arguments);
-		_define(args);
-	};
 	_curl['version'] = version;
 
 	// indicate our capabilities:
