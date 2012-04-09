@@ -20,6 +20,7 @@
  *  	});
  *
  */
+var require;
 define(/*=='curl/shim/dojo16',==*/ ['curl/_privileged', 'curl/domReady'], function (priv, domReady) {
 "use strict";
 
@@ -44,6 +45,11 @@ define(/*=='curl/shim/dojo16',==*/ ['curl/_privileged', 'curl/domReady'], functi
 	// modify global curl cuz dojo doesn't always use local `require`
 	// as a dependency
 	duckPunchRequire(_curl);
+
+	// dojo 1.7 still expects a global `require`, so make sure they've got one
+	if (typeof require == 'undefined') {
+		require = _curl;
+	}
 
 	// override executeDefFunc to override "require" deps
 	priv['core'].executeDefFunc = function (def) {
