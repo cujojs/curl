@@ -54,16 +54,15 @@
 	}
 
 	function normalizePkgDescriptor (descriptor) {
-		var path, main;
+		var main;
 
-		path = descriptor.path = removeEndSlash(descriptor['path'] || descriptor['location'] || '');
-		main = descriptor['main'] || 'main';
+		descriptor.path = removeEndSlash(descriptor['path'] || descriptor['location'] || '');
+		main = removeEndSlash(descriptor['main']) || 'main';
+		if (main.charAt(0) != '.') main = './' + main;
+		// trailing slashes trick reduceLeadingDots to see them as base ids
+		descriptor.main = reduceLeadingDots(main, descriptor.name + '/');
+		descriptor.mainPath = reduceLeadingDots(main, descriptor.path + '/');
 		descriptor.config = descriptor['config'];
-		descriptor.main = main.charAt(0) == '.' ?
-			// reduceLeadingDots expects a module id, not a path, so we add an
-			// extra slash to fool reduceLeadingDots:
-			removeEndSlash(reduceLeadingDots(main, path + '/')) :
-			joinPath(path, main);
 
 		return descriptor;
 	}
@@ -232,7 +231,7 @@
 			function toUrl (n) {
 				// even though internally, we don't seem to need to do
 				// toAbsId, the AMD spec says we need to do this for plugins.
-				// also, thesec states that we should not append an extension
+				// also, the spec states that we should not append an extension
 				// in this function.
 				return core.resolvePathInfo(toAbsId(n), cfg).url;
 			}
@@ -377,10 +376,12 @@
 				var id, pluginId, data, parts, currCfg, info;
 				for (var name in coll) {
 					data = coll[name];
-					currCfg = cfg;
 					// grab the package id, if specified. default to
 					// property name.
-					parts = pluginParts(removeEndSlash(data['id'] || data['name'] || name));
+					data.name = data['id'] || data['name'] || name;
+					currCfg = cfg;
+					// don't remove `|| name` since data may be a string, not an object
+					parts = pluginParts(removeEndSlash(data.name || name));
 					id = parts.resourceId;
 					pluginId = parts.pluginId;
 					if (pluginId) {
@@ -457,30 +458,30 @@
 
 		},
 
-		resolvePathInfo: function (id, cfg, forPlugin) {
+		resolvePathInfo: function (absId, cfg, forPlugin) {
 			// searches through the configured path mappings and packages
-			var pathMap, pathInfo, path, pkgCfg, found;
+			var pathMap, pathInfo, ctxId, path, pkgCfg, found;
 
 			pathMap = cfg.pathMap;
 
-			if (forPlugin && cfg.pluginPath && id.indexOf('/') < 0 && !(id in pathMap)) {
+			if (forPlugin && cfg.pluginPath && absId.indexOf('/') < 0 && !(absId in pathMap)) {
 				// prepend plugin folder path, if it's missing and path isn't in pathMap
 				// Note: this munges the concepts of ids and paths for plugins,
 				// but is generally safe since it's only for non-namespaced
 				// plugins (plugins without path or package info).
-				id = joinPath(cfg.pluginPath, id);
+				ctxId = absId = joinPath(cfg.pluginPath, absId);
 			}
-
-			if (!absUrlRx.test(id)) {
-				path = id.replace(cfg.pathRx, function (match) {
+			if (!absUrlRx.test(absId)) {
+				path = absId.replace(cfg.pathRx, function (match) {
 
 					pathInfo = pathMap[match] || {};
 					found = true;
 					pkgCfg = pathInfo.config;
 
-					// if pathInfo.main and match == id, this is a main module
-					if (pathInfo.main && match == id) {
-						return pathInfo.main;
+					// if pathInfo.main and match == absId, this is a main module
+					if (pathInfo.main && match == absId) {
+						ctxId = pathInfo.main;
+						return pathInfo.mainPath;
 					}
 					// if pathInfo.path return pathInfo.path
 					else {
@@ -490,11 +491,11 @@
 				});
 			}
 			else {
-				path = id;
+				path = absId;
 			}
 
 			return {
-				path: path,
+				ctxId: ctxId || absId,
 				config: pkgCfg || userCfg,
 				url: core.resolveUrl(path, cfg)
 			};
@@ -827,7 +828,7 @@
 			// falsey values could be in there.
 			def = cache[mainId];
 			if (!(mainId in cache)) {
-				def = cache[mainId] = core.createResourceDef(pathInfo.config, mainId, isPreload, !!parts.pluginId ? pathInfo.path : undef);
+				def = cache[mainId] = core.createResourceDef(pathInfo.config, mainId, isPreload, pathInfo.ctxId);
 				def.url = core.checkToAddJsExt(pathInfo.url);
 				core.fetchResDef(def);
 			}
