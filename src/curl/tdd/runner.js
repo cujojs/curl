@@ -234,6 +234,7 @@ define(['curl', 'curl/_privileged', './undefine'], function (curl, priv, undefin
 				var dual = promise.resolve;
 				dual.resolve = promise.resolve;
 				dual.reject = promise.reject;
+				dual.then = promise.then;
 				return dual;
 			}(otherAsyncDone));
 		}
