@@ -28,17 +28,20 @@ define(/*=='curl/shim/dojo16',==*/ ['curl/_privileged', 'curl/domReady'], functi
 		origExecuteDefFunc = priv['core'].executeDefFunc;
 
 	function duckPunchRequire (req) {
+		// create a ready method on `require`
 		if (!req['ready']){
 			req['ready'] = function (cb) {
 				domReady(cb);
 			};
 		}
+		// map non-standard nameToUrl to toUrl
 		if (!req['nameToUrl']) {
 			req['nameToUrl'] = function (name, ext) {
-				// map non-standard nameToUrl to toUrl
 				return req['toUrl'](name + (ext || ''));
 			};
 		}
+		// dojo 1.7 has a few unchecked `require.cache` usages
+		if (!req['cache']) req['cache'] = {};
 		return req;
 	}
 
