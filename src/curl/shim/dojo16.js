@@ -25,7 +25,7 @@ define(/*=='curl/shim/dojo16',==*/ ['curl/_privileged', 'curl/domReady'], functi
 "use strict";
 
 	var _curl = priv['_curl'],
-		origExecuteDefFunc = priv['core'].executeDefFunc;
+		origCreateContext = priv['core'].createContext;
 
 	function duckPunchRequire (req) {
 		// create a ready method on `require`
@@ -54,10 +54,11 @@ define(/*=='curl/shim/dojo16',==*/ ['curl/_privileged', 'curl/domReady'], functi
 		require = _curl;
 	}
 
-	// override executeDefFunc to override "require" deps
-	priv['core'].executeDefFunc = function (def) {
+	// override createContext to override "local require"
+	priv['core'].createContext = function () {
+		var def = origCreateContext.apply(this, arguments);
 		duckPunchRequire(def.require);
-		return origExecuteDefFunc(def);
+		return def;
 	};
 
 	return true;
