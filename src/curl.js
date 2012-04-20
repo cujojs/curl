@@ -41,7 +41,7 @@
 		// RegExp's used later, "cached" here
 		dontAddExtRx = /\?/,
 		absUrlRx = /^\/|^[^:]+:\/\//,
-		findLeadingDotsRx = /(?:^|\/)(\.)(\.?)\/?/g,
+		findLeadingDotsRx = /(\.)(\.?)(?:$|\/([^\.\/]+.*)?)/g, // /(?:^|\/)(\.)(\.?)\/?/g,
 		removeCommentsRx = /\/\*[\s\S]*?\*\/|(?:[^\\])\/\/.*?[\n\r]/g,
 		findRValueRequiresRx = /require\s*\(\s*["']([^"']+)["']\s*\)|(?:[^\\]?)(["'])/g,
 		cjsGetters,
@@ -82,10 +82,10 @@
 		// are not included in the AMD spec.
 		var levels, removeLevels, isRelative;
 		removeLevels = 1;
-		childId = childId.replace(findLeadingDotsRx, function (m, dot, doubleDot) {
+		childId = childId.replace(findLeadingDotsRx, function (m, dot, doubleDot, remainder) {
 			if (doubleDot) removeLevels++;
 			isRelative = true;
-			return '';
+			return remainder || '';
 		});
 		// TODO: throw if removeLevels > baseId levels in debug module
 		if (isRelative) {

@@ -62,6 +62,24 @@
 							.then(checkMain)
 							.then(done, done);
 					},
+					'should find main module using ".." module id': function (cb, assert) {
+						function checkMain (main) {
+							assert.equal('main', main, 'main module should be "main"');
+						}
+						curl(['main/folder/returnMain'])
+							.then(cb.success, cb.failure)
+							.then(checkMain)
+							.then(done, done);
+					},
+					'should find main module using "../.." module id': function (cb, assert) {
+						function checkMain (main) {
+							assert.equal('main', main, 'main module should be "main"');
+						}
+						curl(['main/folder/deep/returnMain'])
+							.then(cb.success, cb.failure)
+							.then(checkMain)
+							.then(done, done);
+					},
 					'should find relative dep from main module': function (cb, assert) {
 						function checkMain (main) {
 							assert.equal('dep', main, 'main module should return "dep"');
