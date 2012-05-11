@@ -28,7 +28,7 @@
  * http://wiki.whatwg.org/wiki/Dynamic_Script_Execution_Order
  *
  */
-(function (global, doc) {
+(function (global, doc, testGlobalVar) {
 define(/*=='js',==*/ ['curl/_privileged'], function (priv) {
 "use strict";
 	var cache = {},
@@ -111,15 +111,6 @@ define(/*=='js',==*/ ['curl/_privileged'], function (priv) {
 
 	}
 
-	function testGlobalVar (varName) {
-		try {
-			return eval('global.' + varName);
-		}
-		catch (ex) {
-			return undef;
-		}
-	}
-
 	return {
 
 		// the !options force us to cache ids in the plugin
@@ -185,4 +176,8 @@ define(/*=='js',==*/ ['curl/_privileged'], function (priv) {
 
 	};
 });
-}(this, this.document));
+}(
+	this,
+	this.document,
+	function () { try { return eval(arguments[0]); } catch (ex) { return; } }
+));
