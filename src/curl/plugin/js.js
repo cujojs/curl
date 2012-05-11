@@ -87,7 +87,7 @@ define(/*=='js',==*/ ['curl/_privileged'], function (priv) {
 		}
 		if (failure && def.exports) setTimeout(poller, 10);
 
-		priv.core.loadScript(def, process, fail);
+		priv['core'].loadScript(def, process, fail);
 
 	}
 
