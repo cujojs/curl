@@ -20,6 +20,14 @@ Helpful link for updating submodules:
 What's New?
 =======
 
+* 0.6.3
+	* fix !exports option of js! plugin when file is compressed
+	* now resolves arbitrarily deep double-dot module ids (dojo compatibility)
+	* more non-standard dojo-isms added to shim/dojo16
+	* correctly locates relative dependencies from main modules
+	* scoped `define`
+	* new tdd/runner and tdd/undefine modules
+	* minor improvements to interpretation of unwrapped CJS modules
 * 0.6.2
 	* curl no longer repeatedly downloads modules that don't return any value
 	  (bug introduced in 0.6 refactor) fixes issue #63
