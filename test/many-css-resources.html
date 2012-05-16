@@ -20,9 +20,16 @@
 "use strict";
 
 	// local css file
-	curl(['css!stuff/base.css']).then(
+	curl(['css!stuff/base.css'/*, 'domReady!'*/]).then(
 		function () {
 			write('SUCCESS! loaded local css file.');
+			// TODO: we need a better test than this:
+			if (document.body.offsetHeight - document.body.clientHeight > 0) {
+				write('SUCCESS! applied rules from css file.');
+			}
+			else {
+				write('FAILED! did not apply rules from css file.');
+			}
 		},
 		function () {
 			write('FAILED! did not load local css file.');
@@ -67,6 +74,10 @@
 		curl(['domReady!'], function () {
 			document.body.appendChild(document.createElement('div')).innerHTML = msg;
 		});
+	}
+
+	function getComputedStyle (el) {
+		return window.getComputedStyle ? window.getComputedStyle(el, null) : el.currentStyle;
 	}
 
 }());

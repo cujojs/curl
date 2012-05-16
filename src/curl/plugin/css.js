@@ -100,6 +100,14 @@
 		};
 	}
 
+	function errorHandler (link, cb) {
+		link.onerror = function () {
+			// we know this works now!
+			features["event-link-onerror"] = true;
+			cb();
+		};
+	}
+
 	function isLinkReady (link) {
 		var ready, sheet, rules;
 		// don't bother testing until we've fully initialized the link;
@@ -115,18 +123,19 @@
 				// sheet is loaded. webkits (that don't support onload)
 				// will return null when an XD sheet is loaded
 				rules = sheet.cssRules;
-				ready = rules ? 'length' in rules : rules === null;
-				if (!ready) {
+				ready = rules === null;
+				if (!ready && 'length' in rules && !window.chrome) {
 					// Opera needs to further test for rule manipulation
 					sheet.insertRule('-curl-css-test {}', 0);
-					sheet.removeRule(0);
+					sheet.deleteRule(0);
+					ready = true;
 				}
 			}
 		}
 		catch (ex) {
 			// a "security" or "access denied" error indicates that an XD
 			// stylesheet has been successfully loaded!
-			ready = /security|denied/.test(ex.message);
+			ready = /security|denied/i.test(ex.message);
 		}
 
 		return ready;
@@ -137,7 +146,7 @@
 		if (isLinkReady(link)) {
 			cb();
 		}
-		else if (link.onload) {
+		else if (link.onload != noop) {
 			setTimeout(function () { ssWatcher(link, wait, cb); }, wait);
 		}
 	}
@@ -146,48 +155,67 @@
 		// most browsers now support link.onload, but many older browsers
 		// don't. Browsers that don't will launch the ssWatcher to repeatedly
 		// test the link for readiness.
-		function cbOnce () {
+		function load () {
 			// only executes once since link.onload is blanked
-			if (link.onload) {
-				// note: Opera doesn't clear handlers if we set them to blank
-				// and IE fails if we use `undefined` string so we use null
-				link.onload = link.onerror = null;
-				cb();
-			}
+			if (link.onload == noop) return;
+			// note: Opera and IE won't clear handlers if we use a non-function
+			link.onload = link.onerror = noop; // console.log('set noop ', link.href);
+			cb();
 		}
-		loadHandler(link, cbOnce);
+		loadHandler(link, waitForDocumentComplete(load));
 		if (!has("event-link-onload")) {
-			ssWatcher(link, wait, cbOnce);
+			waitForDocumentComplete(function () {
+				ssWatcher(link, wait, load);
+			})();
 		}
 	}
 
 	function errorDetector (link, cb) {
+		var h;
 		// very few browsers (Chrome 19+ and FF9+ as of Apr 2012) have a
 		// functional onerror handler (and those only detect 40X/50X http
 		// errors, not parsing errors as per the w3c spec).
 		// IE6-9 call onload when there's an http error, but I can't seem
 		// to find a way to detect the error, yet.
 		function error () {
-			link.onload = link.onerror = null;
+			clearTimeout(h);
+			if (link.onload == noop) return;
+			// note: Opera and IE won't clear handlers if we use a non-function
+			link.onload = link.onerror = noop;
 			cb(new Error('HTTP or network error.'));
 		}
-		link.onerror = error;
-		// for browsers that don't call onerror or onload after an http error:
-		// we wait 500 msec before testing for failure via an image element.
+		errorHandler(link, error);
+		// for browsers that don't call onerror after an http error:
+		// we wait (at least) 500 msec before trying again with an image
+		// element. the image element's onerror handler works universally.
 		// this will cause another fetch, but we don't have any other options.
-		setTimeout(function () {
-			var img;
-			// if link didn't load yet
-			if (link.onload) {
-				// Note: can't use `new Image()` in webkit browsers (doesn't fire)
-				img = document[createElement]('img');
-				img.onerror = img.onload = function () {
-					// only call if link didn't load while fetching image
-					if (link.onload) error();
-				};
-				img.src = link.href;
+		if (!has('event-link-onerror')) {
+			waitForDocumentComplete(function () {
+				h = setTimeout(function () {
+					var img;
+					if (link.onload == noop) return;
+					// Note: can't use `new Image()` in webkit browsers
+					// (it doesn't seem to fire events)
+					img = document[createElement]('img');
+					img.onerror = img.onload = error;
+					img.src = link.href;
+				}, 500);
+			})();
+		}
+	}
+
+	function waitForDocumentComplete (cb) {
+		// this isn't exactly the same as domReady (when dom can be
+		// manipulated). it's later (when styles are applied).
+		function isDocumentComplete () {
+			if (!doc.readyState || doc.readyState == 'complete') {
+				cb();
 			}
-		}, 500);
+			else {
+				setTimeout(isDocumentComplete, 10);
+			}
+		}
+		return isDocumentComplete;
 	}
 
 	function createLink (doc) {
@@ -234,6 +262,8 @@
 			name + '.' + defaultExt : name;
 	}
 
+	function noop () {}
+
 	/***** finally! the actual plugin *****/
 
 	define(/*=='css',==*/ {
@@ -260,8 +290,8 @@
 			// all detector functions must ensure that this function only gets
 			// called once per stylesheet!
 			function loaded () {
-				if(--loadingCount == 0){
-					callback(link.sheet || link.styleSheet);
+				if (--loadingCount == 0) {
+					callback();
 				}
 			}
 
@@ -283,7 +313,7 @@
 					wait = config['cssWatchPeriod'] || 50;
 
 				if (nowait) {
-					callback(link.sheet || link.styleSheet);
+					callback();
 				}
 				else {
 					// hook up load detector(s)
