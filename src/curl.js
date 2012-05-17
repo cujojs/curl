@@ -557,6 +557,8 @@
 			// use insertBefore to keep IE from throwing Operation Aborted (thx Bryan Forbes!)
 			head.insertBefore(el, head.firstChild);
 
+			// the js! plugin uses this
+			return el;
 		},
 
 		extractCjsDeps: function (defFunc) {
