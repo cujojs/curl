@@ -45,7 +45,7 @@ define(/*=='js',==*/ ['curl/_privileged'], function (priv) {
 	function loadScript (def, success, failure) {
 		// script processing rules learned from RequireJS
 
-		var deadline, completed;
+		var deadline, completed, el;
 
 		// default deadline is very far in the future (5 min)
 		// devs should set something reasonable if they want to use it
@@ -56,7 +56,7 @@ define(/*=='js',==*/ ['curl/_privileged'], function (priv) {
 			completed = true;
 			if (def.exports) def.resolved = testGlobalVar(def.exports);
 			if (!def.exports || def.resolved) {
-				success();
+				success(el); // pass el so it can be removed (text/cache)
 			}
 			else {
 				failure();
@@ -87,7 +87,7 @@ define(/*=='js',==*/ ['curl/_privileged'], function (priv) {
 		}
 		if (failure && def.exports) setTimeout(poller, 10);
 
-		priv['core'].loadScript(def, process, fail);
+		el = priv['core'].loadScript(def, process, fail);
 
 	}
 
@@ -159,7 +159,7 @@ define(/*=='js',==*/ ['curl/_privileged'], function (priv) {
 						def.mimetype = 'text/cache';
 						loadScript(def,
 							// remove the fake script when loaded
-							function (el) { el.parentNode.removeChild(el); },
+							function (el) { el && el.parentNode.removeChild(el); },
 							function () {}
 						);
 						def.mimetype = '';
