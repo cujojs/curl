@@ -357,15 +357,7 @@
 
 		config: function (cfg) {
 			var hasCfg,
-				apiName, apiObj, defineName, defineObj, define;
-
-			/*
-			 * !cfg && !prevCurl: define global curl
-			 * !cfg && prevCurl: define global curl (fix at next config call)
-			 * cfg && !prevCurl: define apiObj[apiName] || global curl
-			 * cfg && prevCurl: define apiObj[apiName] && restore prevCurl || throw
-			 * (clear prevCurl if apiObj[apiName])
-			 */
+				apiName, apiObj, defName, defObj, define;
 
 			hasCfg = cfg;
 
@@ -382,12 +374,12 @@
 
 
 			// allow dev to rename/relocate define() to another object
-			defineName = cfg['defineName'];
-			defineObj = cfg['defineContext'];
-			if (defineObj || defineName ? defineObj[defineName] : prevDefine) {
-				throw new Error((defineName|| 'define') + 'already exists');
+			defName = cfg['defineName'];
+			defObj = cfg['defineContext'];
+			if (defObj || defName ? defObj[defName] : prevDefine && hasCfg) {
+				throw new Error((defName|| 'define') + ' already exists');
 			}
-			(defineObj || global)[defineName || 'define'] = define = function () {
+			(defObj || global)[defName || 'define'] = define = function () {
 				// wrap inner _define so it can be replaced without losing define.amd
 				var args = core.fixArgs(arguments);
 				_define(args);
