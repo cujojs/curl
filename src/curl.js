@@ -12,10 +12,12 @@
  * @version 0.6.3
  */
 (function (global) {
-
+"use strict";
 	var
 		version = '0.6.3',
 		userCfg = global['curl'],
+		prevCurl,
+		prevDefine,
 		doc = global.document,
 		head = doc && (doc['head'] || doc.getElementsByTagName('head')[0]),
 //		// constants / flags
@@ -79,7 +81,7 @@
 		// this algorithm is similar to dojo's compactPath, which interprets
 		// module ids of "." and ".." as meaning "grab the module whose name is
 		// the same as my folder or parent folder".  These special module ids
-		// are not included in the AMD spec.
+		// are not included in the AMD spec but seem to work in node.js, too.
 		var levels, removeLevels, isRelative;
 		removeLevels = 1;
 		childId = childId.replace(findLeadingDotsRx, function (m, dot, doubleDot, remainder) {
@@ -353,8 +355,55 @@
 			return def.url || (def.url = core.checkToAddJsExt(def.require['toUrl'](def.id)));
 		},
 
-		extractCfg: function (cfg) {
-			var pluginCfgs;
+		config: function (cfg) {
+			var hasCfg,
+				apiName, apiObj, defineName, defineObj, define;
+
+			/*
+			 * !cfg && !prevCurl: define global curl
+			 * !cfg && prevCurl: define global curl (fix at next config call)
+			 * cfg && !prevCurl: define apiObj[apiName] || global curl
+			 * cfg && prevCurl: define apiObj[apiName] && restore prevCurl || throw
+			 * (clear prevCurl if apiObj[apiName])
+			 */
+
+			hasCfg = cfg;
+
+			if (!cfg) cfg = {};
+
+			// allow dev to rename/relocate curl() to another object
+			apiName = cfg['apiName'];
+			apiObj = cfg['apiContext'];
+			// if the dev is overwriting an existing curl()
+			if (apiObj || apiName ? apiObj[apiName] : prevCurl && hasCfg) {
+				throw new Error((apiName || 'curl') + ' already exists');
+			}
+			(apiObj || global)[apiName || 'curl'] = _curl;
+
+
+			// allow dev to rename/relocate define() to another object
+			defineName = cfg['defineName'];
+			defineObj = cfg['defineContext'];
+			if (defineObj || defineName ? defineObj[defineName] : prevDefine) {
+				throw new Error((defineName|| 'define') + 'already exists');
+			}
+			(defineObj || global)[defineName || 'define'] = define = function () {
+				// wrap inner _define so it can be replaced without losing define.amd
+				var args = core.fixArgs(arguments);
+				_define(args);
+			};
+
+			// indicate our capabilities:
+			define['amd'] = { 'plugins': true, 'jQuery': true, 'curl': version };
+
+			// switch to re-runnable config
+			if (hasCfg) core.config = core.moreConfig;
+
+			return core.moreConfig(cfg);
+		},
+
+		moreConfig: function (cfg) {
+			var pluginCfgs, apiName, apiContext, defineName, defineContext;
 
 			// set defaults and convert from closure-safe names
 			cfg.baseUrl = cfg['baseUrl'] || '';
@@ -440,6 +489,7 @@
 				}
 			}
 			convertPathMatcher(cfg);
+			core.checkPreloads(cfg);
 
 			return cfg;
 
@@ -447,7 +497,7 @@
 
 		checkPreloads: function (cfg) {
 			var preloads;
-			preloads = cfg['preloads'];
+			preloads = cfg && cfg['preloads'];
 			if (preloads && preloads.length > 0) {
 				// chain from previous preload, if any.
 				// TODO: revisit when doing package-specific configs.
@@ -938,8 +988,7 @@
 
 		// extract config, if it's specified
 		if (isType(args[0], 'Object')) {
-			userCfg = core.extractCfg(args.shift());
-			core.checkPreloads(userCfg);
+			userCfg = core.config(args.shift());
 		}
 
 		// thanks to Joop Ringelberg for helping troubleshoot the API
@@ -970,6 +1019,8 @@
 		return new CurlApi(args[0], args[1]);
 
 	}
+
+	_curl['version'] = version;
 
 	function _define (args) {
 
@@ -1006,37 +1057,18 @@
 
 	}
 
-	/***** grab any global configuration info *****/
+	// look for pre-existing globals
+	if (typeof define == 'function') prevDefine = define;
+	if (typeof userCfg == 'function') {
+		prevCurl = userCfg;
+		userCfg = false;
+	}
 
-	// if userCfg is a function, assume curl() exists already
-	if (isType(userCfg, 'Function')) return;
-
-	userCfg = core.extractCfg(userCfg || {});
-	core.checkPreloads(userCfg);
-
-	/***** define public API *****/
-
-	var apiName, apiContext, defineName, defineContext, define;
-
-	// allow curl to be renamed and added to a specified context
-	apiName = userCfg['apiName'] || 'curl';
-	defineName = userCfg['defineName'] || 'define';
-	apiContext = userCfg['apiContext'] || global;
-	defineContext = userCfg['defineContext'] || global;
-	apiContext[apiName] = _curl;
-	defineContext[defineName] = define = function () {
-		// wrap inner _define so it can be replaced without losing define.amd
-		var args = core.fixArgs(arguments);
-		_define(args);
-	};
+	// configure first time
+	userCfg = core.config(userCfg);
 
 	// allow curl to be a dependency
 	cache['curl'] = _curl;
-
-	_curl['version'] = version;
-
-	// indicate our capabilities:
-	define['amd'] = { 'plugins': true, 'jQuery': true, 'curl': version };
 
 	// expose curl core for special plugins and modules
 	// Note: core overrides will only work in either of two scenarios:
