@@ -20,7 +20,7 @@
 		prevDefine,
 		doc = global.document,
 		head = doc && (doc['head'] || doc.getElementsByTagName('head')[0]),
-//		// constants / flags
+		// constants / flags
 		msgUsingExports = {},
 		msgFactoryExecuted = {},
 		interactive = {},
