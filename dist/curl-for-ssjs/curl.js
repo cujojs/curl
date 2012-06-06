@@ -9,12 +9,12 @@
  * Licensed under the MIT License at:
  * 		http://www.opensource.org/licenses/mit-license.php
  *
- * @version 0.6.3
+ * @version 0.6.4
  */
 (function (global) {
 "use strict";
 	var
-		version = '0.6.3',
+		version = '0.6.4',
 		userCfg = global['curl'],
 		prevCurl,
 		prevDefine,
@@ -371,7 +371,8 @@
 				throw new Error((apiName || 'curl') + ' already exists');
 			}
 			(apiObj || global)[apiName || 'curl'] = _curl;
-
+			// restore previous curl
+			if (prevCurl && hasCfg) global['curl'] = prevCurl;
 
 			// allow dev to rename/relocate define() to another object
 			defName = cfg['defineName'];
@@ -384,6 +385,8 @@
 				var args = core.fixArgs(arguments);
 				_define(args);
 			};
+			// restore previous define
+			if (prevDefine && hasCfg) global['define'] = prevDefine;
 
 			// indicate our capabilities:
 			define['amd'] = { 'plugins': true, 'jQuery': true, 'curl': version };
