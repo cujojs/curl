@@ -20,6 +20,9 @@ Helpful link for updating submodules:
 What's New?
 =======
 
+* 0.6.4
+	* curl now restores any previous curl() or define() if the dev reassigns
+	  either using apiContext/apiName or defineContext/defineName
 * 0.6.3
 	* fix !exports option of js! plugin when file is compressed
 	* now resolves arbitrarily deep double-dot module ids (dojo and node compatibility)
