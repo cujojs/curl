@@ -9,11 +9,20 @@
  */
 
 define(['curl/_privileged', 'require'], function (priv, require) {
-	var cache, cleanupScript;
+	var cache, cleanupScript, loadScript;
 
 	cache = priv['cache'];
 
-	cleanupScript = typeof document != 'undefined' ? removeScript : noop;
+	cleanupScript = noop;
+
+	if (typeof document != 'undefined') {
+		cleanupScript = removeScript;
+		loadScript = priv['core'].loadScript;
+		priv['core'].loadScript = function (def) {
+			var el = loadScript.apply(this, arguments);
+			el._curl_id = def.id;
+		}
+	}
 
 	/**
 	 * Removes a module from curl.js's cache so that it can
@@ -22,30 +31,22 @@ define(['curl/_privileged', 'require'], function (priv, require) {
 	 * @param moduleId {String|Array} the id of a module (or modules)
 	 */
 	return function undefine (moduleId) {
-		var ids, id, url;
-
+		var ids, id;
 		ids = [].concat(moduleId);
 		while ((id = ids.pop())) {
-			if (cache[id] instanceof priv.Promise) {
-				url = require.toUrl(cache[id].ctxId || id);
-			}
-			else {
-				url = require.toUrl(id);
-			}
 			delete cache[id];
-			cleanupScript(url);
+			cleanupScript(id);
 		}
 	};
 
-	function removeScript (url) {
-		var rx, scripts, i, script;
-		rx = new RegExp(url + '($|\\.)', 'i');
+	function removeScript (id) {
+		var scripts, i, script;
 		scripts = document.getElementsByTagName('script');
 		i = 0;
 		while ((script = scripts[i++])) {
-			if (rx.test(script.src)) {
+			if (script._curl_id == id) {
 				script.parentNode.removeChild(script);
-				scripts = []; // all done!
+				return; // all done!
 			}
 		}
 	}
