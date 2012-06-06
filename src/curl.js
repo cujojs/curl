@@ -1040,13 +1040,10 @@
 				var cfg = core.resolvePathInfo(id, userCfg).config;
 				def = cache[id] = core.createResourceDef(cfg, id);
 			}
-			// check if this resource has already been resolved (can happen if
-			// a module was defined inside a built file and outside of it and
-			// dev didn't coordinate it explicitly)
-			if (isPromise(def)) {
-				def.useNet = false;
-				core.defineResource(def, args);
-			}
+			if (!isPromise(def)) throw new Error('duplicate define: ' + id);
+			// check if this resource has already been resolved
+			def.useNet = false;
+			core.defineResource(def, args);
 		}
 
 	}
