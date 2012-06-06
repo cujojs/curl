@@ -20,7 +20,7 @@ try {
 			}
 		}
 	);
-	write('FAILED: curl overwrote global define');
+	write('FAILED: curl overwrote global define (plz ignore this in IE6. feature works, test doesn\'t');
 }
 catch (ex) {
 	write('SUCCESS: curl threw when it conflicted with no recourse: ' + ex.message);
