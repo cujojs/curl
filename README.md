@@ -96,7 +96,6 @@ What's New?
 TODO:
 
 * finish i18n plugin!
-* create dojo 1.7 shim, if necessary
 * document plugin configuration options and how to use each plugin
 * notes about using JSONP (it works for objects, arrays, functions, numbers
   and strings! use ?callback=define)
