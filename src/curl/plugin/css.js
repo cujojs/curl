@@ -75,160 +75,53 @@
 		// find the head element and set it to it's standard property if nec.
 		head,
 		collectSheets,
+		failIfBlankSheet,
 		collectorSheet = doc && !!doc.createStyleSheet,
-		insertedSheets = {},
-		features = {
-			// true if the onload event handler works
-			// "event-link-onload" : false
-		};
+		hasEvent = { links: {} };
 
 	if (doc) {
 		head = doc.head || (doc.head = doc.getElementsByTagName('head')[0]);
+		// 'about:blank' returns a valid stylesheet (blank)
+		testLinkEvent('load', 'about:blank');
+		// this test doesn't work in FF<=13 (and maybe future versions)
+		testLinkEvent('error', 'about:bogus');
+		// friggin IE false positives (fires onload instead of onerror)
+		testLinkEvent('load', 'about:bogus', 'false-');
 	}
 
-	function has (feature) {
-		return features[feature];
+	function testLinkEvent (event, page, prefix) {
+		var name, link;
+		name = prefix ? prefix + event : event;
+		link = hasEvent.links[name] = createLink(false);
+		link[event] = function () { setLoadDetection(event, true, name); };
+		link.href = page;
+		head.appendChild(link);
 	}
 
-	/***** load-detection functions *****/
-
-	function loadHandler (link, cb) {
-		link.onload = function () {
-			// we know this works now!
-			features["event-link-onload"] = true;
-			cb();
-		};
-	}
-
-	function errorHandler (link, cb) {
-		link.onerror = function () {
-			// we know this works now!
-			features["event-link-onerror"] = true;
-			cb();
-		};
-	}
-
-	function isLinkReady (link) {
-		var ready, sheet, rules;
-		// don't bother testing until we've fully initialized the link;
-		if (!link.href) return false;
-
-		ready = false;
-
-		try {
-			// no need to check for IE's link.styleSheet cuz IE won't get here
-			sheet = link.sheet;
-			if (sheet) {
-				// FF will throw a security exception here when an XD
-				// sheet is loaded. webkits (that don't support onload)
-				// will return null when an XD sheet is loaded
-				rules = sheet.cssRules;
-				ready = rules === null;
-				if (!ready && 'length' in rules && !window.chrome) {
-					// Opera needs to further test for rule manipulation
-					sheet.insertRule('-curl-css-test {}', 0);
-					sheet.deleteRule(0);
-					ready = true;
-				}
-			}
-		}
-		catch (ex) {
-			// a "security" or "access denied" error indicates that an XD
-			// stylesheet has been successfully loaded!
-			ready = /security|denied/i.test(ex.message);
-		}
-
-		return ready;
-	}
-
-	function ssWatcher (link, wait, cb) {
-		// watches a stylesheet for loading signs.
-		if (isLinkReady(link)) {
-			cb();
-		}
-		else if (link.onload != noop) {
-			setTimeout(function () { ssWatcher(link, wait, cb); }, wait);
+	function setLoadDetection (event, hasNative, name) {
+		name = name || event;
+		// TODO: cancel in-flight detection routines (how?)
+		hasEvent[event] = hasEvent[event] || hasNative;
+		// clear-out test links
+		if (hasEvent.links[name]) {
+			head.removeChild(hasEvent.links[name]);
+			delete hasEvent.links[name];
 		}
 	}
 
-	function loadDetector (link, wait, cb) {
-		// most browsers now support link.onload, but many older browsers
-		// don't. Browsers that don't will launch the ssWatcher to repeatedly
-		// test the link for readiness.
-		function load () {
-			// only executes once since link.onload is blanked
-			if (link.onload == noop) return;
-			// note: Opera and IE won't clear handlers if we use a non-function
-			link.onload = link.onerror = noop; // console.log('set noop ', link.href);
-			cb();
-		}
-		loadHandler(link, waitForDocumentComplete(load));
-		if (!has("event-link-onload")) {
-			waitForDocumentComplete(function () {
-				ssWatcher(link, wait, load);
-			})();
-		}
-	}
-
-	function errorDetector (link, cb) {
-		var h;
-		// very few browsers (Chrome 19+ and FF9+ as of Apr 2012) have a
-		// functional onerror handler (and those only detect 40X/50X http
-		// errors, not parsing errors as per the w3c spec).
-		// IE6-9 call onload when there's an http error, but I can't seem
-		// to find a way to detect the error, yet.
-		function error () {
-			clearTimeout(h);
-			if (link.onload == noop) return;
-			// note: Opera and IE won't clear handlers if we use a non-function
-			link.onload = link.onerror = noop;
-			cb(new Error('HTTP or network error.'));
-		}
-		errorHandler(link, error);
-		// for browsers that don't call onerror after an http error:
-		// we wait (at least) 500 msec before trying again with an image
-		// element. the image element's onerror handler works universally.
-		// this will cause another fetch, but we don't have any other options.
-		if (!has('event-link-onerror')) {
-			waitForDocumentComplete(function () {
-				h = setTimeout(function () {
-					var img;
-					if (link.onload == noop) return;
-					// Note: can't use `new Image()` in webkit browsers
-					// (it doesn't seem to fire events)
-					img = document[createElement]('img');
-					img.onerror = img.onload = error;
-					img.src = link.href;
-				}, 500);
-			})();
-		}
-	}
-
-	function waitForDocumentComplete (cb) {
-		// this isn't exactly the same as domReady (when dom can be
-		// manipulated). it's later (when styles are applied).
-		function isDocumentComplete () {
-			if (!doc.readyState || doc.readyState == 'complete') {
-				cb();
-			}
-			else {
-				setTimeout(isDocumentComplete, 10);
-			}
-		}
-		return isDocumentComplete;
-	}
-
-	function createLink (doc) {
-		// detect if we need to avoid 31-sheet limit in IE
+	// TODO: how about we just move sheets to collector as soon as they're loaded? -> hm. debugging @imports sucks so we should try to keep them as links?
+	function createLink (collectSheets) {
+		var link;
+		// TODO: detect if we need to avoid 31-sheet limit in IE
 		if (collectSheets) {
 			if (!collectorSheet) {
 				collectorSheet = document.createStyleSheet();
 			}
-			if (document.styleSheets.length >= 30) {
+			if (doc.styleSheets.length >= 30) {
 				moveLinksToCollector();
 			}
 		}
-		var link = doc[createElement]('link');
+		link = doc[createElement]('link');
 		link.rel = "stylesheet";
 		link.type = "text/css";
 		if (collectSheets) link.setAttribute('_curl_movable', true);
@@ -236,7 +129,7 @@
 	}
 
 	function moveLinksToCollector () {
-		// IE 6-8 fails when over 31 sheets, so we collect them.
+		// IE 6-8 fail when there are 31 sheets, so we collect them.
 		// Note: this hack relies on proper cache headers.
 		var link, links, collector, pos = 0;
 		collector = collectorSheet;
@@ -255,6 +148,153 @@
 				pos++;
 			}
 		}
+	}
+
+	/***** load-detection functions *****/
+
+	function loadHandler (link, cb) {
+		link.onload = function () {
+			// we know this works now!
+			setLoadDetection('load', true);
+			if (hasEvent['false-load'] && failIfBlankSheet) {
+				// TODO: if this could be a false positive, figure out how to determine this without causing another HTTP fetch
+				// how to do this for xdomain? same-domain is easy: look for rules.length > 0
+			}
+			finalize(link, cb);
+		};
+	}
+
+	function errorHandler (link, cb) {
+		link.onerror = function () {
+			// we know this works now!
+			setLoadDetection('error', true);
+			finalize(link, cb);
+		};
+	}
+
+	function isLinkReady (link) {
+		var ready, sheet, rules;
+		// don't bother testing until we've fully initialized the link;
+		if (!link.href) return false;
+
+		ready = false;
+
+		try {
+			// no need to check for IE's link.styleSheet cuz IE has native onload
+			sheet = link.sheet;
+			if (sheet) {
+				// FF will throw a security exception here when an XD
+				// sheet is loaded. webkits (that don't support onload)
+				// will return null when an XD sheet is loaded
+				rules = sheet.cssRules;
+				ready = rules === null;
+				// TODO: remove browser sniff cuz it's probably not needed
+				if (!ready && 'length' in rules && !window.chrome) {
+					// Opera needs to further test for rule manipulation
+					sheet.insertRule('-curl-css-test {}', 0);
+					sheet.deleteRule(0);
+					ready = true;
+					setLoadDetection('load', false);
+				}
+			}
+		}
+		catch (ex) {
+			// a "security" or "access denied" error indicates that an XD
+			// stylesheet has been successfully loaded!
+			ready = /security|denied/i.test(ex.message);
+			setLoadDetection('load', false);
+		}
+
+		return ready;
+	}
+
+	function finalize (link, cb) {
+		// noop serves as a flag that a link event fired
+		// note: Opera and IE won't clear handlers if we use a non-function
+		link.onload = link.onerror = noop;
+		cb();
+	}
+
+	function ssWatcher (link, wait, cb) {
+		// watches a stylesheet for loading signs.
+		if (isLinkReady(link)) {
+			finalize(link, cb);
+		}
+		else if (!hasEvent['load'] && link.onload != noop) {
+			setTimeout(function () { ssWatcher(link, wait, cb); }, wait);
+		}
+	}
+
+	function loadDetector (link, wait, cb) {
+		// most browsers now support link.onload, but many older browsers
+		// don't. Browsers that don't will launch the ssWatcher to repeatedly
+		// test the link for readiness.
+		function load () {
+			// only executes once (link.onload is acting as a flag)
+			if (link.onload != noop) return;
+			waitForDocumentComplete(cb);
+		}
+		// if we are not sure the native load event is broken, try it
+		if (hasEvent['load'] !== false) loadHandler(link, load);
+		// if we are not sure if the native load event works, try the fallback
+		if (!hasEvent['load']) ssWatcher(link, wait, load);
+	}
+
+	function errorDetector (link, cb) {
+		var h;
+		// very few browsers (Chrome 19+ and FF9+ as of Apr 2012) have a
+		// functional onerror handler (and those only detect 40X/50X http
+		// errors, not parsing errors as per the w3c spec).
+		// IE6-9 call onload when there's an http error, but I can't seem
+		// to find a way to detect the error, yet.
+		function error () {
+			clearTimeout(h);
+			// only executes once (link.onload is acting as a flag)
+			if (link.onload != noop) return;
+			cb(new Error('HTTP or network error.'));
+		}
+		// if we are not sure the native error event is broken, try it
+		if (hasEvent['error'] !== false) errorHandler(link, error);
+		// if we are not sure if the native error event works, try the fallback
+		if (!hasEvent['error']) {
+			// for browsers that don't call onerror after an http error:
+			// we wait (at least) 1500 msec before trying again with an image
+			// element and an object. the image element's onerror handler
+			// will fire when the browser has determined if the href is valid
+			// or not (but we can't know the validity).  the object element's
+			// onload will fire if the url is valid (but it never fires the
+			// onerror event).
+			// this will cause another fetch, but we don't have any other options.
+			waitForDocumentComplete(function () {
+				if (link.onload == noop) return;
+				h = setTimeout(function () {
+					var img;
+					if (link.onload == noop) return;
+					// Note: can't use `new Image()` in webkit browsers
+					// (it doesn't seem to fire events)
+					img = document[createElement]('img');
+					img.onerror = img.onload = function () {
+						finalize(link, error);
+					};
+					img.src = link.href;
+				}, 1500);
+			}());
+		}
+	}
+
+	function waitForDocumentComplete (cb) {
+		// this isn't exactly the same as domReady (when dom can be
+		// manipulated). it's later (when styles are applied).
+		// chrome needs this (and opera?)
+		function complete () {
+			if (!doc.readyState || doc.readyState == 'complete') {
+				cb();
+			}
+			else {
+				setTimeout(complete, 10);
+			}
+		}
+		return complete;
 	}
 
 	function nameWithExt (name, defaultExt) {
@@ -285,7 +325,8 @@
 
 		'load': function (resourceId, require, callback, config) {
 			var resources = (resourceId || '').split(","),
-				loadingCount = resources.length;
+				loadingCount = resources.length,
+				i;
 
 			// all detector functions must ensure that this function only gets
 			// called once per stylesheet!
@@ -302,13 +343,13 @@
 			}
 
 			// `after` will become truthy once the loop executes a second time
-			for (var i = resources.length - 1, after; i >= 0; i--, after = true) {
+			for (i = 0; i < resources.length; i++) {
 
 				resourceId = resources[i];
 
 				var
 					url = require['toUrl'](nameWithExt(resourceId, 'css')),
-					link = createLink(doc),
+					link = createLink(),
 					nowait = !!config['cssDeferLoad'],
 					wait = config['cssWatchPeriod'] || 50;
 
@@ -324,14 +365,7 @@
 
 				// go!
 				link.href = url;
-
-				if (after) {
-					head.insertBefore(link, insertedSheets[after].previousSibling);
-				}
-				else {
-					head.appendChild(link);
-				}
-				insertedSheets[url] = link;
+				head.appendChild(link);
 			}
 
 
