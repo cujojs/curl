@@ -70,29 +70,38 @@
 	var
 		// compressibility shortcuts
 		createElement = 'createElement',
+		createStyleSheet = 'createStyleSheet',
+		parentNode = 'parentNode',
+		setTimeout = global.setTimeout,
+		goodTestSheet = 'about:blank',
+		badTestSheet = 'about:_curl_',
+		pluginBuilder = './builder/css',
 		// doc will be undefined during a build
 		doc = global.document,
 		// find the head element and set it to it's standard property if nec.
 		head,
 		collectSheets,
 		failIfBlankSheet,
-		collectorSheet = doc && !!doc.createStyleSheet,
+		// serious inference here:
+		collectorSheet = doc && !!doc[createStyleSheet],
 		hasEvent = { links: {} };
 
 	if (doc) {
 		head = doc.head || (doc.head = doc.getElementsByTagName('head')[0]);
-		// 'about:blank' returns a valid stylesheet (blank)
-		testLinkEvent('load', 'about:blank');
-		// this test doesn't work in FF<=13 (and maybe future versions)
-		testLinkEvent('error', 'about:_curl_bogus');
-		// FF and Chrome correctly detect on this one, but Safari screams loudly (in Net tab)
+		// the following code attempts to pre-determine if the browser supports
+		// onload and onerror event handlers. None of these work in Opera.
+		// success: Chrome, FF13, IE6-9
+		testLinkEvent('load', goodTestSheet);
+		// success: Chrome only
+		testLinkEvent('error', badTestSheet);
+		// FF and Chrome fire onerror on this one, but Safari and Opera scream loudly (in Net tab)
 		//testLinkEvent('error', 'javascript:');
-		// FF and chrome also correctly fail here, but Safari screams loudly (in Net tab)
+		// FF and chrome also fire onerror here, but Safari and Opera scream loudly (in Net tab)
 		//testLinkEvent('error', 'data:text/css;base64,_');
-		// FF correctly fails here and Safari doesn't scream, yay:
+		// FF correctly fails here (protocol error) and Safari doesn't scream, yay:
 		testLinkEvent('error', 'data:text/text,');
-		// detect IE false positives (fires onload instead of onerror)
-		testLinkEvent('load', 'about:_curl_bogus', 'false-load');
+		// detect IE false positives (IE fires onload instead of onerror)
+		testLinkEvent('load', badTestSheet, 'false-load');
 	}
 
 	function testLinkEvent (event, page, name) {
@@ -107,17 +116,14 @@
 
 	function setLoadDetection (event, hasNative, name) {
 		name = name || event;
-		// TODO: cancel in-flight detection routines (how?)
 		hasEvent[name] = hasEvent[name] || hasNative;
 	}
 
-	// TODO: how about we just move sheets to collector as soon as they're loaded? -> hm. debugging @imports sucks so we should try to keep them as links?
 	function createLink (collectSheets) {
 		var link;
-		// TODO: detect if we need to avoid 31-sheet limit in IE
 		if (collectSheets) {
 			if (!collectorSheet) {
-				collectorSheet = document.createStyleSheet();
+				collectorSheet = doc[createStyleSheet]();
 			}
 			if (doc.styleSheets.length >= 30) {
 				moveLinksToCollector();
@@ -143,7 +149,7 @@
 				// will cause a re-download)
 				collector.addImport(link.href);
 				// remove from document
-				if (link.parentNode) link.parentNode.removeChild(link);
+				if (link[parentNode]) link[parentNode].removeChild(link);
 			}
 			else {
 				// skip this sheet
@@ -190,8 +196,7 @@
 				// will return null when an XD sheet is loaded
 				rules = sheet.cssRules;
 				ready = rules === null;
-				// TODO: remove browser sniff cuz it's probably not needed
-				if (!ready && 'length' in rules && !window.chrome) {
+				if (!ready && 'length' in rules) {
 					// Opera needs to further test for rule manipulation
 					sheet.insertRule('-curl-css-test {}', 0);
 					sheet.deleteRule(0);
@@ -252,7 +257,6 @@
 					if (!hasEvent['error'] && !isFinalized(link)) eb();
 				}, 10); // a wee bit more time to process sheet
 			};
-console.log(link.href, 'launched counter strike')
 			img.src = link.href;
 		}, wait);
 	}
@@ -353,7 +357,6 @@ console.log(link.href, 'launched counter strike')
 				eb(ex);
 			}
 
-			// `after` will become truthy once the loop executes a second time
 			for (i = 0; i < resources.length; i++) {
 
 				resourceId = resources[i];
@@ -376,15 +379,14 @@ console.log(link.href, 'launched counter strike')
 
 				// go!
 				link.href = url;
-console.log(link.href, 'go!');
 				head.appendChild(link);
 			}
 
 
 		},
 
-		'plugin-builder': './builder/css',
-		'pluginBuilder': './builder/css'
+		'plugin-builder': pluginBuilder,
+		'pluginBuilder': pluginBuilder
 
 	});
 
