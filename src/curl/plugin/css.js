@@ -84,29 +84,31 @@
 		// 'about:blank' returns a valid stylesheet (blank)
 		testLinkEvent('load', 'about:blank');
 		// this test doesn't work in FF<=13 (and maybe future versions)
-		testLinkEvent('error', 'about:bogus');
-		// friggin IE false positives (fires onload instead of onerror)
-		testLinkEvent('load', 'about:bogus', 'false-');
+		testLinkEvent('error', 'about:_curl_bogus');
+		// FF and Chrome correctly detect on this one, but Safari screams loudly (in Net tab)
+		//testLinkEvent('error', 'javascript:');
+		// FF and chrome also correctly fail here, but Safari screams loudly (in Net tab)
+		//testLinkEvent('error', 'data:text/css;base64,_');
+		// FF correctly fails here and Safari doesn't scream, yay:
+		testLinkEvent('error', 'data:text/text,');
+		// detect IE false positives (fires onload instead of onerror)
+		testLinkEvent('load', 'about:_curl_bogus', 'false-load');
 	}
 
-	function testLinkEvent (event, page, prefix) {
-		var name, link;
-		name = prefix ? prefix + event : event;
+	function testLinkEvent (event, page, name) {
+		var link;
+		name = name || event;
 		link = hasEvent.links[name] = createLink(false);
-		link[event] = function () { setLoadDetection(event, true, name); };
+		link['on' + event] = function () { setLoadDetection(event, true, name); };
 		link.href = page;
 		head.appendChild(link);
+		setTimeout(function () { head.removeChild(link); }, 50);
 	}
 
 	function setLoadDetection (event, hasNative, name) {
 		name = name || event;
 		// TODO: cancel in-flight detection routines (how?)
-		hasEvent[event] = hasEvent[event] || hasNative;
-		// clear-out test links
-		if (hasEvent.links[name]) {
-			head.removeChild(hasEvent.links[name]);
-			delete hasEvent.links[name];
-		}
+		hasEvent[name] = hasEvent[name] || hasNative;
 	}
 
 	// TODO: how about we just move sheets to collector as soon as they're loaded? -> hm. debugging @imports sucks so we should try to keep them as links?
@@ -124,7 +126,7 @@
 		link = doc[createElement]('link');
 		link.rel = "stylesheet";
 		link.type = "text/css";
-		if (collectSheets) link.setAttribute('_curl_movable', true);
+		if (collectSheets) link['_curl_movable'] = true;
 		return link;
 	}
 
@@ -136,7 +138,7 @@
 		collectorSheet = null; // so a new one will be created
 		links = document.getElementsByTagName('link');
 		while ((link = links[pos])) {
-			if (link.getAttribute('_curl_movable')) {
+			if (link['_curl_movable']) {
 				// move to the collector (note: bad cache directive
 				// will cause a re-download)
 				collector.addImport(link.href);
@@ -160,7 +162,7 @@
 				// TODO: if this could be a false positive, figure out how to determine this without causing another HTTP fetch
 				// how to do this for xdomain? same-domain is easy: look for rules.length > 0
 			}
-			finalize(link, cb);
+			cb();
 		};
 	}
 
@@ -168,7 +170,7 @@
 		link.onerror = function () {
 			// we know this works now!
 			setLoadDetection('error', true);
-			finalize(link, cb);
+			cb();
 		};
 	}
 
@@ -208,21 +210,51 @@
 		return ready;
 	}
 
-	function finalize (link, cb) {
+	function finalize (link) {
 		// noop serves as a flag that a link event fired
 		// note: Opera and IE won't clear handlers if we use a non-function
 		link.onload = link.onerror = noop;
-		cb();
+	}
+
+	function isFinalized (link) {
+		return link.onload == noop;
 	}
 
 	function ssWatcher (link, wait, cb) {
 		// watches a stylesheet for loading signs.
+		if (hasEvent['load']) return; // always check on re-entry
 		if (isLinkReady(link)) {
-			finalize(link, cb);
+			cb();
 		}
-		else if (!hasEvent['load'] && link.onload != noop) {
+		else if (!isFinalized(link)) {
 			setTimeout(function () { ssWatcher(link, wait, cb); }, wait);
 		}
+	}
+
+	function errorWatcher (link, wait, eb) {
+		if (hasEvent['error']) return;
+		// for browsers that don't call onerror after an http error:
+		// we wait (at least) 500 msec before trying again with an image
+		// element. the image element's onerror handler
+		// will fire when the browser has determined if the href is valid
+		// or not (20X or 40X/50X).  however, we can't know if it's a 20X
+		// or something else, so we delay just a bit longer to see if
+		// the sheet loaded. this will cause another fetch, but we don't
+		// have any other options for dumbass browsers.
+		setTimeout(function () {
+			var img;
+			if (hasEvent['error'] || isFinalized(link)) return;
+			// Note: can't use `new Image()` in webkit browsers
+			// (it doesn't seem to fire events)
+			img = document[createElement]('img');
+			img.onerror = img.onload = function () {
+				setTimeout(function () {
+					if (!hasEvent['error'] && !isFinalized(link)) eb();
+				}, 10); // a wee bit more time to process sheet
+			};
+console.log(link.href, 'launched counter strike')
+			img.src = link.href;
+		}, wait);
 	}
 
 	function loadDetector (link, wait, cb) {
@@ -231,13 +263,14 @@
 		// test the link for readiness.
 		function load () {
 			// only executes once (link.onload is acting as a flag)
-			if (link.onload != noop) return;
+			if (isFinalized(link)) return;
+			finalize(link);
 			waitForDocumentComplete(cb);
 		}
-		// if we are not sure the native load event is broken, try it
-		if (hasEvent['load'] !== false) loadHandler(link, load);
-		// if we are not sure if the native load event works, try the fallback
-		if (!hasEvent['load']) ssWatcher(link, wait, load);
+		// always try standard handler
+		loadHandler(link, load);
+		// also try the fallback
+		ssWatcher(link, wait, load);
 	}
 
 	function errorDetector (link, cb) {
@@ -250,36 +283,14 @@
 		function error () {
 			clearTimeout(h);
 			// only executes once (link.onload is acting as a flag)
-			if (link.onload != noop) return;
+			if (isFinalized(link)) return;
+			finalize(link);
 			cb(new Error('HTTP or network error.'));
 		}
-		// if we are not sure the native error event is broken, try it
-		if (hasEvent['error'] !== false) errorHandler(link, error);
+		// always try standard handler
+		errorHandler(link, error);
 		// if we are not sure if the native error event works, try the fallback
-		if (!hasEvent['error']) {
-			// for browsers that don't call onerror after an http error:
-			// we wait (at least) 1500 msec before trying again with an image
-			// element and an object. the image element's onerror handler
-			// will fire when the browser has determined if the href is valid
-			// or not (but we can't know the validity).  the object element's
-			// onload will fire if the url is valid (but it never fires the
-			// onerror event).
-			// this will cause another fetch, but we don't have any other options.
-			waitForDocumentComplete(function () {
-				if (link.onload == noop) return;
-				h = setTimeout(function () {
-					var img;
-					if (link.onload == noop) return;
-					// Note: can't use `new Image()` in webkit browsers
-					// (it doesn't seem to fire events)
-					img = document[createElement]('img');
-					img.onerror = img.onload = function () {
-						finalize(link, error);
-					};
-					img.src = link.href;
-				}, 1500);
-			}());
-		}
+		errorWatcher(link, 500, error);
 	}
 
 	function waitForDocumentComplete (cb) {
@@ -294,7 +305,7 @@
 				setTimeout(complete, 10);
 			}
 		}
-		return complete;
+		complete();
 	}
 
 	function nameWithExt (name, defaultExt) {
@@ -365,6 +376,7 @@
 
 				// go!
 				link.href = url;
+console.log(link.href, 'go!');
 				head.appendChild(link);
 			}
 
