@@ -367,7 +367,7 @@
 			apiName = cfg['apiName'];
 			apiObj = cfg['apiContext'];
 			// if the dev is overwriting an existing curl()
-			if (apiObj || apiName ? apiObj[apiName] : prevCurl && hasCfg) {
+			if (apiObj || apiName ? (apiObj || global)[apiName] : prevCurl && hasCfg) {
 				throw new Error((apiName || 'curl') + ' already exists');
 			}
 			(apiObj || global)[apiName || 'curl'] = _curl;
@@ -377,7 +377,7 @@
 			// allow dev to rename/relocate define() to another object
 			defName = cfg['defineName'];
 			defObj = cfg['defineContext'];
-			if (defObj || defName ? defObj[defName] : prevDefine && hasCfg) {
+			if (defObj || defName ? (defObj || global)[defName] : prevDefine && hasCfg) {
 				throw new Error((defName|| 'define') + ' already exists');
 			}
 			(defObj || global)[defName || 'define'] = define = function () {
