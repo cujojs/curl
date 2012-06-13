@@ -8,8 +8,21 @@
  *
  */
 
-define(['curl/_privileged'], function (priv) {
-	var cache = priv['cache'];
+define(['curl/_privileged', 'require'], function (priv, require) {
+	var cache, cleanupScript, loadScript;
+
+	cache = priv['cache'];
+
+	cleanupScript = noop;
+
+	if (typeof document != 'undefined') {
+		cleanupScript = removeScript;
+		loadScript = priv['core'].loadScript;
+		priv['core'].loadScript = function (def) {
+			var el = loadScript.apply(this, arguments);
+			el._curl_id = def.id;
+		}
+	}
 
 	/**
 	 * Removes a module from curl.js's cache so that it can
@@ -19,11 +32,25 @@ define(['curl/_privileged'], function (priv) {
 	 */
 	return function undefine (moduleId) {
 		var ids, id;
-
 		ids = [].concat(moduleId);
 		while ((id = ids.pop())) {
 			delete cache[id];
+			cleanupScript(id);
 		}
 	};
+
+	function removeScript (id) {
+		var scripts, i, script;
+		scripts = document.getElementsByTagName('script');
+		i = 0;
+		while ((script = scripts[i++])) {
+			if (script._curl_id == id) {
+				script.parentNode.removeChild(script);
+				return; // all done!
+			}
+		}
+	}
+
+	function noop () {}
 
 });

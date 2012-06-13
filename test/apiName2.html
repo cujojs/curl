@@ -8,7 +8,6 @@
 
 	curl = {
         apiName: 'bar',
-        apiContext: foo,
 		paths: {
 			curl: '../src/curl/'
 		}
@@ -19,7 +18,7 @@
 
 <script type="text/javascript">
 
-    var contextifiedCurl = foo.bar;
+    var contextifiedCurl = window.bar;
 
     if(typeof contextifiedCurl !== 'function') {
         alert('api context foo.bar failed');

@@ -20,13 +20,17 @@ Helpful link for updating submodules:
 What's New?
 =======
 
+* 0.6.4
+	* curl now restores any previous curl() or define() if the dev reassigns
+	  either using apiContext/apiName or defineContext/defineName
 * 0.6.3
 	* fix !exports option of js! plugin when file is compressed
-	* now resolves arbitrarily deep double-dot module ids (dojo compatibility)
-	* more non-standard dojo-isms added to shim/dojo16
+	* now resolves arbitrarily deep double-dot module ids (dojo and node compatibility)
+	* more non-standard dojo-isms added to shim/dojo16 (dojo 1.6.x and 1.7.x)
 	* correctly locates relative dependencies from main modules
-	* scoped `define`
+	* scoped `define` (e.g. `mylib.define()`)
 	* new tdd/runner and tdd/undefine modules
+	* new experimental shim/ssjs (to be released by v0.7)
 	* minor improvements to interpretation of unwrapped CJS modules
 * 0.6.2
 	* curl no longer repeatedly downloads modules that don't return any value
@@ -95,7 +99,6 @@ What's New?
 TODO:
 
 * finish i18n plugin!
-* create dojo 1.7 shim, if necessary
 * document plugin configuration options and how to use each plugin
 * notes about using JSONP (it works for objects, arrays, functions, numbers
   and strings! use ?callback=define)

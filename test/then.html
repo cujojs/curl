@@ -69,7 +69,7 @@
 			write('FAILED: then() called when xdomain module doesn\' exist');
 		},
 		function (ex) {
-			write('SUCCESS: fail brach called when xdomain module doesn\'t exist. Message: ' + ex.message);
+			write('SUCCESS: fail branch called when xdomain module doesn\'t exist. Message: ' + ex.message);
 		}
 	);
 
@@ -81,19 +81,19 @@
 			write('SUCCESS: js! plugin.');
 		},
 		function (ex) {
-			write('FAILED: js! plugin. ', + ex && ex.message);
+			write('FAILED: js! plugin. ' + ex && ex.message);
 		}
 	);
 
 	// test js! plugin
 	curl(
-		['js!stuff/plain_old-bad-url.js!exports=testDomain.foo']
+		['js!stuff/plain_old-bad-url.js!exports=testDomain.thiscantexist']
 	).then(
 		function (foo) {
 			write('FAILED: js! plugin didn\'t detect 404.');
 		},
 		function (ex) {
-			write('SUCCESS: js! plugin detected 404. ' + ex.message);
+			write('SUCCESS: js! plugin detected 404. ');
 		}
 	);
 

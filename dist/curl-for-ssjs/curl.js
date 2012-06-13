@@ -1,35 +1,1333 @@
-/*
- MIT License (c) copyright B Cavalier & J Hann */
-var v=!0,A=!1;
-(function(j){function h(){}function l(a,c){return 0==G.call(a).indexOf("[object "+c)}function o(a){return a&&"/"==a.charAt(a.length-1)?a.substr(0,a.length-1):a}function e(a,c){var p,q,i;q=1;a=a.replace(Q,function(a,c,p,g){p&&q++;i=v;return g||""});return i?(p=c.split("/"),p.splice(p.length-q,q),p.concat(a||[]).join("/")):a}function d(a){var c=a.indexOf("!");return{P:a.substr(c+1),l:0<=c&&a.substr(0,c)}}function r(){}function w(a){r.prototype=a;a=new r;r.prototype=B;return a}function y(){function a(a,c,
-i){q.push([a,c,i])}function c(a,c){for(var i,p=0;i=q[p++];)(i=i[a])&&i(c)}var p,q,i;p=this;q=[];i=function(p,g){a=p?function(a){a&&a(g)}:function(a,c){c&&c(g)};i=h;c(p?0:1,g);c=h;q=s};this.w=function(c,i,q){a(c,i,q);return p};this.c=function(a){p.v=a;i(v,a)};this.b=function(a){p.na=a;i(A,a)};this.t=function(a){c(2,a)}}function n(a,c,p,q){a instanceof y?a.w(c,p,q):c(a)}function b(a,c,p){var q;return function(){0<=--a&&c&&(q=c.apply(s,arguments));0==a&&p&&p(q);return q}}function x(){function a(c,q,
-i){var g;g=m.d(k,s,[].concat(c));this.then=c=function(a,c){n(g,function(c){a&&a.apply(s,c)},function(a){if(c)c(a);else throw a;});return this};this.next=function(c,i){return new a(c,i,g)};q&&c(q);n(i,function(){m.k(g)})}var c=[].slice.call(arguments);l(c[0],"Object")&&(k=m.H(c.shift()),m.z(k));return new a(c[0],c[1])}function E(a){var c=a.id;if(c==s)if(f!==s)f={F:"Multiple anonymous defines in url"};else if(!(c=m.Z()))f=a;if(c!=s){var g=t[c];c in t||(g=m.n(c,k).g,g=t[c]=m.B(g,c));g instanceof y&&
-(g.fa=A,m.C(g,a))}}var k=j.curl,z=j.document,C=z&&(z.head||z.getElementsByTagName("head")[0]),D={},u={},I={},H={},B={},G=B.toString,s,F={loaded:1,interactive:I,complete:1},t={},g=A,f,R=/\?/,M=/^\/|^[^:]+:\/\//,Q=/(\.)(\.?)(?:$|\/([^\.\/]+.*)?)/g,S=/\/\*[\s\S]*?\*\/|(?:[^\\])\/\/.*?[\n\r]/g,T=/require\s*\(\s*["']([^"']+)["']\s*\)|(?:[^\\]?)(["'])/g,K,m;m={d:function(a,c,g,q){function i(a){return e(a,f.f)}function d(c,g){var p,b,k,u;p=g&&function(a){g.apply(s,a)};if(l(c,"String")){b=i(c);k=t[b];u=k instanceof
-y&&k.a;if(!(b in t))throw Error("Module not resolved: "+b);if(p)throw Error("require(id, callback) not allowed");return u||k}n(m.k(m.d(a,f.f,c,q)),p)}var f;f=new y;f.f=f.id=c||"";f.$=q;f.D=g;f.m=d;d.toUrl=function(c){return m.n(i(c),a).url};f.ea=i;return f},B:function(a,c,p,q){var i,f,d;i=m.d(a,c,s,p);i.f=q==s?c:q;f=i.c;d=b(1,function(a){i.q=a;try{return m.T(i)}catch(c){i.b(c)}});i.c=function(a){n(p||g,function(){f(t[i.id]=d(a))})};i.G=function(a){n(p||g,function(){i.a&&(d(a),i.t(u))})};return i},
-R:function(a,c,g,q){a=m.d(a,c,s,g);a.f=q;return a},Y:function(a){return a.m},J:function(a){return a.a||(a.a={})},X:function(a){var c=a.s;c||(c=a.s={id:a.id,uri:m.K(a),exports:m.J(a)},c.a=c.exports);return c},K:function(a){return a.url||(a.url=m.A(a.m.toUrl(a.id)))},H:function(a){function c(c,g){var i,f,p,b,k;for(k in c){p=c[k];p.name=p.id||p.name||k;b=a;f=d(o(p.name||k));i=f.P;if(f=f.l)b=q[f],b||(b=q[f]=w(a),b.h=w(a.h),b.e=[]),delete c[k];if(g){f=p;var u=void 0;f.path=o(f.path||f.location||"");u=
-o(f.main)||"main";"."!=u.charAt(0)&&(u="./"+u);f.L=e(u,f.name+"/");f.aa=e(u,f.path+"/");f.g=f.config}else f={path:o(p)};f.Q=i.split("/").length;i?(b.h[i]=f,b.e.push(i)):b.o=m.O(p,a)}}function g(a){var c=a.h;a.ca=RegExp("^("+a.e.sort(function(a,g){return c[a].Q<c[g].Q}).join("|").replace(/\/|\./g,"\\$&")+")(?=\\/|$)");delete a.e}var q;a.o=a.baseUrl||"";a.N="pluginPath"in a?a.pluginPath:"curl/plugin";a.h={};q=a.plugins=a.plugins||{};a.e=[];c(a.paths,A);c(a.packages,v);for(var i in q){var f=q[i].e;f&&
-(q[i].e=f.concat(a.e),g(q[i]))}g(a);return a},z:function(a){var c;(c=a.preloads)&&0<c.length&&n(g,function(){g=m.k(m.d(a,s,c,v))})},n:function(a,c,g){var f,i,b,d;f=c.h;g&&(c.N&&0>a.indexOf("/")&&!(a in f))&&(b=a=o(c.N)+"/"+a);g=M.test(a)?a:a.replace(c.ca,function(c){i=f[c]||{};d=i.g;return i.L&&c==a?(b=i.L,i.aa):i.path||""});return{f:b||a,g:d||k,url:m.O(g,c)}},O:function(a,c){var g=c.o;return g&&!M.test(a)?o(g)+"/"+a:a},A:function(a){return a+(R.test(a)?"":".js")},r:function(a,c,g){var f=z.createElement("script");
-f.onload=f.onreadystatechange=function(g){g=g||j.event;if("load"==g.type||F[f.readyState])delete H[a.id],f.onload=f.onreadystatechange=f.onerror="",c()};f.onerror=function(){g(Error("Syntax or http error: "+a.url))};f.type=a.M||"text/javascript";f.charset="utf-8";f.async=!a.ba;f.src=a.url;H[a.id]=f;C.insertBefore(f,C.firstChild)},I:function(a){var c=[],g;("string"==typeof a?a:a.toSource?a.toSource():a.toString()).replace(S,"").replace(T,function(a,f,b){b?g=g==b?s:g:g||c.push(f);return a});return c},
-W:function(a){var c,g,f,i,b,d;b=a.length;f=a[b-1];i=l(f,"Function")?f.length:-1;2==b?l(a[0],"Array")?g=a[0]:c=a[0]:3==b&&(c=a[0],g=a[1]);!g&&0<i&&(d=v,g=["require","exports","module"].slice(0,i).concat(m.I(f)));return{id:c,q:g||[],u:0<=i?f:function(){return f},p:d}},T:function(a){var c;c=a.u.apply(a.p?a.a:s,a.q);c===s&&a.a&&(c=a.s?a.a=a.s.a:a.a);return c},C:function(a,c){a.u=c.u;a.p=c.p;a.D=c.q;m.k(a)},k:function(a){function c(a,c,g){k[c]=a;g&&j(a,c)}function g(c,f){var i,d,k,e;i=b(1,function(a){d(a);
-r(a,f)});d=b(1,function(a){j(a,f)});k=m.U(c,a);(e=k instanceof y&&k.a)&&d(e);n(k,i,a.b,a.a&&function(a){k.a&&(a==D?d(k.a):a==u&&i(k.a))})}function f(){a.c(k)}var i,d,k,e,h,j,r;k=[];d=a.D;e=d.length;0==d.length&&f();j=b(e,c,function(){a.G&&a.G(k)});r=b(e,c,f);for(i=0;i<e;i++)h=d[i],h in K?(r(K[h](a),i,v),a.a&&a.t(D)):h?g(h,i):r(s,i,v);return a},V:function(a){m.K(a);m.r(a,function(){var c=f;f=s;a.fa!==A&&(!c||c.F?a.b(Error(c&&c.F||"define() missing or duplicated: "+a.url)):m.C(a,c))},a.b);return a},
-U:function(a,c){var g,f,i,b,u,e,h,j,r;g=c.ea;f=c.$;i=d(a);e=i.P;b=g(i.l||e);h=m.n(b,k,!!i.l);if(i.l)u=b;else if(u=h.g.moduleLoader)e=b,b=u,h=m.n(u,k);i=t[b];b in t||(i=t[b]=m.B(h.g,b,f,h.f),i.url=m.A(h.url),m.V(i));b==u&&(j=new y,r=k.plugins[u]||k,n(i,function(a){var c,b,i;i=a.dynamic;e="normalize"in a?a.normalize(e,g,r)||"":g(e);b=u+"!"+e;c=t[b];if(!(b in t)){c=m.R(r,b,f,e);i||(t[b]=c);var d=function(a){c.c(a);i||(t[b]=a)};d.resolve=d;d.reject=c.b;a.load(e,c.m,d,r)}j!=c&&n(c,j.c,j.b,j.t)},j.b));
-return j||i},Z:function(){var a;if(!l(j.opera,"Opera"))for(var c in H)if(F[H[c].readyState]==I){a=c;break}return a}};K={require:m.Y,exports:m.J,module:m.X};if(!l(k,"Function")){k=m.H(k||{});m.z(k);var J,N,O,P;J=k.apiName||"curl";O=k.defineName||"define";N=k.apiContext||j;P=k.defineContext||j;N[J]=x;P[O]=J=function(){var a=m.W(arguments);E(a)};t.curl=x;x.version="0.6.2";J.amd={plugins:v,jQuery:v,curl:"0.6.2"};t["curl/_privileged"]={core:m,cache:t,cfg:k,_define:E,_curl:x,Promise:y}}})(this);
-(function(j,h){function l(){if(!h.body)return A;D||(D=h.createTextNode(""));try{return h.body.removeChild(h.body.appendChild(D)),D=C,v}catch(b){return A}}function o(){var b;b=r[h[d]]&&l();if(!n&&b){n=v;for(clearTimeout(z);E=k.pop();)E();y&&(h[d]="complete");for(var e;e=w.shift();)e()}return b}function e(){o();n||(z=setTimeout(e,b))}var d="readyState",r={loaded:1,interactive:1,complete:1},w=[],y=h&&"string"!=typeof h[d],n=A,b=10,x,E,k=[],z,C,D;x="addEventListener"in j?function(b,d){b.addEventListener(d,
-o,A);return function(){b.removeEventListener(d,o,A)}}:function(b,d){b.attachEvent("on"+d,o);return function(){b.detachEvent(d,o)}};h&&!o()&&(k=[x(j,"load"),x(h,"readystatechange"),x(j,"DOMContentLoaded")],z=setTimeout(e,b));define("curl/domReady",function(){function b(d){n?d():w.push(d)}b.then=b;b.amd=v;return b})})(this,this.document);var L;
-define("curl/shim/dojo16",["curl/_privileged","curl/domReady"],function(j,h){function l(d){d.ready||(d.ready=function(d){h(d)});d.nameToUrl||(d.nameToUrl=function(e,h){return d.toUrl(e+(h||""))});d.cache||(d.cache={})}var o=j._curl,e=j.core.d;l(o);"undefined"==typeof L&&(L=o);j.core.d=function(){var d=e.apply(this,arguments);l(d.m);return d};return v});
-(function(j,h,l){define("js",["curl/_privileged"],function(j){function e(b,d,e){function k(){r||(h<new Date?e():setTimeout(k,10))}var h,r;h=(new Date).valueOf()+(b.da||3E5);e&&b.a&&setTimeout(k,10);j.core.r(b,function(){r=v;b.a&&(b.v=l(b.a));!b.a||b.v?d():e()},function(b){r=v;e(b)})}function d(b,h){e(b,function(){var e=w.shift();n=0<w.length;e&&d.apply(null,e);h.resolve(b.v||v)},function(b){h.reject(b)})}var r={},w=[],y=h&&h.createElement("script").async==v,n;return{dynamic:v,load:function(b,h,j,
-k){var l,o,D,u;l=0<b.indexOf("!order");o=b.indexOf("!exports=");D=0<o&&b.substr(o+9);u="prefetch"in k?k.prefetch:v;b=l||0<o?b.substr(0,b.indexOf("!")):b;b in r?j(r[b]):(r[b]=void 0,h={name:b,url:h.toUrl(b.lastIndexOf(".")<=b.lastIndexOf("/")?b+".js":b),ba:l,a:D,da:k.timeout},k={resolve:function(d){r[b]=d;(j.resolve||j)(d)},reject:j.reject||function(b){throw b;}},l&&!y&&n?(w.push([h,k]),u&&(h.M="text/cache",e(h,function(b){b.parentNode.removeChild(b)},function(){}),h.M="")):(n=n||l,d(h,k)))}}})})(this,
-this.document,function(j){try{return eval(j)}catch(h){}});
-define("text",function(){function j(){if("undefined"!==typeof XMLHttpRequest)j=function(){return new XMLHttpRequest};else for(var e=j=function(){throw Error("getXhr(): XMLHttpRequest not available");};0<o.length&&j===e;)(function(d){try{new ActiveXObject(d),j=function(){return new ActiveXObject(d)}}catch(e){}})(o.shift());return j()}function h(e,d,h){var l=j();l.open("GET",e,v);l.onreadystatechange=function(){4===l.readyState&&(400>l.status?d(l.responseText):h(Error("fetchText() failed. status: "+
-l.statusText)))};l.send(null)}function l(e){throw e;}var o=["Msxml2.XMLHTTP","Microsoft.XMLHTTP","Msxml2.XMLHTTP.4.0"];return{load:function(e,d,j){var o=j.c||j,j=j.b||l;h(d.toUrl(e),o,j)},"plugin-builder":"./builder/text"}});define("async",function(){return{load:function(j,h,l){function o(d){"function"==typeof l.c?l.c(d):l(d)}function e(d){"function"==typeof l.b&&l.b(d)}h([j],function(d){"function"==typeof d.w?d.w(function(e){0==arguments.length&&(e=d);o(e)},e):o(d)})},analyze:function(j,h,l){l(j)}}});
-(function(j){function h(g,f){var b=g.link;b[x]=b[E]=function(){if(!b.readyState||"complete"==b.readyState)u["event-link-onload"]=v,w(g),f()}}function l(g){for(var g=g.split("!"),f,b=1;f=g[b++];)f=f.split("=",2),g[f[0]]=2==f.length?f[1]:v;return g}function o(g){if(document.createStyleSheet&&(s||(s=document.createStyleSheet()),30<=document.styleSheets.length)){var f,b,d,e=0;d=s;s=null;for(b=document.getElementsByTagName("link");f=b[e];)f.getAttribute("_curl_movable")?(d.addImport(f.href),f.parentNode&&
-f.parentNode.removeChild(f)):e++}g=g[k]("link");g.rel="stylesheet";g.type="text/css";g.setAttribute("_curl_movable",v);return g}function e(g){var b,d,e=A;try{if(b=g.sheet||g.styleSheet,(e=(d=b.cssRules||b.rules)?0<d.length:d!==C)&&"[object Chrome]"=={}.toString.call(window.ja))b.insertRule("#_cssx_load_test{margin-top:-5px;}",0),F||(F=B[k]("div"),F.id="_cssx_load_test",G.appendChild(F)),e="-5px"==B.defaultView.getComputedStyle(F,null).marginTop,b.deleteRule(0)}catch(h){e=1E3==h.code||h.message.match(/security|denied/i)}return e}
-function d(b,f){e(b.link)?(w(b),f()):z||setTimeout(function(){d(b,f)},b.ga)}function r(b,f){function e(){k||(k=v,f())}var k;h(b,e);u["event-link-onload"]||d(b,e)}function w(b){b=b.link;b[x]=b[E]=null}function y(b,f){return b.replace(H,function(b,g){var d=g;I.test(d)||(d=f+d);return'url("'+d+'")'})}function n(b){clearTimeout(n.S);n.i?n.i.push(b):(n.i=[b],t=B.createStyleSheet?B.createStyleSheet():G.appendChild(B.createElement("style")));n.S=setTimeout(function(){var b,g;b=t;t=C;g=n.i.join("\n");n.i=
-C;g=g.replace(/.+charset[^;]+;/g,"");"cssText"in b?b.cssText=g:b.appendChild(B.createTextNode(g))},0);return t}function b(b){return{cssRules:function(){return b.cssRules||b.rules},insertRule:b.insertRule||function(f,d){var e=f.split(/\{|\}/g);b.addRule(e[0],e[1],d);return d},deleteRule:b.deleteRule||function(f){b.removeRule(f);return f},sheet:function(){return b}}}var x="onreadystatechange",E="onload",k="createElement",z=A,C,D={},u={},I=/^\/|^[^:]*:\/\//,H=/url\s*\(['"]?([^'"\)]*)['"]?\)/g,B=j.document,
-G;B&&(G=B.head||(B.head=B.getElementsByTagName("head")[0]));var s,F,t;define("css",{normalize:function(b,f){var d,e;if(!b)return b;d=b.split(",");e=[];for(var h=0,k=d.length;h<k;h++)e.push(f(d[h]));return e.join(",")},load:function(d,f,e,h){function k(){--u==0&&setTimeout(function(){e(b(t.sheet||t.styleSheet))},0)}var j=(d||"").split(","),u=j.length;if(d)for(var w=j.length-1,m;w>=0;w--,m=v){var d=j[w],d=l(d),s=d.shift(),s=f.toUrl(s.lastIndexOf(".")<=s.lastIndexOf("/")?s+".css":s),t=o(B),x={link:t,
-url:s,ga:h.cssWatchPeriod||50};("nowait"in d?d.nowait!="false":h.cssDeferLoad)?e(b(t.sheet||t.styleSheet)):r(x,k);t.href=s;m?G.insertBefore(t,D[m].previousSibling):G.appendChild(t);D[s]=t}else e({translateUrls:function(b,a){var c;c=f.toUrl(a);c=c.substr(0,c.lastIndexOf("/")+1);return y(b,c)},injectStyle:function(b){return n(b)},proxySheet:function(d){if(d.sheet)d=d.sheet;return b(d)}})},"plugin-builder":"./builder/css"})})(this);
-(function(j){var h=j.document,l=/^\/\//,o;h&&(o=h.head||(h.head=h.getElementsByTagName("head")[0]));define("link",{load:function(e,d,j,w){e=d.toUrl(e.lastIndexOf(".")<=e.lastIndexOf("/")?e+".css":e);w=e=(w="fixSchemalessUrls"in w?w.fixSchemalessUrls:h.location.protocol)?e.replace(l,w+"//"):e;e=h.createElement("link");e.rel="stylesheet";e.type="text/css";e.href=w;o.appendChild(e);j(e.sheet||e.styleSheet)}})})(this);define("domReady",["curl/domReady"],function(j){return{load:function(h,l,o){j(o)}}});
-(function(j,h,l){define("curl/loader/cjsm11",function(){function j(d,e){j="text"in d?function(d,e){d.text=e}:function(d,e){d.appendChild(h.createTextNode(e))};j(d,e)}var e;e=h&&(h.head||h.getElementsByTagName("head")[0]);return{load:function(d,r,w,y){r(["text!"+d+".js","curl/_privileged"],function(n,b){var x;x=b.core.I(n);r(x,function(){var b=n,k=y.injectSourceUrl!==A&&r.pa(d),k=k?"////@ sourceURL="+k.replace(/\s/g,"%20")+".js":"";n="define('"+d+"',['require','exports','module'],function(require,exports,module){"+
-b+"\n});\n"+k+"\n";y.injectScript?(b=n,k=h.createElement("script"),j(k,b),k.charset="utf-8",e.insertBefore(k,e.firstChild)):l(n);w(r(d))})})}}})})(this,this.document,function(j){eval(j)});define.ha.oa=v;
-(function(j,h){define("curl/shim/ssjs",function(l){function o(b,d,e){try{h(b.url),d()}catch(j){e(j)}}function e(b,d,e){var h;try{h=b.url.replace(/\.js$/,""),j(h),d()}catch(k){e(k)}}function d(b,d,e){b=j("url").parse(b.url,A,v);d=k.get(b,d).ma("error",e);w(d)}function r(b){throw Error("ssjs: unable to load module in current environment: "+b.url);}function w(b){eval(b)}function y(b){return b&&b.replace(x,function(b,d){return d})}var n,b,x,E,k,z,C;if(!("object"==typeof window&&(window.ka||window.navigator))){l=
-l("curl/_privileged");n=l.ia;b=/^\w+:/;x=/(^\w+:)?.*$/;E=(n.j&&":"!=n.j[n.j.length-1]?n.j+":":n.j)||y(n.o)||"http:";if(h)z=C=o;else if(j){z=e;try{k=j("http"),C=d}catch(D){C=r}}else z=C=r;l.la.r=function(d,e,h){/^\/\//.test(d.url)&&(d.url=E+d.url);return b.test(d.url)?C(d,e,h):z(d,e,h)}}})})(L,load);
+/** @license MIT License (c) copyright B Cavalier & J Hann */
+
+/**
+ * curl (cujo resource loader)
+ * An AMD-compliant javascript module and resource loader
+ *
+ * curl is part of the cujo.js family of libraries (http://cujojs.com/)
+ *
+ * Licensed under the MIT License at:
+ * 		http://www.opensource.org/licenses/mit-license.php
+ *
+ * @version 0.6.4
+ */
+(function (global) {
+"use strict";
+	var
+		version = '0.6.4',
+		userCfg = global['curl'],
+		prevCurl,
+		prevDefine,
+		doc = global.document,
+		head = doc && (doc['head'] || doc.getElementsByTagName('head')[0]),
+		// constants / flags
+		msgUsingExports = {},
+		msgFactoryExecuted = {},
+		interactive = {},
+		// this is the list of scripts that IE is loading. one of these will
+		// be the "interactive" script. too bad IE doesn't send a readystatechange
+		// event to tell us exactly which one.
+		activeScripts = {},
+		// these are always handy :)
+		cleanPrototype = {},
+		toString = cleanPrototype.toString,
+		undef,
+		// script ready states that signify it's loaded
+		readyStates = { 'loaded': 1, 'interactive': interactive, 'complete': 1 },
+		// local cache of resource definitions (lightweight promises)
+		cache = {},
+		// preload are files that must be loaded before any others
+		preload = false,
+		// net to catch anonymous define calls' arguments (non-IE browsers)
+		argsNet,
+		// RegExp's used later, "cached" here
+		dontAddExtRx = /\?/,
+		absUrlRx = /^\/|^[^:]+:\/\//,
+		findLeadingDotsRx = /(\.)(\.?)(?:$|\/([^\.\/]+.*)?)/g, // /(?:^|\/)(\.)(\.?)\/?/g,
+		removeCommentsRx = /\/\*[\s\S]*?\*\/|(?:[^\\])\/\/.*?[\n\r]/g,
+		findRValueRequiresRx = /require\s*\(\s*["']([^"']+)["']\s*\)|(?:[^\\]?)(["'])/g,
+		cjsGetters,
+		core;
+
+	function noop () {}
+
+	function isType (obj, type) {
+		return toString.call(obj).indexOf('[object ' + type) == 0;
+	}
+
+	function normalizePkgDescriptor (descriptor) {
+		var main;
+
+		descriptor.path = removeEndSlash(descriptor['path'] || descriptor['location'] || '');
+		main = removeEndSlash(descriptor['main']) || 'main';
+		if (main.charAt(0) != '.') main = './' + main;
+		// trailing slashes trick reduceLeadingDots to see them as base ids
+		descriptor.main = reduceLeadingDots(main, descriptor.name + '/');
+		descriptor.mainPath = reduceLeadingDots(main, descriptor.path + '/');
+		descriptor.config = descriptor['config'];
+
+		return descriptor;
+	}
+
+	function joinPath (path, file) {
+		return removeEndSlash(path) + '/' + file;
+	}
+
+	function removeEndSlash (path) {
+		return path && path.charAt(path.length - 1) == '/' ? path.substr(0, path.length - 1) : path;
+	}
+
+	function reduceLeadingDots (childId, baseId) {
+		// this algorithm is similar to dojo's compactPath, which interprets
+		// module ids of "." and ".." as meaning "grab the module whose name is
+		// the same as my folder or parent folder".  These special module ids
+		// are not included in the AMD spec but seem to work in node.js, too.
+		var levels, removeLevels, isRelative;
+		removeLevels = 1;
+		childId = childId.replace(findLeadingDotsRx, function (m, dot, doubleDot, remainder) {
+			if (doubleDot) removeLevels++;
+			isRelative = true;
+			return remainder || '';
+		});
+		// TODO: throw if removeLevels > baseId levels in debug module
+		if (isRelative) {
+			levels = baseId.split('/');
+			levels.splice(levels.length - removeLevels, removeLevels);
+			// childId || [] is a trick to not concat if no childId
+			return levels.concat(childId || []).join('/');
+		}
+		else {
+			return childId;
+		}
+	}
+
+	function pluginParts (id) {
+		var delPos = id.indexOf('!');
+		return {
+			resourceId: id.substr(delPos + 1),
+			// resourceId can be zero length
+			pluginId: delPos >= 0 && id.substr(0, delPos)
+		};
+	}
+
+	function Begetter () {}
+
+	function beget (parent) {
+		Begetter.prototype = parent;
+		var child = new Begetter();
+		Begetter.prototype = cleanPrototype;
+		return child;
+	}
+
+	function Promise () {
+
+		var self, thens, complete;
+
+		self = this;
+		thens = [];
+
+		function then (resolved, rejected, progressed) {
+			// capture calls to callbacks
+			thens.push([resolved, rejected, progressed]);
+		}
+
+		function notify (which, arg) {
+			// complete all callbacks
+			var aThen, cb, i = 0;
+			while ((aThen = thens[i++])) {
+				cb = aThen[which];
+				if (cb) cb(arg);
+			}
+		}
+
+		complete = function promiseComplete (success, arg) {
+			// switch over to sync then()
+			then = success ?
+				function (resolved, rejected) { resolved && resolved(arg); } :
+				function (resolved, rejected) { rejected && rejected(arg); };
+			// we no longer throw during multiple calls to resolve or reject
+			// since we don't really provide useful information anyways.
+			complete = noop;
+			// complete all callbacks
+			notify(success ? 0 : 1, arg);
+			// no more notifications
+			notify = noop;
+			// release memory
+			thens = undef;
+		};
+
+		this.then = function (resolved, rejected, progressed) {
+			then(resolved, rejected, progressed);
+			return self;
+		};
+		this.resolve = function (val) {
+			self.resolved = val;
+			complete(true, val);
+		};
+		this.reject = function (ex) {
+			self.rejected = ex;
+			complete(false, ex);
+		};
+		this.progress = function (msg) {
+			notify(2, msg);
+		}
+
+	}
+
+	function isPromise (o) {
+		return o instanceof Promise;
+	}
+
+	function when (promiseOrValue, callback, errback, progback) {
+		// we can't just sniff for then(). if we do, resources that have a
+		// then() method will make dependencies wait!
+		if (isPromise(promiseOrValue)) {
+			return promiseOrValue.then(callback, errback, progback);
+		}
+		else {
+			return callback(promiseOrValue);
+		}
+	}
+
+	/**
+	 * Returns a function that when executed, executes a lambda function,
+	 * but only executes it the number of times stated by howMany.
+	 * When done executing, it executes the completed function. Each callback
+	 * function receives the same parameters that are supplied to the
+	 * returned function each time it executes.  In other words, they
+	 * are passed through.
+	 * @private
+	 * @param howMany {Number} must be greater than zero
+	 * @param lambda {Function} executed each time
+	 * @param completed {Function} only executes once when the counter
+	 *   reaches zero
+	 * @returns {Function}
+	 */
+	function countdown (howMany, lambda, completed) {
+		var result;
+		return function () {
+			if (--howMany >= 0 && lambda) result = lambda.apply(undef, arguments);
+			// we want ==, not <=, since some callers expect call-once functionality
+			if (howMany == 0 && completed) completed(result);
+			return result;
+		}
+	}
+
+	core = {
+
+		createContext: function (cfg, baseId, depNames, isPreload) {
+
+			var def;
+
+			def = new Promise();
+			def.ctxId = def.id = baseId || ''; // '' == global
+			def.isPreload = isPreload;
+			def.depNames = depNames;
+
+			// functions that dependencies will use:
+
+			function toAbsId (childId) {
+				return reduceLeadingDots(childId, def.ctxId);
+			}
+
+			function toUrl (n) {
+				// even though internally, we don't seem to need to do
+				// toAbsId, the AMD spec says we need to do this for plugins.
+				// also, the spec states that we should not append an extension
+				// in this function.
+				return core.resolvePathInfo(toAbsId(n), cfg).url;
+			}
+
+			function localRequire (ids, callback) {
+				var cb, rvid, childDef, earlyExport;
+
+				// this is public, so send pure function
+				// also fixes issue #41
+				cb = callback && function () { callback.apply(undef, arguments[0]); };
+
+				// RValue require (CommonJS)
+				if (isType(ids, 'String')) {
+					// return resource
+					rvid = toAbsId(ids);
+					childDef = cache[rvid];
+					earlyExport = isPromise(childDef) && childDef.exports;
+					if (!(rvid in cache)) {
+						// this should only happen when devs attempt their own
+						// manual wrapping of cjs modules or get confused with
+						// the callback syntax:
+						throw new Error('Module not resolved: '  + rvid);
+					}
+					if (cb) {
+						throw new Error('require(id, callback) not allowed');
+					}
+					return earlyExport || childDef;
+				}
+				else {
+					// use same id so that relative modules are normalized correctly
+					when(core.getDeps(core.createContext(cfg, def.ctxId, ids, isPreload)), cb);
+				}
+			}
+
+			def.require = localRequire;
+			localRequire['toUrl'] = toUrl;
+			def.toAbsId = toAbsId;
+
+			return def;
+		},
+
+		createResourceDef: function (cfg, id, isPreload, optCtxId) {
+			var def, origResolve, execute;
+
+			def = core.createContext(cfg, id, undef, isPreload);
+			def.ctxId = optCtxId == undef ? id : optCtxId;
+			origResolve = def.resolve;
+
+			// using countdown to only execute definition function once
+			execute = countdown(1, function (deps) {
+				def.deps = deps;
+				try {
+					return core.executeDefFunc(def);
+				}
+				catch (ex) {
+					def.reject(ex);
+				}
+			});
+
+			// intercept resolve function to execute definition function
+			// before resolving
+			def.resolve = function resolve (deps) {
+				when(isPreload || preload, function () {
+					origResolve((cache[def.id] = execute(deps)));
+				});
+			};
+
+			// track exports
+			def.exportsReady = function executeFactory (deps) {
+				when(isPreload || preload, function () {
+					// only resolve early if we also use exports (to avoid
+					// circular dependencies). def.exports will have already
+					// been set by the getDeps loop before we get here.
+					if (def.exports) {
+						execute(deps);
+						def.progress(msgFactoryExecuted);
+					}
+				});
+			};
+
+			return def;
+		},
+
+		createPluginDef: function (cfg, id, isPreload, ctxId) {
+			var def;
+
+			def = core.createContext(cfg, id, undef, isPreload);
+			def.ctxId = ctxId;
+
+			return def;
+		},
+
+		getCjsRequire: function (def) {
+			return def.require;
+		},
+
+		getCjsExports: function (def) {
+			return def.exports || (def.exports = {});
+		},
+
+		getCjsModule: function (def) {
+			var module = def.module;
+			if (!module) {
+				module = def.module = {
+					'id': def.id,
+					'uri': core.getDefUrl(def),
+					'exports': core.getCjsExports(def)
+				};
+				module.exports = module['exports']; // oh closure compiler!
+			}
+			return module;
+		},
+
+		getDefUrl: function (def) {
+			// note: don't look up an anon module's id from it's own toUrl cuz
+			// the parent's config was used to find this module
+			// the toUrl fallback is for named modules in built files
+			// which must have absolute ids.
+			return def.url || (def.url = core.checkToAddJsExt(def.require['toUrl'](def.id)));
+		},
+
+		config: function (cfg) {
+			var hasCfg,
+				apiName, apiObj, defName, defObj, define;
+
+			hasCfg = cfg;
+
+			if (!cfg) cfg = {};
+
+			// allow dev to rename/relocate curl() to another object
+			apiName = cfg['apiName'];
+			apiObj = cfg['apiContext'];
+			// if the dev is overwriting an existing curl()
+			if (apiObj || apiName ? apiObj[apiName] : prevCurl && hasCfg) {
+				throw new Error((apiName || 'curl') + ' already exists');
+			}
+			(apiObj || global)[apiName || 'curl'] = _curl;
+			// restore previous curl
+			if (prevCurl && hasCfg) global['curl'] = prevCurl;
+
+			// allow dev to rename/relocate define() to another object
+			defName = cfg['defineName'];
+			defObj = cfg['defineContext'];
+			if (defObj || defName ? defObj[defName] : prevDefine && hasCfg) {
+				throw new Error((defName|| 'define') + ' already exists');
+			}
+			(defObj || global)[defName || 'define'] = define = function () {
+				// wrap inner _define so it can be replaced without losing define.amd
+				var args = core.fixArgs(arguments);
+				_define(args);
+			};
+			// restore previous define
+			if (prevDefine && hasCfg) global['define'] = prevDefine;
+
+			// indicate our capabilities:
+			define['amd'] = { 'plugins': true, 'jQuery': true, 'curl': version };
+
+			// switch to re-runnable config
+			if (hasCfg) core.config = core.moreConfig;
+
+			return core.moreConfig(cfg);
+		},
+
+		moreConfig: function (cfg) {
+			var pluginCfgs, apiName, apiContext, defineName, defineContext;
+
+			// set defaults and convert from closure-safe names
+			cfg.baseUrl = cfg['baseUrl'] || '';
+			cfg.pluginPath = 'pluginPath' in cfg ? cfg['pluginPath'] : 'curl/plugin';
+
+			// create object to hold path map.
+			// each plugin and package will have its own pathMap, too.
+			cfg.pathMap = {};
+			pluginCfgs = cfg.plugins = cfg['plugins'] || {};
+
+			// temporary arrays of paths. this will be converted to
+			// a regexp for fast path parsing.
+			cfg.pathList = [];
+
+			// normalizes path/package info and places info on either
+			// the global cfg.pathMap or on a plugin-specific altCfg.pathMap.
+			// also populates a pathList on cfg or plugin configs.
+			function fixAndPushPaths (coll, isPkg) {
+				var id, pluginId, data, parts, currCfg, info;
+				for (var name in coll) {
+					data = coll[name];
+					// grab the package id, if specified. default to
+					// property name.
+					data.name = data['id'] || data['name'] || name;
+					currCfg = cfg;
+					// don't remove `|| name` since data may be a string, not an object
+					parts = pluginParts(removeEndSlash(data.name || name));
+					id = parts.resourceId;
+					pluginId = parts.pluginId;
+					if (pluginId) {
+						// plugin-specific path
+						currCfg = pluginCfgs[pluginId];
+						if (!currCfg) {
+							currCfg = pluginCfgs[pluginId] = beget(cfg);
+							currCfg.pathMap = beget(cfg.pathMap);
+							currCfg.pathList = [];
+						}
+						// remove plugin-specific path from coll
+						delete coll[name];
+					}
+					if (isPkg) {
+						info = normalizePkgDescriptor(data);
+					}
+					else {
+						info = { path: removeEndSlash(data) };
+					}
+					info.specificity = id.split('/').length;
+					if (id) {
+						currCfg.pathMap[id] = info;
+						currCfg.pathList.push(id);
+					}
+					else {
+						// naked plugin name signifies baseUrl for plugin
+						// resources. baseUrl could be relative to global
+						// baseUrl.
+						currCfg.baseUrl = core.resolveUrl(data, cfg);
+					}
+				}
+			}
+
+			// adds the path matching regexp onto the cfg or plugin cfgs.
+			function convertPathMatcher (cfg) {
+				var pathMap = cfg.pathMap;
+				cfg.pathRx = new RegExp('^(' +
+					cfg.pathList.sort(function (a, b) { return pathMap[a].specificity < pathMap[b].specificity; } )
+						.join('|')
+						.replace(/\/|\./g, '\\$&') +
+					')(?=\\/|$)'
+				);
+				delete cfg.pathList;
+			}
+
+			// fix all paths and packages
+			fixAndPushPaths(cfg['paths'], false);
+			fixAndPushPaths(cfg['packages'], true);
+
+			// create search regex for each path map
+			for (var p in pluginCfgs) {
+				var pathList = pluginCfgs[p].pathList;
+				if (pathList) {
+					pluginCfgs[p].pathList = pathList.concat(cfg.pathList);
+					convertPathMatcher(pluginCfgs[p]);
+				}
+			}
+			convertPathMatcher(cfg);
+			core.checkPreloads(cfg);
+
+			return cfg;
+
+		},
+
+		checkPreloads: function (cfg) {
+			var preloads;
+			preloads = cfg && cfg['preloads'];
+			if (preloads && preloads.length > 0) {
+				// chain from previous preload, if any.
+				// TODO: revisit when doing package-specific configs.
+				when(preload, function () {
+					preload = core.getDeps(core.createContext(cfg, undef, preloads, true));
+				});
+			}
+
+		},
+
+		resolvePathInfo: function (absId, cfg, forPlugin) {
+			// searches through the configured path mappings and packages
+			var pathMap, pathInfo, ctxId, path, pkgCfg, found;
+
+			pathMap = cfg.pathMap;
+
+			if (forPlugin && cfg.pluginPath && absId.indexOf('/') < 0 && !(absId in pathMap)) {
+				// prepend plugin folder path, if it's missing and path isn't in pathMap
+				// Note: this munges the concepts of ids and paths for plugins,
+				// but is generally safe since it's only for non-namespaced
+				// plugins (plugins without path or package info).
+				ctxId = absId = joinPath(cfg.pluginPath, absId);
+			}
+			if (!absUrlRx.test(absId)) {
+				path = absId.replace(cfg.pathRx, function (match) {
+
+					pathInfo = pathMap[match] || {};
+					found = true;
+					pkgCfg = pathInfo.config;
+
+					// if pathInfo.main and match == absId, this is a main module
+					if (pathInfo.main && match == absId) {
+						ctxId = pathInfo.main;
+						return pathInfo.mainPath;
+					}
+					// if pathInfo.path return pathInfo.path
+					else {
+						return pathInfo.path || '';
+					}
+
+				});
+			}
+			else {
+				path = absId;
+			}
+
+			return {
+				ctxId: ctxId || absId,
+				config: pkgCfg || userCfg,
+				url: core.resolveUrl(path, cfg)
+			};
+		},
+
+		resolveUrl: function (path, cfg) {
+			var baseUrl = cfg.baseUrl;
+			return baseUrl && !absUrlRx.test(path) ? joinPath(baseUrl, path) : path;
+		},
+
+		checkToAddJsExt: function (url) {
+			// don't add extension if a ? is found in the url (query params)
+			// i'd like to move this feature to a moduleLoader
+			return url + (dontAddExtRx.test(url) ? '' : '.js');
+		},
+
+		loadScript: function (def, success, failure) {
+			// script processing rules learned from RequireJS
+
+			// insert script
+			var el = doc.createElement('script');
+
+			// initial script processing
+			function process (ev) {
+				ev = ev || global.event;
+				// detect when it's done loading
+				if (ev.type == 'load' || readyStates[el.readyState]) {
+					delete activeScripts[def.id];
+					// release event listeners
+					el.onload = el.onreadystatechange = el.onerror = ''; // ie cries if we use undefined
+					success();
+				}
+			}
+
+			function fail (e) {
+				// some browsers send an event, others send a string,
+				// but none of them send anything useful, so just say we failed:
+				failure(new Error('Syntax or http error: ' + def.url));
+			}
+
+			// set type first since setting other properties could
+			// prevent us from setting this later
+			// actually, we don't even need to set this at all
+			//el.type = 'text/javascript';
+			// using dom0 event handlers instead of wordy w3c/ms
+			el.onload = el.onreadystatechange = process;
+			el.onerror = fail;
+			// js! plugin uses alternate mimetypes
+			el.type = def.mimetype || 'text/javascript';
+			// TODO: support other charsets?
+			el.charset = 'utf-8';
+			el.async = !def.order;
+			el.src = def.url;
+
+			// loading will start when the script is inserted into the dom.
+			// IE will load the script sync if it's in the cache, so
+			// indicate the current resource definition if this happens.
+			activeScripts[def.id] = el;
+			// use insertBefore to keep IE from throwing Operation Aborted (thx Bryan Forbes!)
+			head.insertBefore(el, head.firstChild);
+
+			// the js! plugin uses this
+			return el;
+		},
+
+		extractCjsDeps: function (defFunc) {
+			// Note: ignores require() inside strings and comments
+			var source, ids = [], currQuote;
+			// prefer toSource (FF) since it strips comments
+			source = typeof defFunc == 'string' ?
+					 defFunc :
+					 defFunc.toSource ? defFunc.toSource() : defFunc.toString();
+			// remove comments, then look for require() or quotes
+			source.replace(removeCommentsRx, '').replace(findRValueRequiresRx, function (m, id, qq) {
+				// if we encounter a quote
+				if (qq) {
+					currQuote = currQuote == qq ? undef : currQuote;
+				}
+				// if we're not inside a quoted string
+				else if (!currQuote) {
+					ids.push(id);
+				}
+				return m; // uses least RAM/CPU
+			});
+			return ids;
+		},
+
+		fixArgs: function (args) {
+			// resolve args
+			// valid combinations for define:
+			// (string, array, object|function) sax|saf
+			// (array, object|function) ax|af
+			// (string, object|function) sx|sf
+			// (object|function) x|f
+
+			var id, deps, defFunc, defFuncArity, len, cjs;
+
+			len = args.length;
+
+			defFunc = args[len - 1];
+			defFuncArity = isType(defFunc, 'Function') ? defFunc.length : -1;
+
+			if (len == 2) {
+				if (isType(args[0], 'Array')) {
+					deps = args[0];
+				}
+				else {
+					id = args[0];
+				}
+			}
+			else if (len == 3) {
+				id = args[0];
+				deps = args[1];
+			}
+
+			// Hybrid format: assume that a definition function with zero
+			// dependencies and non-zero arity is a wrapped CommonJS module
+			if (!deps && defFuncArity > 0) {
+				cjs = true;
+				deps = ['require', 'exports', 'module'].slice(0, defFuncArity).concat(core.extractCjsDeps(defFunc));
+			}
+
+			return {
+				id: id,
+				deps: deps || [],
+				res: defFuncArity >= 0 ? defFunc : function () { return defFunc; },
+				cjs: cjs
+			};
+		},
+
+		executeDefFunc: function (def) {
+			var resource, moduleThis;
+			// the force of AMD is strong so anything returned
+			// overrides exports.
+			// node.js assumes `this` === `exports` so we do that
+			// for all cjs-wrapped modules, just in case.
+			// also, use module.exports if that was set
+			// (node.js convention).
+			// note: if .module exists, .exports exists.
+			moduleThis = def.cjs ? def.exports : undef;
+			resource = def.res.apply(moduleThis, def.deps);
+			if (resource === undef && def.exports) {
+				// note: exports will equal module.exports unless
+				// module.exports was reassigned inside module.
+				resource = def.module ? (def.exports = def.module.exports) : def.exports;
+			}
+			return resource;
+		},
+
+		defineResource: function (def, args) {
+
+			def.res = args.res;
+			def.cjs = args.cjs;
+			def.depNames = args.deps;
+			core.getDeps(def);
+
+		},
+
+		getDeps: function (parentDef) {
+
+			var i, names, deps, len, dep, completed, name,
+				exportCollector, resolveCollector;
+
+			deps = [];
+			names = parentDef.depNames;
+			len = names.length;
+
+			if (names.length == 0) allResolved();
+
+			function collect (dep, index, alsoExport) {
+				deps[index] = dep;
+				if (alsoExport) exportCollector(dep, index);
+			}
+
+			// reducer-collectors
+			exportCollector = countdown(len, collect, allExportsReady);
+			resolveCollector = countdown(len, collect, allResolved);
+
+			// initiate the resolution of all dependencies
+			// Note: the correct handling of early exports relies on the
+			// fact that the exports pseudo-dependency is always listed
+			// before other module dependencies.
+			for (i = 0; i < len; i++) {
+				name = names[i];
+				// is this "require", "exports", or "module"?
+				if (name in cjsGetters) {
+					// a side-effect of cjsGetters is that the cjs
+					// property is also set on the def.
+					resolveCollector(cjsGetters[name](parentDef), i, true);
+					// if we are using the `module` or `exports` cjs variables,
+					// signal any waiters/parents that we can export
+					// early (see progress callback in getDep below).
+					// note: this may fire for `require` as well, if it
+					// is listed after `module` or `exports` in teh deps list,
+					// but that is okay since all waiters will only record
+					// it once.
+					if (parentDef.exports) {
+						parentDef.progress(msgUsingExports);
+					}
+				}
+				// check for blanks. fixes #32.
+				// this helps support yepnope.js, has.js, and the has! plugin
+				else if (!name) {
+					resolveCollector(undef, i, true);
+				}
+				// normal module or plugin resource
+				else {
+					getDep(name, i);
+				}
+			}
+
+			return parentDef;
+
+			function getDep (name, index) {
+				var resolveOnce, exportOnce, childDef, earlyExport;
+
+				resolveOnce = countdown(1, function (dep) {
+					exportOnce(dep);
+					resolveCollector(dep, index);
+				});
+				exportOnce = countdown(1, function (dep) {
+					exportCollector(dep, index);
+				});
+
+				// get child def / dep
+				childDef = core.fetchDep(name, parentDef);
+
+				// check if childDef can export. if it can, then
+				// we missed the notification and it will never fire in the
+				// when() below.
+				earlyExport = isPromise(childDef) && childDef.exports;
+				if (earlyExport) {
+					exportOnce(earlyExport);
+				}
+
+				when(childDef,
+					resolveOnce,
+					parentDef.reject,
+					parentDef.exports && function (msg) {
+						// messages are only sent from childDefs that support
+						// exports, and we only notify parents that understand
+						// exports too.
+						if (childDef.exports) {
+							if (msg == msgUsingExports) {
+								// if we're using exports cjs variable on both sides
+								exportOnce(childDef.exports);
+							}
+							else if (msg == msgFactoryExecuted) {
+								resolveOnce(childDef.exports);
+							}
+						}
+					}
+				);
+			}
+
+			function allResolved () {
+				parentDef.resolve(deps);
+			}
+
+			function allExportsReady () {
+				parentDef.exportsReady && parentDef.exportsReady(deps);
+			}
+
+		},
+
+		fetchResDef: function (def) {
+
+			// ensure url is computed
+			core.getDefUrl(def);
+
+			core.loadScript(def,
+
+				function () {
+					var args = argsNet;
+					argsNet = undef; // reset it before we get deps
+
+					// if our resource was not explicitly defined with an id (anonymous)
+					// Note: if it did have an id, it will be resolved in the define()
+					if (def.useNet !== false) {
+
+						// if !args, nothing was added to the argsNet
+						if (!args || args.ex) {
+							def.reject(new Error(((args && args.ex) || 'define() missing or duplicated: ' + def.url)));
+						}
+						else {
+							core.defineResource(def, args);
+						}
+					}
+
+				},
+
+				def.reject
+
+			);
+
+			return def;
+
+		},
+
+		fetchDep: function (depName, parentDef) {
+			var toAbsId, isPreload, parts, mainId, loaderId, pluginId,
+				resId, pathInfo, def, tempDef, resCfg;
+
+			toAbsId = parentDef.toAbsId;
+			isPreload = parentDef.isPreload;
+
+			// check for plugin loaderId
+			parts = pluginParts(depName);
+			// resId is not normalized since the plugin may need to do it
+			resId = parts.resourceId;
+
+			// get id of first resource to load (which could be a plugin)
+			mainId = toAbsId(parts.pluginId || resId);
+			pathInfo = core.resolvePathInfo(mainId, userCfg, !!parts.pluginId);
+
+			// get custom module loader from package config if not a plugin
+			// TODO: figure out how to make module loaders work with plugins
+			if (parts.pluginId) {
+				loaderId = mainId;
+			}
+			else {
+				loaderId = pathInfo.config['moduleLoader'];
+				if (loaderId) {
+					// since we're not using toAbsId, transformers must be absolute
+					resId = mainId;
+					mainId = loaderId;
+					pathInfo = core.resolvePathInfo(loaderId, userCfg);
+				}
+			}
+
+			// find resource definition. ALWAYS check via (id in cache) b/c
+			// falsey values could be in there.
+			def = cache[mainId];
+			if (!(mainId in cache)) {
+				def = cache[mainId] = core.createResourceDef(pathInfo.config, mainId, isPreload, pathInfo.ctxId);
+				def.url = core.checkToAddJsExt(pathInfo.url);
+				core.fetchResDef(def);
+			}
+
+			// plugin or transformer
+			if (mainId == loaderId) {
+
+				// we need to use depName until plugin tells us normalized id.
+				// if the plugin changes the id, we need to consolidate
+				// def promises below.  Note: exports objects will be different
+				// between pre-normalized and post-normalized defs! does this matter?
+				// don't put this resource def in the cache because if the
+				// resId doesn't change, the check if this is a new
+				// normalizedDef (below) will think it's already being loaded.
+				tempDef = /*cache[depName] =*/ new Promise();
+
+				// note: this means moduleLoaders can store config info in the
+				// plugins config, too.
+				resCfg = userCfg.plugins[loaderId] || userCfg;
+
+				// wait for plugin resource def
+				when(def, function(plugin) {
+					var normalizedDef, fullId, dynamic;
+
+					dynamic = plugin['dynamic'];
+					// check if plugin supports the normalize method
+					if ('normalize' in plugin) {
+						// dojo/has may return falsey values (0, actually)
+						resId = plugin['normalize'](resId, toAbsId, resCfg) || '';
+					}
+					else {
+						resId = toAbsId(resId);
+					}
+
+					// use the full id (loaderId + id) to id plugin resources
+					// so multiple plugins may each process the same resource
+					// resId could be blank if the plugin doesn't require any (e.g. "domReady!")
+					fullId = loaderId + '!' + resId;
+					normalizedDef = cache[fullId];
+
+					// if this is our first time fetching this (normalized) def
+					if (!(fullId in cache)) {
+
+						// because we're using resId, plugins, such as wire!,
+						// can use paths relative to the resource
+						normalizedDef = core.createPluginDef(resCfg, fullId, isPreload, resId);
+
+						// don't cache non-determinate "dynamic" resources (or non-existent resources)
+						if (!dynamic) {
+							cache[fullId] = normalizedDef;
+						}
+
+						// curl's plugins prefer to receive a deferred,
+						// but to be compatible with AMD spec, we have to
+						// piggy-back on the callback function parameter:
+						var loaded = function (res) {
+							normalizedDef.resolve(res);
+							if (!dynamic) cache[fullId] = res;
+						};
+						loaded['resolve'] = loaded;
+						loaded['reject'] = normalizedDef.reject;
+
+						// load the resource!
+						plugin.load(resId, normalizedDef.require, loaded, resCfg);
+
+					}
+
+					// chain defs (resolve when plugin.load executes)
+					if (tempDef != normalizedDef) {
+						when(normalizedDef, tempDef.resolve, tempDef.reject, tempDef.progress);
+					}
+
+				}, tempDef.reject);
+
+			}
+
+			// return tempDef if this is a plugin-based resource
+			return tempDef || def;
+		},
+
+		getCurrentDefName: function () {
+			// IE marks the currently executing thread as "interactive"
+			// Note: Opera lies about which scripts are "interactive", so we
+			// just have to test for it. Opera provides a true browser test, not
+			// a UA sniff, thankfully.
+			// learned this trick from James Burke's RequireJS
+			var def;
+			if (!isType(global.opera, 'Opera')) {
+				for (var d in activeScripts) {
+					if (readyStates[activeScripts[d].readyState] == interactive) {
+						def = d;
+						break;
+					}
+				}
+			}
+			return def;
+		}
+
+	};
+
+	// hook-up cjs free variable getters
+	cjsGetters = {'require': core.getCjsRequire, 'exports': core.getCjsExports, 'module': core.getCjsModule};
+
+	function _curl (/* various */) {
+
+		var args = [].slice.call(arguments);
+
+		// extract config, if it's specified
+		if (isType(args[0], 'Object')) {
+			userCfg = core.config(args.shift());
+		}
+
+		// thanks to Joop Ringelberg for helping troubleshoot the API
+		function CurlApi (ids, callback, waitFor) {
+			var then, ctx;
+			ctx = core.createContext(userCfg, undef, [].concat(ids));
+			this['then'] = then = function (resolved, rejected) {
+				when(ctx,
+					// return the dependencies as arguments, not an array
+					function (deps) {
+						if (resolved) resolved.apply(undef, deps);
+					},
+					// just throw if the dev didn't specify an error handler
+					function (ex) {
+						if (rejected) rejected(ex); else throw ex;
+					}
+				);
+				return this;
+			};
+			this['next'] = function (ids, cb) {
+				// chain api
+				return new CurlApi(ids, cb, ctx);
+			};
+			if (callback) then(callback);
+			when(waitFor, function () { core.getDeps(ctx); });
+		}
+
+		return new CurlApi(args[0], args[1]);
+
+	}
+
+	_curl['version'] = version;
+
+	function _define (args) {
+
+		var id = args.id;
+
+		if (id == undef) {
+			if (argsNet !== undef) {
+				argsNet = {ex: 'Multiple anonymous defines in url'};
+			}
+			else if (!(id = core.getCurrentDefName())/* intentional assignment */) {
+				// anonymous define(), defer processing until after script loads
+				argsNet = args;
+			}
+		}
+		if (id != undef) {
+			// named define(), it is in the cache if we are loading a dependency
+			// (could also be a secondary define() appearing in a built file, etc.)
+			var def = cache[id];
+			if (!(id in cache)) {
+				// id is an absolute id in this case, so we can get the config.
+				// there's no way to allow a named define to fetch dependencies
+				// in the preload phase since we can't cascade the parent def.
+				var cfg = core.resolvePathInfo(id, userCfg).config;
+				def = cache[id] = core.createResourceDef(cfg, id);
+			}
+			if (!isPromise(def)) throw new Error('duplicate define: ' + id);
+			// check if this resource has already been resolved
+			def.useNet = false;
+			core.defineResource(def, args);
+		}
+
+	}
+
+	// look for pre-existing globals
+	if (typeof define == 'function') prevDefine = define;
+	if (typeof userCfg == 'function') {
+		prevCurl = userCfg;
+		userCfg = false;
+	}
+
+	// configure first time
+	userCfg = core.config(userCfg);
+
+	// allow curl to be a dependency
+	cache['curl'] = _curl;
+
+	// expose curl core for special plugins and modules
+	// Note: core overrides will only work in either of two scenarios:
+	// 1. the files are running un-compressed (Google Closure or Uglify)
+	// 2. the overriding module was compressed with curl.js
+	// Compiling curl and the overriding module separately won't work.
+	cache['curl/_privileged'] = {
+		'core': core,
+		'cache': cache,
+		'cfg': userCfg,
+		'_define': _define,
+		'_curl': _curl,
+		'Promise': Promise
+	};
+
+}(this));
+/** MIT License (c) copyright B Cavalier & J Hann */
+
+/**
+ * curl CommonJS Modules/1.1 loader
+ *
+ * Licensed under the MIT License at:
+ * 		http://www.opensource.org/licenses/mit-license.php
+ */
+
+/**
+ * @experimental
+ */
+(function (global, document, globalEval) {
+
+define('curl/loader/cjsm11', function () {
+
+	var head /*, findRequiresRx, myId*/;
+
+//	findRequiresRx = /require\s*\(\s*['"](\w+)['"]\s*\)/,
+
+//	function nextId (index) {
+//		var varname = '', part;
+//		do {
+//			part = index % 26;
+//			varname += String.fromCharCode(part + 65);
+//			index -= part;
+//		}
+//		while (index > 0);
+//		return 'curl$' + varname;
+//	}
+
+//	/**
+//	 * @description Finds the require() instances in the source text of a cjs
+//	 * 	 module and collects them. If removeRequires is true, it also replaces
+//	 * 	 them with a unique variable name. All unique require()'d module ids
+//	 * 	 are assigned a unique variable name to be used in the define(deps)
+//	 * 	 that will be constructed to wrap the cjs module.
+//	 * @param source - source code of cjs module
+//	 * @param moduleIds - hashMap (object) to receive pairs of moduleId /
+//	 *   unique variable name
+//	 * @param removeRequires - if truthy, replaces all require() instances with
+//	 *   a unique variable
+//	 * @return - source code of cjs module, possibly with require()s replaced
+//	 */
+//	function parseDepModuleIds (source, moduleIds, removeRequires) {
+//		var index = 0;
+//		// fast parse
+//		source = source.replace(findRequiresRx, function (match, id) {
+//			if (!moduleIds[id]) {
+//				moduleIds[id] = nextId(index++);
+//				moduleIds.push(id);
+//			}
+//			return removeRequires ? moduleIds[id] : match;
+//		});
+//		return source;
+//	}
+
+	head = document && (document['head'] || document.getElementsByTagName('head')[0]);
+
+	function wrapSource (source, resourceId, fullUrl) {
+		var sourceUrl = fullUrl ? '////@ sourceURL=' + fullUrl.replace(/\s/g, '%20') + '.js' : '';
+		return "define('" + resourceId + "'," +
+			"['require','exports','module'],function(require,exports,module){" +
+			source + "\n});\n" + sourceUrl + "\n";
+	}
+
+	var injectSource = function (el, source) {
+		// got this from Stoyan Stefanov (http://www.phpied.com/dynamic-script-and-style-elements-in-ie/)
+		injectSource = ('text' in el) ?
+			function (el, source) { el.text = source; } :
+			function (el, source) { el.appendChild(document.createTextNode(source)); };
+		injectSource(el, source);
+	};
+
+	function injectScript (source) {
+		var el = document.createElement('script');
+		injectSource(el, source);
+		el.charset = 'utf-8';
+		// use insertBefore to keep IE from throwing Operation Aborted (thx Bryan Forbes!)
+		head.insertBefore(el, head.firstChild);
+	}
+
+	return {
+		'load': function (resourceId, require, loaded, config) {
+			// TODO: extract xhr from text! plugin and use that instead?
+			require(['text!' + resourceId + '.js', 'curl/_privileged'], function (source, priv) {
+				var moduleMap;
+
+				// find (and replace?) dependencies
+				moduleMap = priv['core'].extractCjsDeps(source);
+				//source = parseDepModuleIds(source, moduleMap, config.replaceRequires);
+
+				// get deps
+				require(moduleMap, function () {
+
+					// wrap source in a define
+					source = wrapSource(source, resourceId, config['injectSourceUrl'] !== false && require.toUrl(resourceId));
+
+					if (config['injectScript']) {
+						injectScript(source);
+					}
+					else {
+						//eval(source);
+						globalEval(source);
+					}
+
+					// call loaded now that the module is defined
+					loaded(require(resourceId));
+
+				});
+
+			});
+		}
+	};
+
+});
+
+}(this, this.document, function () { /* FB needs direct eval here */ eval(arguments[0]); }));
+/** MIT License (c) copyright B Cavalier & J Hann */
+
+/**
+ * curl ssjs shim
+ * Modifies curl to work as an AMD loader function in server-side
+ * environments such as RingoJS, Rhino, and NodeJS.
+ *
+ * Licensed under the MIT License at:
+ * 		http://www.opensource.org/licenses/mit-license.php
+ *
+ * TODO: support environments that implement XMLHttpRequest such as Wakanda
+ *
+ * @experimental
+ */
+define.amd.ssjs = true;
+(function (freeRequire, globalLoad) {
+define('curl/shim/ssjs', function (require, exports) {
+"use strict";
+
+	var priv, config, hasProtocolRx, extractProtocolRx, protocol,
+		http, localLoadFunc, remoteLoadFunc,
+		undef;
+
+	// first, bail if we're in a browser!
+	if (typeof window == 'object' && (window.clientInformation || window.navigator)) {
+		return;
+	}
+
+	priv = require('curl/_privileged');
+	config = priv.cfg;
+    hasProtocolRx = /^\w+:/;
+	extractProtocolRx = /(^\w+:)?.*$/;
+
+    protocol = fixProtocol(config.defaultProtocol)
+		|| extractProtocol(config.baseUrl)
+		|| 'http:';
+
+	// sniff for capabilities
+
+	if (globalLoad) {
+		// rhino & ringo make this so easy
+		localLoadFunc = remoteLoadFunc = loadScriptViaLoad;
+	}
+	else if (freeRequire) {
+		localLoadFunc = loadScriptViaRequire;
+		// try to find an http client
+		try {
+			// node
+			http = freeRequire('http');
+			remoteLoadFunc = loadScriptViaNodeHttp;
+		}
+		catch (ex) {
+			remoteLoadFunc = failIfInvoked;
+		}
+
+	}
+	else {
+		localLoadFunc = remoteLoadFunc = failIfInvoked;
+	}
+
+	function stripExtension (url) {
+		return url.replace(/\.js$/, '');
+	}
+
+	priv.core.loadScript = function (def, success, fail) {
+		var urlOrPath;
+		// figure out if this is local or remote and call appropriate function
+		// remote urls always have a protocol or a // at the beginning
+		urlOrPath = def.url;
+		if (/^\/\//.test(urlOrPath)) {
+			// if there's no protocol, use configured protocol
+			def.url = protocol + def.url;
+		}
+		if (hasProtocolRx.test(def.url)) {
+			return remoteLoadFunc(def, success, fail);
+		}
+		else {
+			return localLoadFunc(def, success, fail);
+		}
+	};
+
+	function loadScriptViaLoad (def, success, fail) {
+		try {
+			globalLoad(def.url);
+			success();
+		}
+		catch (ex) {
+			fail(ex);
+		}
+	}
+
+	function loadScriptViaRequire (def, success, fail) {
+		var modulePath;
+		try {
+			modulePath = stripExtension(def.url);
+			freeRequire(modulePath);
+			success();
+		}
+		catch (ex) {
+			fail(ex);
+		}
+	}
+
+	function loadScriptViaNodeHttp (def, success, fail) {
+		var options, source;
+		options = freeRequire('url').parse(def.url, false, true);
+		source = http.get(options, success).on('error', fail);
+		executeScript(source);
+	}
+
+	function failIfInvoked (def) {
+		throw new Error('ssjs: unable to load module in current environment: ' + def.url);
+	}
+
+	function executeScript (source) {
+		eval(source);
+	}
+
+    function extractProtocol (url) {
+        var protocol;
+        protocol = url && url.replace(extractProtocolRx,
+			function (m, p) { return p; }
+		);
+        return protocol;
+    }
+
+	function fixProtocol (protocol) {
+		return protocol && protocol[protocol.length - 1] != ':'
+			? protocol += ':'
+			: protocol;
+	}
+
+});
+}(require, load));

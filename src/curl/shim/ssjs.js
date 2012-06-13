@@ -9,6 +9,8 @@
  * 		http://www.opensource.org/licenses/mit-license.php
  *
  * TODO: support environments that implement XMLHttpRequest such as Wakanda
+ *
+ * @experimental
  */
 define.amd.ssjs = true;
 (function (freeRequire, globalLoad) {

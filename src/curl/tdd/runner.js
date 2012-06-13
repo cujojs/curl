@@ -297,7 +297,7 @@ define(['curl', 'curl/_privileged', './undefine'], function (curl, priv, undefin
 	function restoreCache (cache, copy) {
 		for (var p in cache) {
 			if (!(p in copy)) {
-				delete cache[p];
+				undefine(p);
 			}
 		}
 	}
