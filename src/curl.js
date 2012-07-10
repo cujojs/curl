@@ -395,16 +395,17 @@
 			// switch to re-runnable config
 			if (hasCfg) core.config = core.moreConfig;
 
-			return core.moreConfig(cfg, {});
+			return core.moreConfig(cfg);
 		},
 
-		moreConfig: function (cfg, currCfg) {
+		moreConfig: function (cfg, prevCfg) {
 			var newCfg, pluginCfgs;
 
-			newCfg = beget(currCfg, cfg);
+			if (!prevCfg) prevCfg = {};
+			newCfg = beget(prevCfg, cfg);
 
 			function getOrFailIfClobbered (prop, fallback) {
-				if (prop in cfg && prop in currCfg) throw new Error('can\'t override ' + prop);
+				if (prop in cfg && prop in prevCfg) throw new Error('can\'t override ' + prop);
 				return newCfg[prop] || fallback;
 			}
 
@@ -414,8 +415,8 @@
 
 			// create object to hold path map.
 			// each plugin and package will have its own pathMap, too.
-			newCfg.pathMap = beget(currCfg.pathMap);
-			pluginCfgs = newCfg.plugins = beget(currCfg.plugins, cfg['plugins']);
+			newCfg.pathMap = beget(prevCfg.pathMap);
+			pluginCfgs = newCfg.plugins = beget(prevCfg.plugins, cfg['plugins']);
 
 			// temporary arrays of paths. this will be converted to
 			// a regexp for fast path parsing.
@@ -492,7 +493,6 @@
 				}
 			}
 			convertPathMatcher(newCfg);
-			core.checkPreloads(cfg);
 
 			return newCfg;
 
@@ -503,9 +503,8 @@
 			preloads = cfg && cfg['preloads'];
 			if (preloads && preloads.length > 0) {
 				// chain from previous preload, if any.
-				// TODO: revisit when doing package-specific configs.
 				when(preload, function () {
-					preload = core.getDeps(core.createContext(cfg, undef, preloads, true));
+					preload = core.getDeps(core.createContext(userCfg, undef, preloads, true));
 				});
 			}
 
@@ -989,11 +988,13 @@
 
 	function _curl (/* various */) {
 
-		var args = [].slice.call(arguments);
+		var args = [].slice.call(arguments), cfg;
 
 		// extract config, if it's specified
 		if (isType(args[0], 'Object')) {
-			userCfg = core.config(args.shift(), {});
+			cfg = args.shift();
+			userCfg = core.config(cfg, userCfg);
+			core.checkPreloads(cfg);
 		}
 
 		// thanks to Joop Ringelberg for helping troubleshoot the API
@@ -1068,6 +1069,7 @@
 
 	// configure first time
 	userCfg = core.config(userCfg);
+	core.checkPreloads(userCfg);
 
 	// allow curl to be a dependency
 	cache['curl'] = _curl;
