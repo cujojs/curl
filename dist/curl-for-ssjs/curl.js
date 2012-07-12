@@ -11,6 +11,7 @@
  *
  * @version 0.6.4
  */
+var window;
 (function (global) {
 "use strict";
 	var
@@ -1078,7 +1079,7 @@
 		'Promise': Promise
 	};
 
-}(this));
+}(window || global));
 /** MIT License (c) copyright B Cavalier & J Hann */
 
 /**
@@ -1212,6 +1213,7 @@ define('curl/loader/cjsm11', function () {
  * @experimental
  */
 define.amd.ssjs = true;
+var require, load;
 (function (freeRequire, globalLoad) {
 define('curl/shim/ssjs', function (require, exports) {
 "use strict";
@@ -1303,8 +1305,13 @@ define('curl/shim/ssjs', function (require, exports) {
 	function loadScriptViaNodeHttp (def, success, fail) {
 		var options, source;
 		options = freeRequire('url').parse(def.url, false, true);
-		source = http.get(options, success).on('error', fail);
-		executeScript(source);
+		source = '';
+		http.get(options, function (response) {
+			response
+				.on('data', function (chunk) { source += chunk; })
+				.on('end', function () { executeScript(source); success(); })
+				.on('error', fail);
+		}).on('error', fail);
 	}
 
 	function failIfInvoked (def) {

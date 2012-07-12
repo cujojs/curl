@@ -11,6 +11,7 @@
  *
  * @version 0.6.4
  */
+var window;
 (function (global) {
 "use strict";
 	var
@@ -1088,4 +1089,4 @@
 		'Promise': Promise
 	};
 
-}(this));
+}(window || global));
