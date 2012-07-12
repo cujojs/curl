@@ -405,14 +405,9 @@ var window;
 			if (!prevCfg) prevCfg = {};
 			newCfg = beget(prevCfg, cfg);
 
-			function getOrFailIfClobbered (prop, fallback) {
-				if (prop in cfg && prop in prevCfg) throw new Error('can\'t override ' + prop);
-				return newCfg[prop] || fallback;
-			}
-
 			// set defaults and convert from closure-safe names
-			newCfg.baseUrl = getOrFailIfClobbered('baseUrl', '');
-			newCfg.pluginPath = getOrFailIfClobbered('pluginPath', 'curl/plugin');
+			newCfg.baseUrl = newCfg['baseUrl'] || '';
+			newCfg.pluginPath = newCfg['pluginPath'] || 'curl/plugin';
 
 			// create object to hold path map.
 			// each plugin and package will have its own pathMap, too.
