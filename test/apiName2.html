@@ -4,10 +4,10 @@
 <title>apiName/apiContext curl test file</title>
 
 <script>
-    foo = {};
+	foo = {};
 
 	curl = {
-        apiName: 'bar',
+		apiName: 'require',
 		paths: {
 			curl: '../src/curl/'
 		}
@@ -16,29 +16,30 @@
 </script>
 <script src="../src/curl.js" type="text/javascript"></script>
 
+</head>
+<body>
+
 <script type="text/javascript">
 
-    var contextifiedCurl = window.bar;
+	//var contextifiedCurl = require;
 
-    if(typeof contextifiedCurl !== 'function') {
-        alert('api context foo.bar failed');
-    }
-    else {
-        contextifiedCurl(
-                [
-                    'stuff/three',
-					'domReady!'
-                ]
-        ).then(
-                function (three) {
-					document.body.appendChild(document.createTextNode('api context foo.bar SUCCESS'));
-                }
-        );
-    }
+	if(typeof require !== 'function') {
+		alert('api context foo.bar failed');
+	}
+	else {
+		require(
+			[
+				'stuff/three',
+				'domReady!'
+			]
+		).then(
+			function (three) {
+				document.body.appendChild(document.createTextNode('api context is foo.bar SUCCESS'));
+			}
+		);
+	}
 
 </script>
 
-</head>
-<body>
 </body>
 </html>

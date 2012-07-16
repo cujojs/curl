@@ -16,7 +16,8 @@ var window;
 "use strict";
 	var
 		version = '0.6.4',
-		userCfg = global['curl'],
+		curlName = 'curl',
+		userCfg = global[curlName],
 		prevCurl,
 		prevDefine,
 		doc = global.document,
@@ -358,40 +359,42 @@ var window;
 		},
 
 		config: function (cfg) {
-			var hasCfg,
+			var hasCfg, defineName,
 				apiName, apiObj, defName, defObj, define;
 
 			hasCfg = cfg;
 
+			defineName = 'define';
+
 			if (!cfg) cfg = {};
 
 			// allow dev to rename/relocate curl() to another object
-			apiName = cfg['apiName'];
-			apiObj = cfg['apiContext'];
+			apiName = cfg['apiName'] || curlName;
+			apiObj = cfg['apiContext'] || global;
 			// if the dev is overwriting an existing curl()
-			if (apiObj || apiName ? (apiObj || global)[apiName] : prevCurl && hasCfg) {
-				throw new Error((apiName || 'curl') + ' already exists');
+			if (apiObj != global || apiName != curlName ? apiObj[apiName] : prevCurl && hasCfg) {
+				throw new Error(apiName + ' already exists');
 			}
-			(apiObj || global)[apiName || 'curl'] = _curl;
+			apiObj[apiName] = _curl;
 			// restore previous curl
-			if (prevCurl && hasCfg) global['curl'] = prevCurl;
+			if (prevCurl && hasCfg) global[curlName] = prevCurl;
 
 			// allow dev to rename/relocate define() to another object
-			defName = cfg['defineName'];
-			defObj = cfg['defineContext'];
-			if (defObj || defName ? (defObj || global)[defName] : prevDefine && hasCfg) {
-				throw new Error((defName|| 'define') + ' already exists');
+			defName = cfg['defineName'] || defineName;
+			defObj = cfg['defineContext'] || global;
+			if (defObj != global || defName != defineName ? defObj[defName] : prevDefine && hasCfg) {
+				throw new Error(defName + ' already exists');
 			}
-			(defObj || global)[defName || 'define'] = define = function () {
+			defObj[defName] = define = function () {
 				// wrap inner _define so it can be replaced without losing define.amd
 				var args = core.fixArgs(arguments);
 				_define(args);
 			};
 			// restore previous define
-			if (prevDefine && hasCfg) global['define'] = prevDefine;
+			if (prevDefine && hasCfg) global[defineName] = prevDefine;
 
 			// indicate our capabilities:
-			define['amd'] = { 'plugins': true, 'jQuery': true, 'curl': version };
+			define['amd'] = { 'plugins': true, 'jQuery': true, curlName: version };
 
 			// switch to re-runnable config
 			if (hasCfg) core.config = core.moreConfig;
@@ -1068,7 +1071,7 @@ var window;
 	core.checkPreloads(userCfg);
 
 	// allow curl to be a dependency
-	cache['curl'] = _curl;
+	cache[curlName] = _curl;
 
 	// expose curl core for special plugins and modules
 	// Note: core overrides will only work in either of two scenarios:

@@ -4,11 +4,11 @@
 <title>apiName/apiContext curl test file</title>
 
 <script>
-    foo = {};
+	foo = {};
 
 	curl = {
-        apiName: 'bar',
-        apiContext: foo,
+		apiName: 'bar',
+		apiContext: foo,
 		paths: {
 			curl: '../src/curl/'
 		}
@@ -19,23 +19,23 @@
 
 <script type="text/javascript">
 
-    var contextifiedCurl = foo.bar;
+	var contextifiedCurl = foo.bar;
 
-    if(typeof contextifiedCurl !== 'function') {
-        alert('api context foo.bar failed');
-    }
-    else {
-        contextifiedCurl(
-                [
-                    'stuff/three',
-					'domReady!'
-                ]
-        ).then(
-                function (three) {
-					document.body.appendChild(document.createTextNode('api context foo.bar SUCCESS'));
-                }
-        );
-    }
+	if(typeof contextifiedCurl !== 'function') {
+		alert('api context foo.bar failed');
+	}
+	else {
+		contextifiedCurl(
+			[
+				'stuff/three',
+				'domReady!'
+			]
+		).then(
+			function (three) {
+				document.body.appendChild(document.createTextNode('api context foo.bar SUCCESS'));
+			}
+		);
+	}
 
 </script>
 
