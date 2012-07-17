@@ -43,7 +43,7 @@
 						function checkExports (exports) {
 							assert.equal('ketchup', exports);
 						}
-						curl(['js!jane2.js'])
+						curl(['js!plainJane.js!order', 'js!jane2.js!order'])
 							.then(cb.success, cb.failure)
 							//.then(checkExports)
 							.then(done, done);
