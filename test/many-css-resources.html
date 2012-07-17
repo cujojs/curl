@@ -56,8 +56,8 @@
 		}
 	);
 
-	// 70 should be enough to cause IE to reshuffle sheets twice
-	var howMany = 70, total = 0;
+	// 31 should be enough to cause IE to fail. see if we can load more than that
+	var howMany = 32, total = 0;
 
 	for (var i = 0; i < howMany; i++) {
 		curl(['css!stuff/base.css?which=' + i + '&bust=' + Math.random() + new Date().valueOf()]).then(
