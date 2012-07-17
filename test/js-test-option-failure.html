@@ -5,20 +5,6 @@
 
 <script>
 
-	// mock console for IE
-	if (!window.console) console = {};
-	if (!('log' in console)) {
-		console._msg = [];
-		console.log = function (msg) {
-			var _msg = this._msg;
-			_msg.push(msg && msg.join ? msg.join(' ') : msg);
-			clearTimeout(this._timeout);
-			this._timeout = setTimeout(function () {
-				alert(_msg.join('\n'));
-			}, 100);
-		};
-	}
-
 	curl = {
 		paths: {
 			curl: '../src/curl'
@@ -40,12 +26,18 @@
 		]
 	).then(
 		function () {
-			document.body.appendChild(document.createTextNode('FAILED: test for global variable succeeded when it shouldn\'t have'));
+			write('FAILED: test for global variable succeeded when it shouldn\'t have');
 		},
 		function () {
-			document.body.appendChild(document.createTextNode('SUCCESS: test for global variable failed as it should have'));
+			write('SUCCESS: test for global variable failed as it should have');
 		}
 	);
+
+	function write (msg) {
+		curl(['domReady!'], function () {
+			document.body.appendChild(document.createElement('div')).innerHTML = msg;
+		})
+	}
 
 </script>
 
