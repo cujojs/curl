@@ -9,12 +9,12 @@
  * Licensed under the MIT License at:
  * 		http://www.opensource.org/licenses/mit-license.php
  *
- * @version 0.6.4
+ * @version 0.6.5
  */
 (function (global) {
 "use strict";
 	var
-		version = '0.6.4',
+		version = '0.6.5',
 		curlName = 'curl',
 		userCfg = global[curlName],
 		prevCurl,
