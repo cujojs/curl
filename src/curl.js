@@ -997,7 +997,7 @@ var window;
 		}
 
 		// thanks to Joop Ringelberg for helping troubleshoot the API
-		function CurlApi (ids, callback, waitFor) {
+		function CurlApi (ids, callback, errback, waitFor) {
 			var then, ctx;
 			ctx = core.createContext(userCfg, undef, [].concat(ids));
 			this['then'] = then = function (resolved, rejected) {
@@ -1013,15 +1013,15 @@ var window;
 				);
 				return this;
 			};
-			this['next'] = function (ids, cb) {
+			this['next'] = function (ids, cb, eb) {
 				// chain api
-				return new CurlApi(ids, cb, ctx);
+				return new CurlApi(ids, cb, eb, ctx);
 			};
-			if (callback) then(callback);
+			if (callback) then(callback, errback);
 			when(waitFor, function () { core.getDeps(ctx); });
 		}
 
-		return new CurlApi(args[0], args[1]);
+		return new CurlApi(args[0], args[1], args[2]);
 
 	}
 
