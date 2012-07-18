@@ -142,9 +142,9 @@ define(/*=='js',==*/ ['curl/_privileged'], function (priv) {
 				promise = {
 					'resolve': function (o) {
 						cache[name] = o;
-						(callback['resolve'] || callback)(o);
+						callback(o);
 					},
-					'reject': callback['reject'] || function (ex) { throw ex; }
+					'reject': callback['error'] || function (ex) { throw ex; }
 				};
 
 				// if this script has to wait for another
