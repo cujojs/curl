@@ -430,7 +430,9 @@ var window;
 					data = coll[name];
 					// grab the package id, if specified. default to
 					// property name.
-					data.name = data['id'] || data['name'] || name;
+          if(typeof(data) == 'object'){
+            data.name = data['id'] || data['name'] || name;
+          }
 					currCfg = newCfg;
 					// don't remove `|| name` since data may be a string, not an object
 					parts = pluginParts(removeEndSlash(data.name || name));
