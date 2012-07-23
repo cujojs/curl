@@ -1,6 +1,6 @@
 {
     "name": "curl",
-    "version": "0.6.5",
+    "version": "0.6.6",
     "description": "A small, fast module and resource loader with dependency management. (AMD, CommonJS Modules/1.1, CSS, HTML, etc.)",
     "keywords": ["curl", "cujo", "amd"],
     "licenses": [
