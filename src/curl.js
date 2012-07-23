@@ -9,13 +9,12 @@
  * Licensed under the MIT License at:
  * 		http://www.opensource.org/licenses/mit-license.php
  *
- * @version 0.6.4
+ * @version 0.6.6
  */
-var window;
 (function (global) {
-"use strict";
+//"use strict"; don't restore this until the config routine is refactored
 	var
-		version = '0.6.4',
+		version = '0.6.6',
 		curlName = 'curl',
 		userCfg = global[curlName],
 		prevCurl,
@@ -1076,7 +1075,7 @@ var window;
 	// expose curl core for special plugins and modules
 	// Note: core overrides will only work in either of two scenarios:
 	// 1. the files are running un-compressed (Google Closure or Uglify)
-	// 2. the overriding module was compressed with curl.js
+	// 2. the overriding module was compressed into the same file as curl.js
 	// Compiling curl and the overriding module separately won't work.
 	cache['curl/_privileged'] = {
 		'core': core,
@@ -1087,4 +1086,4 @@ var window;
 		'Promise': Promise
 	};
 
-}(window || global));
+}(this.window || global));
