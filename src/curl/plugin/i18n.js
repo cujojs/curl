@@ -19,7 +19,7 @@ define(/*=='i18n',==*/ function () {
 	return {
 		load: function (absId, require, loaded, config) {
 			//var locale = config.locale || getLocale();
-			require([absId], loaded);
+			require([absId], loaded, loaded.error);
 		}
 	};
 

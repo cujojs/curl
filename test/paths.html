@@ -59,7 +59,7 @@
 		}
 	};
 
-	curl(['curl/_privileged', 'curl/tdd/runner', 'curl/domReady', 'configureAsserts']).then(
+	curl(['curl/_privileged', 'curl/tdd/runner', 'curl/domReady', 'tdd/configureAsserts']).then(
 		function (priv, runner, ready, asserts) {
 			privateCfg = priv.cfg;
 			testRunner = runner;

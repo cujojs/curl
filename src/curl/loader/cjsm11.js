@@ -81,7 +81,7 @@ define(/*=='curl/loader/cjsm11',==*/ function () {
 	}
 
 	return {
-		'load': function (resourceId, require, loaded, config) {
+		'load': function (resourceId, require, callback, config) {
 			// TODO: extract xhr from text! plugin and use that instead?
 			require(['text!' + resourceId + '.js', 'curl/_privileged'], function (source, priv) {
 				var moduleMap;
@@ -104,10 +104,10 @@ define(/*=='curl/loader/cjsm11',==*/ function () {
 						globalEval(source);
 					}
 
-					// call loaded now that the module is defined
-					loaded(require(resourceId));
+					// call callback now that the module is defined
+					callback(require(resourceId));
 
-				});
+				}, callback['error'] || function (ex) { throw ex; });
 
 			});
 		}
