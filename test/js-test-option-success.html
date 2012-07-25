@@ -27,12 +27,18 @@
 		]
 	).then(
 		function () {
-			document.body.appendChild(document.createTextNode('SUCCESS: test for global variable succeeded'));
+			write('SUCCESS: test for global variable succeeded');
 		},
 		function () {
-			document.body.appendChild(document.createTextNode('FAILED: test for global variable failed'));
+			write('FAILED: test for global variable failed');
 		}
 	);
+
+	function write (msg) {
+		curl(['domReady!'], function () {
+			document.body.appendChild(document.createElement('div')).innerHTML = msg;
+		})
+	}
 
 </script>
 

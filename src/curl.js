@@ -9,13 +9,14 @@
  * Licensed under the MIT License at:
  * 		http://www.opensource.org/licenses/mit-license.php
  *
- * @version 0.6.4
+ * @version 0.6.6
  */
 (function (global) {
-"use strict";
+//"use strict"; don't restore this until the config routine is refactored
 	var
-		version = '0.6.4',
-		userCfg = global['curl'],
+		version = '0.6.6',
+		curlName = 'curl',
+		userCfg = global[curlName],
 		prevCurl,
 		prevDefine,
 		doc = global.document,
@@ -357,65 +358,63 @@
 		},
 
 		config: function (cfg) {
-			var hasCfg,
+			var hasCfg, defineName,
 				apiName, apiObj, defName, defObj, define;
 
 			hasCfg = cfg;
 
+			defineName = 'define';
+
 			if (!cfg) cfg = {};
 
 			// allow dev to rename/relocate curl() to another object
-			apiName = cfg['apiName'];
-			apiObj = cfg['apiContext'];
+			apiName = cfg['apiName'] || curlName;
+			apiObj = cfg['apiContext'] || global;
 			// if the dev is overwriting an existing curl()
-			if (apiObj || apiName ? (apiObj || global)[apiName] : prevCurl && hasCfg) {
-				throw new Error((apiName || 'curl') + ' already exists');
+			if (apiObj != global || apiName != curlName ? apiObj[apiName] : prevCurl && hasCfg) {
+				throw new Error(apiName + ' already exists');
 			}
-			(apiObj || global)[apiName || 'curl'] = _curl;
+			apiObj[apiName] = _curl;
 			// restore previous curl
-			if (prevCurl && hasCfg) global['curl'] = prevCurl;
+			if (prevCurl && hasCfg) global[curlName] = prevCurl;
 
 			// allow dev to rename/relocate define() to another object
-			defName = cfg['defineName'];
-			defObj = cfg['defineContext'];
-			if (defObj || defName ? (defObj || global)[defName] : prevDefine && hasCfg) {
-				throw new Error((defName|| 'define') + ' already exists');
+			defName = cfg['defineName'] || defineName;
+			defObj = cfg['defineContext'] || global;
+			if (defObj != global || defName != defineName ? defObj[defName] : prevDefine && hasCfg) {
+				throw new Error(defName + ' already exists');
 			}
-			(defObj || global)[defName || 'define'] = define = function () {
+			defObj[defName] = define = function () {
 				// wrap inner _define so it can be replaced without losing define.amd
 				var args = core.fixArgs(arguments);
 				_define(args);
 			};
 			// restore previous define
-			if (prevDefine && hasCfg) global['define'] = prevDefine;
+			if (prevDefine && hasCfg) global[defineName] = prevDefine;
 
 			// indicate our capabilities:
-			define['amd'] = { 'plugins': true, 'jQuery': true, 'curl': version };
+			define['amd'] = { 'plugins': true, 'jQuery': true, curlName: version };
 
 			// switch to re-runnable config
 			if (hasCfg) core.config = core.moreConfig;
 
-			return core.moreConfig(cfg, {});
+			return core.moreConfig(cfg);
 		},
 
-		moreConfig: function (cfg, currCfg) {
+		moreConfig: function (cfg, prevCfg) {
 			var newCfg, pluginCfgs;
 
-			newCfg = beget(currCfg, cfg);
-
-			function getOrFailIfClobbered (prop, fallback) {
-				if (prop in cfg && prop in currCfg) throw new Error('can\'t override ' + prop);
-				return newCfg[prop] || fallback;
-			}
+			if (!prevCfg) prevCfg = {};
+			newCfg = beget(prevCfg, cfg);
 
 			// set defaults and convert from closure-safe names
-			newCfg.baseUrl = getOrFailIfClobbered('baseUrl', '');
-			newCfg.pluginPath = getOrFailIfClobbered('pluginPath', 'curl/plugin');
+			newCfg.baseUrl = newCfg['baseUrl'] || '';
+			newCfg.pluginPath = newCfg['pluginPath'] || 'curl/plugin';
 
 			// create object to hold path map.
 			// each plugin and package will have its own pathMap, too.
-			newCfg.pathMap = beget(currCfg.pathMap);
-			pluginCfgs = newCfg.plugins = beget(currCfg.plugins, cfg['plugins']);
+			newCfg.pathMap = beget(prevCfg.pathMap);
+			pluginCfgs = newCfg.plugins = beget(prevCfg.plugins, cfg['plugins']);
 
 			// temporary arrays of paths. this will be converted to
 			// a regexp for fast path parsing.
@@ -492,7 +491,6 @@
 				}
 			}
 			convertPathMatcher(newCfg);
-			core.checkPreloads(cfg);
 
 			return newCfg;
 
@@ -503,9 +501,8 @@
 			preloads = cfg && cfg['preloads'];
 			if (preloads && preloads.length > 0) {
 				// chain from previous preload, if any.
-				// TODO: revisit when doing package-specific configs.
 				when(preload, function () {
-					preload = core.getDeps(core.createContext(cfg, undef, preloads, true));
+					preload = core.getDeps(core.createContext(userCfg, undef, preloads, true));
 				});
 			}
 
@@ -989,11 +986,13 @@
 
 	function _curl (/* various */) {
 
-		var args = [].slice.call(arguments);
+		var args = [].slice.call(arguments), cfg;
 
 		// extract config, if it's specified
 		if (isType(args[0], 'Object')) {
-			userCfg = core.config(args.shift(), {});
+			cfg = args.shift();
+			userCfg = core.config(cfg, userCfg);
+			core.checkPreloads(cfg);
 		}
 
 		// thanks to Joop Ringelberg for helping troubleshoot the API
@@ -1068,14 +1067,15 @@
 
 	// configure first time
 	userCfg = core.config(userCfg);
+	core.checkPreloads(userCfg);
 
 	// allow curl to be a dependency
-	cache['curl'] = _curl;
+	cache[curlName] = _curl;
 
 	// expose curl core for special plugins and modules
 	// Note: core overrides will only work in either of two scenarios:
 	// 1. the files are running un-compressed (Google Closure or Uglify)
-	// 2. the overriding module was compressed with curl.js
+	// 2. the overriding module was compressed into the same file as curl.js
 	// Compiling curl and the overriding module separately won't work.
 	cache['curl/_privileged'] = {
 		'core': core,
@@ -1086,4 +1086,4 @@
 		'Promise': Promise
 	};
 
-}(this));
+}(this.window || global));
