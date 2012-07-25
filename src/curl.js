@@ -9,12 +9,12 @@
  * Licensed under the MIT License at:
  * 		http://www.opensource.org/licenses/mit-license.php
  *
- * @version 0.6.5
+ * @version 0.6.6
  */
 (function (global) {
-"use strict";
+//"use strict"; don't restore this until the config routine is refactored
 	var
-		version = '0.6.5',
+		version = '0.6.6',
 		curlName = 'curl',
 		userCfg = global[curlName],
 		prevCurl,
@@ -240,7 +240,7 @@
 				return core.resolvePathInfo(toAbsId(n), cfg).url;
 			}
 
-			function localRequire (ids, callback) {
+			function localRequire (ids, callback, errback) {
 				var cb, rvid, childDef, earlyExport;
 
 				// this is public, so send pure function
@@ -266,7 +266,7 @@
 				}
 				else {
 					// use same id so that relative modules are normalized correctly
-					when(core.getDeps(core.createContext(cfg, def.ctxId, ids, isPreload)), cb);
+					when(core.getDeps(core.createContext(cfg, def.ctxId, ids, isPreload)), cb, errback);
 				}
 			}
 
@@ -739,7 +739,7 @@
 					// signal any waiters/parents that we can export
 					// early (see progress callback in getDep below).
 					// note: this may fire for `require` as well, if it
-					// is listed after `module` or `exports` in teh deps list,
+					// is listed after `module` or `exports` in the deps list,
 					// but that is okay since all waiters will only record
 					// it once.
 					if (parentDef.exports) {
@@ -928,7 +928,7 @@
 						// can use paths relative to the resource
 						normalizedDef = core.createPluginDef(resCfg, fullId, isPreload, resId);
 
-						// don't cache non-determinate "dynamic" resources (or non-existent resources)
+						// don't cache non-determinate "dynamic" resources
 						if (!dynamic) {
 							cache[fullId] = normalizedDef;
 						}
@@ -941,7 +941,7 @@
 							if (!dynamic) cache[fullId] = res;
 						};
 						loaded['resolve'] = loaded;
-						loaded['reject'] = normalizedDef.reject;
+						loaded['reject'] = loaded['error'] = normalizedDef.reject;
 
 						// load the resource!
 						plugin.load(resId, normalizedDef.require, loaded, resCfg);
@@ -996,7 +996,7 @@
 		}
 
 		// thanks to Joop Ringelberg for helping troubleshoot the API
-		function CurlApi (ids, callback, waitFor) {
+		function CurlApi (ids, callback, errback, waitFor) {
 			var then, ctx;
 			ctx = core.createContext(userCfg, undef, [].concat(ids));
 			this['then'] = then = function (resolved, rejected) {
@@ -1012,15 +1012,15 @@
 				);
 				return this;
 			};
-			this['next'] = function (ids, cb) {
+			this['next'] = function (ids, cb, eb) {
 				// chain api
-				return new CurlApi(ids, cb, ctx);
+				return new CurlApi(ids, cb, eb, ctx);
 			};
-			if (callback) then(callback);
+			if (callback) then(callback, errback);
 			when(waitFor, function () { core.getDeps(ctx); });
 		}
 
-		return new CurlApi(args[0], args[1]);
+		return new CurlApi(args[0], args[1], args[2]);
 
 	}
 
