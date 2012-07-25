@@ -81,7 +81,7 @@
 		// find the head element and set it to it's standard property if nec.
 		head,
 		// serious inference here, need something better:
-		shouldCollectSheets = doc && doc[createStyleSheet],
+		shouldCollectSheets = doc && doc[createStyleSheet] && !doc.addEventListener,
 		ieCollectorLinks = [],
 		loadSheet,
 		urlAnchor,
@@ -139,10 +139,6 @@
 	 * Loads a stylesheet via IE's addImport() method, which is the only
 	 * way to detect both onload and onerror in IE.  The tricky part is
 	 * that IE does not indicate which @import'ed sheet is being loaded.
-	 * To get around this, we use round-robin across (up to) 30 "collector"
-	 * stylesheets.  Since even IE9 can only load up to 12 files at a time,
-	 * we'll never be loading more than one @import'ed sheet at a time in each
-	 * collector sheet. tricky tricky tricky!
 	 * @private
 	 * @param url {String}
 	 * @param cb {Function}
@@ -220,9 +216,8 @@
 		link = ieCollectorLinks[pos];
 		if (link && link.styleSheet.imports.length > 29) {
 			pos++;
-			link = false;
 		}
-		if (!link) {
+		if (pos == ieCollectorLinks.length) {
 			link = ieCollectorLinks[pos] = createLink();
 			link.href = nonNetworkUri /*+ '?' + pos*/;
 			link.onload = function () { finalize(link); cb(link); };
