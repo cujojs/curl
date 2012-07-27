@@ -393,7 +393,7 @@
 			if (prevDefine && hasCfg) global[defineName] = prevDefine;
 
 			// indicate our capabilities:
-			define['amd'] = { 'plugins': true, 'jQuery': true, curlName: version };
+			define['amd'] = { 'plugins': true, 'jQuery': true, 'curl': version };
 
 			// switch to re-runnable config
 			if (hasCfg) core.config = core.moreConfig;
