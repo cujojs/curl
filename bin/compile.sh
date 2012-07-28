@@ -11,4 +11,5 @@ curl \
 	-d compilation_level=$2 \
 	-d output_info=compiled_code \
 	-d output_format=text \
+	-d 'output_wrapper=(function(){%25output%25}());' \
 	http://closure-compiler.appspot.com/compile

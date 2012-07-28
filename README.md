@@ -20,6 +20,8 @@ Helpful link for updating submodules:
 What's New?
 =======
 
+* 0.6.7
+	* Fix problems using google closure compiler to create "dist" versions.
 * 0.6.6
 	* Fix for Safari 6's strict treatment of string properties in un-compiled
 	  files (paths were broken -- thanks Tiago!)
