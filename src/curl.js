@@ -845,12 +845,28 @@
 
 		},
 
+		/**
+				
+		@function
+		@param depName {String|Object} Name of resource to be loaded or Array where [name, data_object] or Object where {'name':name, 'data':data_object}
+					where "data_object" is some object, likely JS Object, in format specific to the plugin / name handler and **applicable to this specific fetch only.**
+					This can be the "data" that a POST would send, or a complext nested object that a plugin would take apart for inputs and flags.
+					This allows one to send single-use data to plugins.
+		@param parentDef {Object} 
+		@returns {Promise}
+		*/
 		fetchDep: function (depName, parentDef) {
 			var toAbsId, isPreload, parts, mainId, loaderId, pluginId,
 				resId, pathInfo, def, tempDef, resCfg;
 
 			toAbsId = parentDef.toAbsId;
 			isPreload = parentDef.isPreload;
+
+			var thisFetchSpecificData = {}
+			if (typeof depName === 'object' /*Array or Object*/) {
+				thisFetchSpecificData = depName.data ? depName.data : depName[1] || {}
+				depName = depName.name ? depName.name : depName[0] || ''
+			}
 
 			// check for plugin loaderId
 			parts = pluginParts(depName);
@@ -944,7 +960,7 @@
 						loaded['reject'] = normalizedDef.reject;
 
 						// load the resource!
-						plugin.load(resId, normalizedDef.require, loaded, resCfg);
+						plugin.load(resId, normalizedDef.require, loaded, resCfg, thisFetchSpecificData);
 
 					}
 
