@@ -163,6 +163,8 @@ How to get support
 
 It's that easy.
 
+Got more in-depth questions?  Browse the [cujojs discussion group](https://groups.google.com/forum/#!forum/cujojs).
+
 ----------------------------------------
 
 API at a glance
