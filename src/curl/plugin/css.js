@@ -70,58 +70,63 @@
 	var
 		// compressibility shortcuts
 		createElement = 'createElement',
-		createStyleSheet = 'createStyleSheet',
 		parentNode = 'parentNode',
 		setTimeout = global.setTimeout,
-		nonNetworkUri = 'about:blank',
-		nonNetworkUri_bad = 'about:_curl_',
 		pluginBuilder = './builder/css',
 		// doc will be undefined during a build
 		doc = global.document,
 		// find the head element and set it to it's standard property if nec.
 		head,
-		// serious inference here, need something better:
-		shouldCollectSheets = doc && doc[createStyleSheet] && !doc.addEventListener,
-		ieCollectorLinks = [],
+		// infer IE 6-8:
+		shouldCollectSheets = doc && doc.createStyleSheet && !doc.addEventListener,
+		ieCollectorSheets = [],
+		ieCollectorPos = 0,
+		ieMaxCollectorSheets = 12,
+		ieCollectedUrls = [],
 		loadSheet,
 		urlAnchor,
 		msgHttp = 'HTTP or network error.',
-		hasEvent = { links: {} };
+		hasEvent = {};
 
 	if (doc) {
-		head = doc.head || (doc.head = doc.getElementsByTagName('head')[0]);
+		head = doc.head || doc.getElementsByTagName('head')[0];
 		if (shouldCollectSheets) {
 			loadSheet = loadImport;
-			urlAnchor = doc.createElement('a');
+//			urlAnchor = doc.createElement('a');
 		}
 		else {
-			// the following code attempts to pre-determine if the browser supports
-			// onload and onerror event handlers. None of these work in Opera.
-			// success: Chrome, FF13, IE6-9
-			testLinkEvent('load', nonNetworkUri);
-			// success: Chrome only
-			testLinkEvent('error', nonNetworkUri_bad, true);
-			// FF and Chrome fire onerror on this one, but Safari and Opera scream loudly (in Net tab)
-			//testLinkEvent('error', 'javascript:');
-			// FF and chrome also fire onerror here, but Safari and Opera scream loudly (in Net tab)
-			//testLinkEvent('error', 'data:text/css;base64,_');
-			// FF correctly fails here (protocol error) and Safari doesn't scream, yay:
-			testLinkEvent('error', 'data:text/text,');
+//			// the following code attempts to pre-determine if the browser supports
+//			// onload and onerror event handlers. None of these work in Opera.
+//			// Chrome, FF, IE9, Safari 6
+//			//testLinkEvent('load', 'about:blank');
+//			// Chrome, FF, IE9, Safari 6
+//			testLinkEvent('load', 'data:text/css,curl-css-test{}');
+//			// Chrome only
+//			//testLinkEvent('error', 'about:_curl_');
+//			// FF, Chrome, and Safari 6 fire onerror on this one, but fail loudly in console and/or net tab
+//			testLinkEvent('error', 'javascript:/*curl css test*/');
+//			// FF, Chrome, and Safari 6 fire onerror on this one, but fail loudly in console and/or net tab
+//			//testLinkEvent('error', 'data:text/css;base64,_curl-css-test{}');
+//			// FF fails here (protocol error) but Chrome/Safari show console warning
+//			testLinkEvent('error', 'data:text/plain,');
 			loadSheet = loadLink;
 		}
 	}
 
-	function testLinkEvent (event, page, keep) {
-		var link;
-		link = hasEvent.links[event] = createLink();
-		link['on' + event] = function () { setLoadDetection(event, true); };
-		link.href = page;
-		head.appendChild(link);
-		if (!keep) setTimeout(function () { head.removeChild(link); }, 50);
-		return link;
-	}
+//	function testLinkEvent (event, page) {
+//		var link;
+//		link = createLink();
+//		link['on' + event] = function () {
+//console.log(event, true, page);
+//			setLoadDetection(event, true);
+//		};
+//		link.href = page;
+//		head.appendChild(link);
+//		// 250 msec is probably enough even under high cpu load
+//		setTimeout(function () { head.removeChild(link); }, 250);
+//	}
 
-	function setLoadDetection (event, hasNative, name) {
+	function setLoadDetection (event, hasNative) {
 		hasEvent[event] = hasEvent[event] || hasNative;
 	}
 
@@ -131,101 +136,6 @@
 		link.rel = "stylesheet";
 		link.type = "text/css";
 		return link;
-	}
-
-	/***** ie load functions *****/
-
-	/**
-	 * Loads a stylesheet via IE's addImport() method, which is the only
-	 * way to detect both onload and onerror in IE.  The tricky part is
-	 * that IE does not indicate which @import'ed sheet is being loaded.
-	 * @private
-	 * @param url {String}
-	 * @param cb {Function}
-	 * @param eb {Function}
-	 */
-	function loadImport (url, cb, eb) {
-		// IE needs a url with a protocol or it won't fire events
-		url = toAbsUrl(url);
-		function error () {
-			eb(new Error(msgHttp));
-		}
-		getCollectorLink(function (link) {
-			waitForLink(link, function (link) {
-				var sheet;
-				// check that this url wasn't already added (otherwise events won't fire)
-				// TODO: do this without noticeable turds (in IE inspector)
-				if (url in link) {
-					link[url] ? cb() : error();
-				}
-				else {
-					// set new callbacks
-					link.onload = function () {
-						link[url] = true;
-						finalize(link);
-						console.log(url);
-						cb();
-					};
-					link.onerror = function () {
-						link[url] = false;
-						finalize(link);
-						console.log('error', ' ', url);
-						error();
-					};
-					// import sheet into collector stylesheet
-					sheet = link.styleSheet;
-					sheet.addImport(url);
-				}
-			});
-		});
-	}
-
-	function waitForLink (link, cb) {
-		if (isFinalized(link)) {
-			cb(link);
-		}
-		else {
-			link.onload = chain(link, link.onload, cb);
-			link.onerror = chain(link, link.onerror, cb);
-		}
-	}
-
-	function chain (link, func, cb) {
-		return function (e) {
-			func(e);
-			cb(link);
-			// IE chokes if stylesheets are built too quickly
-			//setTimeout(function () { cb(link); }, 10);
-		};
-	}
-
-	function toAbsUrl (url) {
-		urlAnchor.href = url;
-		return urlAnchor.href;
-	}
-
-	/**
-	 * Gets the next collector sheet in the collection.  If a collector sheet
-	 * is full, a new one is created.  The callback is called when the sheet
-	 * is ready.
-	 * @param cb {Function} function (sheet) {}
-	 */
-	function getCollectorLink (cb) {
-		var pos, link;
-		pos = ieCollectorLinks.length - 1;
-		link = ieCollectorLinks[pos];
-		if (link && link.styleSheet.imports.length > 29) {
-			pos++;
-		}
-		if (pos == ieCollectorLinks.length) {
-			link = ieCollectorLinks[pos] = createLink();
-			link.href = nonNetworkUri /*+ '?' + pos*/;
-			link.onload = function () { finalize(link); cb(link); };
-			head.appendChild(link);
-		}
-		else {
-			cb(link);
-		}
 	}
 
 	/***** load functions for compliant browsers *****/
@@ -246,7 +156,122 @@
 		};
 	}
 
-	/***** load functions for all other browsers *****/
+	/***** ie load functions *****/
+
+	/**
+	 * Loads a stylesheet via IE's addImport() method, which is the only
+	 * way to detect both onload and onerror in IE.  If we create a "parent
+	 * stylesheet", we can addImport() other sheets into it.  The tricky part
+	 * is that we have to load one sheet at a time and create a new onload
+	 * and onerror event for each one.  (IE only fires an onload or onerror
+	 * function once, but if you replace the onload or onerror functions,
+	 * it'll fire the new ones if there's another load or error event.
+	 * Way to be awesome, IE team!)
+	 *
+	 * To get around the one-sheet-at-a-time problem, we create many
+	 * parent stylesheets at once.  If we create 12 parent sheets, we can load
+	 * up to 12 imported sheets at once.  This has an additional benefit:
+	 * we can load 372 (12 * 31) stylesheets.  IE 6-8 can only load 31
+	 * stylesheets in any one scope.  By creating multiple parent sheets, we
+	 * create multiple scopes.
+	 *
+	 * The astute reader will have discovered a major flaw with this approach:
+	 * we've killed the cascade (the "C" in CSS).  Rules in stylesheets override
+	 * rules in stylesheets that were declared earlier.  This is universal.
+	 * However, the IE team interpreted the word "earlier" differently than
+	 * everybody else (including the w3c).  IE interprets it as meaning "earlier
+	 * in time" (temporal), rather than "earlier in the document" (spacial).
+	 * Specifically, the temporal order of the insertion of the sheet into the
+	 * DOM/BOM is what matters in IE.
+	 *
+	 * In other words: the bungling of the IE team (both in allowing sheet
+	 * error handlers to execute multiple times and in allowing us to use
+	 * temporal order rather than dom order) has allowed us to implement
+	 * this work-around.
+	 *
+	 * Note: CSS debugging tools in IE 6-8 seem to fail when inserting
+	 * stylesheets dynamically no matter which method we use to insert them.
+	 *
+	 * @private
+	 * @param url {String}
+	 * @param cb {Function}
+	 * @param eb {Function}
+	 */
+	function loadImport (url, cb, eb) {
+		var el, prev;
+//		// IE needs a url with a protocol or it won't fire events
+//		url = toAbsUrl(url);
+		// TODO: repeated urls don't fire onload again in IE6-8 (works in IE9)
+		el = getIeCollector();
+
+		// if this collector isn't busy
+		if (isFinalized(el)) {
+			addImport(url);
+		}
+		else {
+			// queue addImport until after current load or error event
+			prev = { ol: el.onload, oe: el.onerror };
+			el.onload = function () {
+				prev.ol();
+				addImport(url);
+			};
+			el.onerror = function () {
+				prev.oe();
+				addImport(url);
+			};
+		}
+
+		function addImport (url) {
+			el.onload = success;
+			el.onerror = failure;
+			// import sheet into collector stylesheet
+			el.styleSheet.addImport(url);
+		}
+
+		function success () {
+			finalize(el);
+			cb();
+		}
+
+		function failure () {
+			eb(new Error(msgHttp));
+		}
+
+	}
+
+//	function toAbsUrl (url) {
+//		urlAnchor.href = url;
+//		return urlAnchor.href;
+//	}
+
+	/**
+	 * Gets the next collector sheet in the collection.  If less than the
+	 * maximum collector sheets has been created, a new one is created.
+	 * If the max collectors have been created, the next sheet is chosen
+	 * via "round robin" (sequential traversal of list).  Round robin isn't
+	 * the best algorithm to maximize performance since some sheets may
+	 * take longer than others.  However, it simplifies the algorithm.
+	 *
+	 * We could devise a more complex algorithm that chooses the next collector
+	 * based on its queue length.  However, we'd have to be careful not to
+	 * overload any one collector (overload == more than 31 imports).
+	 *
+	 * The callback is called when the sheet is ready.
+	 *
+	 * @return {HTMLElement} a stylesheet element
+	 */
+	function getIeCollector () {
+		var el;
+		el = ieCollectorSheets[ieCollectorPos];
+		ieCollectorPos = (ieCollectorPos + 1) % ieMaxCollectorSheets;
+		if (!el) {
+			el = ieCollectorSheets[ieCollectorPos] = doc.createElement('style');
+			head.appendChild(el);
+		}
+		return el;
+	}
+
+	/***** load functions for legacy browsers (old Safari and FF) *****/
 
 	function isLinkReady (link) {
 		var ready, sheet, rules;
@@ -265,10 +290,10 @@
 				ready = rules === null;
 				if (!ready && 'length' in rules) {
 					// Safari needs to further test for rule manipulation
+					// on local stylesheets (Opera too?)
 					sheet.insertRule('-curl-css-test {}', 0);
 					sheet.deleteRule(0);
 					ready = true;
-					setLoadDetection('load', false);
 				}
 			}
 		}
@@ -276,7 +301,6 @@
 			// a "security" or "access denied" error indicates that an XD
 			// stylesheet has been successfully loaded in old FF
 			ready = /security|denied/i.test(ex.message);
-			if (ready) setLoadDetection('load', false);
 		}
 
 		return ready;
@@ -292,45 +316,25 @@
 		return link.onload == noop || !link.onload;
 	}
 
-	function ssWatcher (link, wait, cb) {
+	function loadWatcher (link, wait, cb) {
 		// watches a stylesheet for loading signs.
 		if (hasEvent['load']) return; // always check on re-entry
 		if (isLinkReady(link)) {
 			cb();
 		}
 		else if (!isFinalized(link)) {
-			setTimeout(function () { ssWatcher(link, wait, cb); }, wait);
+			setTimeout(function () { loadWatcher(link, wait, cb); }, wait);
 		}
 	}
 
 	function errorWatcher (link, wait, eb) {
 		if (hasEvent['error']) return;
-		// for browsers that don't call onerror after an http error:
-		// we wait (at least) 500 msec before trying again with an image
-		// element. the image element's onerror handler
-		// will fire when the browser has determined if the href is valid
-		// or not (20X or 40X/50X).  however, we can't know if it's a 20X
-		// or something else, so we delay just a bit longer to see if
-		// the sheet loaded. this will cause another fetch, but we don't
-		// have any other options for dumbass browsers.
-		setTimeout(function () {
-			var img;
-			if (hasEvent['error'] || isFinalized(link)) return;
-			// Note: can't use `new Image()` in webkit browsers
-			// (doesn't seem to fire events)
-			img = document[createElement]('img');
-			img.onerror = img.onload = function () {
-				setTimeout(function () {
-					if (!hasEvent['error'] && !isFinalized(link)) eb();
-				}, 10); // a wee bit more time to process sheet
-			};
-			img.src = link.href;
-		}, wait);
+		// TODO: figure out a method to test for stylesheet failure without risk of re-fetching
 	}
 
 	function linkLoaded (link, wait, cb) {
 		// most browsers now support link.onload, but many older browsers
-		// don't. Browsers that don't will launch the ssWatcher to repeatedly
+		// don't. Browsers that don't will launch the loadWatcher to repeatedly
 		// test the link for readiness.
 		function load () {
 			// only executes once (link.onload is acting as a flag)
@@ -341,18 +345,17 @@
 		// always try standard handler
 		loadHandler(link, load);
 		// also try the fallback
-		ssWatcher(link, wait, load);
+		loadWatcher(link, wait, load);
 	}
 
-	function linkErrored (link, cb) {
-		var h;
+	function linkErrored (link, wait, cb) {
 		// very few browsers (Chrome 19+ and FF9+ as of Apr 2012) have a
 		// functional onerror handler (and those only detect 40X/50X http
 		// errors, not parsing errors as per the w3c spec).
-		// IE6-9 call onload when there's an http error, but I can't seem
-		// to find a way to detect the error, yet.
+		// IE6-9 call onload when there's an http error. (nice, real nice)
+		// this only matters in IE9 since IE6-8 use the addImport method
+		// which does call onerror.
 		function error () {
-			clearTimeout(h);
 			// only executes once (link.onload is acting as a flag)
 			if (isFinalized(link)) return;
 			finalize(link);
@@ -361,14 +364,14 @@
 		// always try standard handler
 		errorHandler(link, error);
 		// if we are not sure if the native error event works, try the fallback
-		errorWatcher(link, 500, error);
+		errorWatcher(link, wait, error);
 	}
 
 	function loadLink (url, cb, eb, period) {
 		var link;
 		link = createLink();
 		linkLoaded(link, period, cb);
-		linkErrored(link, eb);
+		linkErrored(link, period, eb);
 		link.href = url;
 		head.appendChild(link);
 	}
@@ -457,7 +460,6 @@
 					loadSheet(url, loaded, failed, cssWatchPeriod);
 				}
 			}
-
 
 		},
 
