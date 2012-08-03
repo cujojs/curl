@@ -97,7 +97,7 @@
 		// infer IE 6-9
 		// IE 10 still doesn't seem to have link.onerror support,
 		// but it doesn't choke on >31 stylesheets at least!
-		shouldCollectSheets = doc && doc.createStyleSheet && doc.documentMode >= 10,
+		shouldCollectSheets = doc && doc.createStyleSheet && !(doc.documentMode >= 10),
 		ieCollectorSheets = [],
 		ieCollectorPool = [],
 		ieCollectorQueue = [],
