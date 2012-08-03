@@ -66,6 +66,12 @@
 		function (ex) { write('FAILED: cascade tests did not run.') }
 	);
 
+	// test empty stylesheet
+	curl(['css!stuff/blank']).then(
+		function () { write('SUCCESS: should load blank stylesheet.'); },
+		function () { write('FAILED: should load blank stylesheet.'); }
+	);
+
 	// 31 should be enough to cause IE to fail. see if we can load more than that
 	var howMany = 70, total = 0, all = [];
 
