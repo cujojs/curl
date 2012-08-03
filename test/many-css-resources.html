@@ -56,19 +56,31 @@
 		}
 	);
 
+	// test cascade
+	curl(['css!stuff/cascade-start.css', 'css!stuff/cascade-middle.css', 'css!stuff/cascade-end.css']).then(
+		function () {
+			var testEl = document.getElementById('test-cascade');
+			write((testEl.offsetTop == 33 ? 'SUCCESS' : 'FAILED') + ': css cascaded correctly through three levels.');
+			write((testEl.offsetLeft == 20 ? 'SUCCESS' : 'FAILED') + ': css cascaded correctly through two levels.');
+		},
+		function (ex) { write('FAILED: cascade tests did not run.') }
+	);
+
 	// 31 should be enough to cause IE to fail. see if we can load more than that
-	var howMany = 32, total = 0;
+	var howMany = 70, total = 0, all = [];
 
 	for (var i = 0; i < howMany; i++) {
-		curl(['css!stuff/base.css?which=' + i + '&bust=' + Math.random() + new Date().valueOf()]).then(
-			function () {
-				if (++total == howMany) write('SUCCESS: all ' + howMany + ' css files loaded.');
-			},
-			function (ex) {
-				write('FAILED: ' + ex.message);
-			}
-		)
+		all.push('css!stuff/base.css?which=' + i + '&bust=' + Math.random() + new Date().valueOf());
 	}
+
+	curl(all).then(
+		function () {
+			write('SUCCESS: all ' + howMany + ' css files loaded.');
+		},
+		function (ex) {
+			write('FAILED: not all ' + howMany + ' css files loaded. ' + ex.message);
+		}
+	);
 
 	function write (msg) {
 		curl(['domReady!'], function () {
@@ -85,6 +97,8 @@
 
 </head>
 <body>
-
+<div id="test-cascade-parent">
+	<p id="test-cascade">test element</p>
+</div>
 </body>
 </html>
