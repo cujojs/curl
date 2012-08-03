@@ -14,7 +14,7 @@
 /*
  * AMD css! plugin
  * This plugin will load and wait for css files.  This could be handy when
- * loading css files as part of a layer or as a way to apply a run-time theme.
+ * loading css files as part of a component or a theme.
  * Some browsers do not support the load event handler of the link element.
  * Therefore, we have to use other means to detect when a css file loads.
  * Some browsers don't support the error event handler, either.
@@ -23,18 +23,26 @@
  * http://www.w3.org/TR/html5/semantics.html#the-link-element
  *
  * This plugin tries to use the load event and a universal work-around when
- * it is invoked the first time.  If the load event works, it is used on
- * every successive load.  Therefore, browsers that support the load event will
- * just work (i.e. no need for hacks!).  FYI, Feature-detecting the load
- * event is tricky since most browsers have a non-functional onload property.
+ * it is invoked.  If the load event works, it is used on every successive load.
+ * Therefore, browsers that support the load event will just work (i.e. no
+ * need for hacks!).  FYI, sniffing for the load event is tricky
+ * since most browsers still have a non-functional onload property.
  *
- * The universal work-around watches a stylesheet until its rules are
- * available (not null or undefined).  There are nuances, of course, between
- * the various browsers.  The isLinkReady function accounts for these.
+ * IE is a special case since it also has a 31-stylesheet limit (finally
+ * fixed in IE 10).  To get around this, we can use a set of <style>
+ * elements instead of <link> elements and add @import; rules into them.
+ * This allows us to add considerably more than 31 stylesheets.  See the
+ * comment for the loadImport method for more information.
+ *
+ * The universal work-around for other browsers watches a stylesheet
+ * until its rules are available (not null or undefined).  There are
+ * nuances, of course, between the various browsers.  The isLinkReady
+ * function accounts for these.
  *
  * Note: it appears that all browsers load @import'ed stylesheets before
  * fully processing the rest of the importing stylesheet. Therefore, we
- * don't need to find and wait for any @import rules explicitly.
+ * don't need to find and wait for any @import rules explicitly.  They'll
+ * be waited for implicitly.
  *
  * Global configuration options:
  *
@@ -46,16 +54,16 @@
  * determines the msec to wait between brute-force checks for rules. The
  * default is 50 msec.
  *
- * You may specify an alternate file extension:
+ * You may specify an alternate file extension or no extension:
  *      require('css!myproj/component.less') // --> myproj/component.less
- *      require('css!myproj/component.scss') // --> myproj/component.scss
+ *      require('css!myproj/component') // --> myproj/component.css
  *
  * When using alternative file extensions, be sure to serve the files from
  * the server with the correct mime type (text/css) or some browsers won't
- * parse them, causing an error in the plugin.
+ * parse them, causing an error.
  *
  * usage:
- *      require(['css!myproj/comp']); // load and wait for myproj/comp.css
+ *      require(['css!myproj/comp.css']); // load and wait for myproj/comp.css
  *      define(['css!some/folder/file'], {}); // wait for some/folder/file.css
  *      require(['css!myWidget']);
  *
@@ -63,17 +71,17 @@
  *      Firefox 3.6, 4.0, 11, 21
  *      Safari 3.0.4, 3.2.1, 5.0
  *      Chrome 19
- *      Opera 11.62
- *      IE 6, 7, 8, and 9
- *  Error callbacks work in the following:
- *  	Firefox 14+
+ *      Opera 11.62, 12.01
+ *      IE 6-10
+ *  Error handlers work in the following:
+ *  	Firefox 12+
  *  	Safari 6+
  *  	Chrome 9+
- *  	IE7-9 (need to test 10)
- *  Error callbacks don't work in:
- *  	Opera 11.62
+ *  	IE7-9
+ *  Error handlers don't work in:
+ *  	Opera 11.62, 12.01
  *  	Firefox 3.6, 4.0
- *  	IE 6
+ *  	IE 6 and 10
 */
 
 	var
@@ -86,8 +94,10 @@
 		doc = global.document,
 		// find the head element and set it to it's standard property if nec.
 		head,
-		// infer IE
-		shouldCollectSheets = doc && doc.createStyleSheet,
+		// infer IE 6-9
+		// IE 10 still doesn't seem to have link.onerror support,
+		// but it doesn't choke on >31 stylesheets at least!
+		shouldCollectSheets = doc && doc.createStyleSheet && doc.documentMode >= 10,
 		ieCollectorSheets = [],
 		ieCollectorPool = [],
 		ieCollectorQueue = [],
@@ -205,7 +215,9 @@
 	 */
 	function loadNextImport (coll) {
 		var imp;
+
 		imp = ieCollectorQueue.shift();
+
 		if (imp) {
 			coll.onload = function () {
 				imp.cb();
@@ -242,12 +254,15 @@
 	 */
 	function getIeCollector () {
 		var el;
+
 		el = ieCollectorPool.shift();
+
 		if (!el && ieCollectorSheets.length < ieMaxCollectorSheets) {
 			el = doc.createElement('style');
 			ieCollectorSheets.push(el);
 			head.appendChild(el);
 		}
+
 		return el;
 	}
 
