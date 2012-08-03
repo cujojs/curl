@@ -60,11 +60,20 @@
  *      require(['css!myWidget']);
  *
  * Tested in:
- *      Firefox 3.6, 4.0, 11
+ *      Firefox 3.6, 4.0, 11, 21
  *      Safari 3.0.4, 3.2.1, 5.0
  *      Chrome 19
  *      Opera 11.62
  *      IE 6, 7, 8, and 9
+ *  Error callbacks work in the following:
+ *  	Firefox 14+
+ *  	Safari 6+
+ *  	Chrome 9+
+ *  	IE7-9 (need to test 10)
+ *  Error callbacks don't work in:
+ *  	Opera 11.62
+ *  	Firefox 3.6, 4.0
+ *  	IE 6
 */
 
 	var
@@ -81,7 +90,6 @@
 		shouldCollectSheets = doc && doc.createStyleSheet,
 		ieCollectorSheets = [],
 		ieCollectorPool = [],
-		ieCollectorPos = 0,
 		ieCollectorQueue = [],
 		ieMaxCollectorSheets = 12,
 		loadSheet,
@@ -402,10 +410,8 @@
 
 			// this function must get called just once per stylesheet!
 			function loaded () {
-console.log('loaded ', window.cssCount >= 0 ? ++window.cssCount : (window.cssCount = 0), ' ', resourceId);
 				if (--loadingCount == 0) {
 					callback();
-console.log('callback ', resourceId);
 				}
 			}
 
