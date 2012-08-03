@@ -77,14 +77,14 @@
 		doc = global.document,
 		// find the head element and set it to it's standard property if nec.
 		head,
-		// infer IE 6-8:
-		shouldCollectSheets = doc && doc.createStyleSheet && !doc.addEventListener,
+		// infer IE
+		shouldCollectSheets = doc && doc.createStyleSheet,
 		ieCollectorSheets = [],
+		ieCollectorPool = [],
 		ieCollectorPos = 0,
+		ieCollectorQueue = [],
 		ieMaxCollectorSheets = 12,
-		ieCollectedUrls = [],
 		loadSheet,
-		urlAnchor,
 		msgHttp = 'HTTP or network error.',
 		hasEvent = {};
 
@@ -92,39 +92,11 @@
 		head = doc.head || doc.getElementsByTagName('head')[0];
 		if (shouldCollectSheets) {
 			loadSheet = loadImport;
-//			urlAnchor = doc.createElement('a');
 		}
 		else {
-//			// the following code attempts to pre-determine if the browser supports
-//			// onload and onerror event handlers. None of these work in Opera.
-//			// Chrome, FF, IE9, Safari 6
-//			//testLinkEvent('load', 'about:blank');
-//			// Chrome, FF, IE9, Safari 6
-//			testLinkEvent('load', 'data:text/css,curl-css-test{}');
-//			// Chrome only
-//			//testLinkEvent('error', 'about:_curl_');
-//			// FF, Chrome, and Safari 6 fire onerror on this one, but fail loudly in console and/or net tab
-//			testLinkEvent('error', 'javascript:/*curl css test*/');
-//			// FF, Chrome, and Safari 6 fire onerror on this one, but fail loudly in console and/or net tab
-//			//testLinkEvent('error', 'data:text/css;base64,_curl-css-test{}');
-//			// FF fails here (protocol error) but Chrome/Safari show console warning
-//			testLinkEvent('error', 'data:text/plain,');
 			loadSheet = loadLink;
 		}
 	}
-
-//	function testLinkEvent (event, page) {
-//		var link;
-//		link = createLink();
-//		link['on' + event] = function () {
-//console.log(event, true, page);
-//			setLoadDetection(event, true);
-//		};
-//		link.href = page;
-//		head.appendChild(link);
-//		// 250 msec is probably enough even under high cpu load
-//		setTimeout(function () { head.removeChild(link); }, 250);
-//	}
 
 	function setLoadDetection (event, hasNative) {
 		hasEvent[event] = hasEvent[event] || hasNative;
@@ -171,8 +143,8 @@
 	 * To get around the one-sheet-at-a-time problem, we create many
 	 * parent stylesheets at once.  If we create 12 parent sheets, we can load
 	 * up to 12 imported sheets at once.  This has an additional benefit:
-	 * we can load 372 (12 * 31) stylesheets.  IE 6-8 can only load 31
-	 * stylesheets in any one scope.  By creating multiple parent sheets, we
+	 * we can load 372 (12 * 31) stylesheets.  IE 6-9 can dynamically load only
+	 * 31 stylesheets in any one scope.  By creating multiple parent sheets, we
 	 * create multiple scopes.
 	 *
 	 * The astute reader will have discovered a major flaw with this approach:
@@ -198,74 +170,74 @@
 	 * @param eb {Function}
 	 */
 	function loadImport (url, cb, eb) {
-		var el, prev;
-//		// IE needs a url with a protocol or it won't fire events
-//		url = toAbsUrl(url);
-		// TODO: repeated urls don't fire onload again in IE6-8 (works in IE9)
-		el = getIeCollector();
+		var coll;
 
-		// if this collector isn't busy
-		if (isFinalized(el)) {
-			addImport(url);
-		}
-		else {
-			// queue addImport until after current load or error event
-			prev = { ol: el.onload, oe: el.onerror };
-			el.onload = function () {
-				prev.ol();
-				addImport(url);
-			};
-			el.onerror = function () {
-				prev.oe();
-				addImport(url);
-			};
-		}
+		// push stylesheet and callbacks on queue
+		ieCollectorQueue.push({
+			url:url,
+			cb:cb,
+			eb: function failure () { eb(new Error(msgHttp)); }
+		});
 
-		function addImport (url) {
-			el.onload = success;
-			el.onerror = failure;
-			// import sheet into collector stylesheet
-			el.styleSheet.addImport(url);
-		}
+		// find an available collector
+		coll = getIeCollector();
 
-		function success () {
-			finalize(el);
-			cb();
-		}
-
-		function failure () {
-			eb(new Error(msgHttp));
+		// if we have an available collector, import a stylesheet off queue
+		if (coll) {
+			loadNextImport(coll);
 		}
 
 	}
 
-//	function toAbsUrl (url) {
-//		urlAnchor.href = url;
-//		return urlAnchor.href;
-//	}
+	/**
+	 * Grabs the next sheet/callback item from the queue and imports it into
+	 * the provided collector sheet.
+	 * @private
+	 * @param coll {Stylesheet}
+	 */
+	function loadNextImport (coll) {
+		var imp;
+		imp = ieCollectorQueue.shift();
+		if (imp) {
+			coll.onload = function () {
+				imp.cb();
+				loadNextImport(coll);
+			};
+			coll.onerror = function () {
+				imp.eb();
+				loadNextImport(coll);
+			};
+			coll.styleSheet.addImport(imp.url);
+		}
+		else {
+			finalize(coll);
+			returnIeCollector(coll);
+		}
+	}
 
 	/**
-	 * Gets the next collector sheet in the collection.  If less than the
-	 * maximum collector sheets has been created, a new one is created.
-	 * If the max collectors have been created, the next sheet is chosen
-	 * via "round robin" (sequential traversal of list).  Round robin isn't
-	 * the best algorithm to maximize performance since some sheets may
-	 * take longer than others.  However, it simplifies the algorithm.
-	 *
-	 * We could devise a more complex algorithm that chooses the next collector
-	 * based on its queue length.  However, we'd have to be careful not to
-	 * overload any one collector (overload == more than 31 imports).
-	 *
-	 * The callback is called when the sheet is ready.
-	 *
-	 * @return {HTMLElement} a stylesheet element
+	 * Returns a collector sheet to the pool.
+	 * @private
+	 * @param coll {Stylesheet}
+	 */
+	function returnIeCollector (coll) {
+		ieCollectorPool.push(coll);
+	}
+
+	/**
+	 * Gets the next collector sheet in the pool.  If there is no collector
+	 * in the pool and less than the maximum collector sheets has been created,
+	 * a new one is created. If the max collectors have been created,
+	 * undefined is returned.
+	 * @private
+	 * @return {HTMLElement} a stylesheet element to act as a collector sheet
 	 */
 	function getIeCollector () {
 		var el;
-		el = ieCollectorSheets[ieCollectorPos];
-		ieCollectorPos = (ieCollectorPos + 1) % ieMaxCollectorSheets;
-		if (!el) {
-			el = ieCollectorSheets[ieCollectorPos] = doc.createElement('style');
+		el = ieCollectorPool.shift();
+		if (!el && ieCollectorSheets.length < ieMaxCollectorSheets) {
+			el = doc.createElement('style');
+			ieCollectorSheets.push(el);
 			head.appendChild(el);
 		}
 		return el;
@@ -430,8 +402,10 @@
 
 			// this function must get called just once per stylesheet!
 			function loaded () {
+console.log('loaded ', window.cssCount >= 0 ? ++window.cssCount : (window.cssCount = 0), ' ', resourceId);
 				if (--loadingCount == 0) {
 					callback();
+console.log('callback ', resourceId);
 				}
 			}
 
