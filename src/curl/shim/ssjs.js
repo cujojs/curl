@@ -12,7 +12,7 @@
  *
  * @experimental
  */
-define.amd.ssjs = true;
+define['amd'].ssjs = true;
 var require, load;
 (function (freeRequire, globalLoad) {
 define(/*=='curl/shim/ssjs',==*/ function (require, exports) {

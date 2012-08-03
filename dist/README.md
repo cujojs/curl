@@ -1,20 +1,34 @@
 Distribution Files
 ==================
 
-These are the "compiled" versions of curl.js.
+These are "compiled" versions of curl.js for your convenience.
+
+Please note: these versions have been processed with Google Closure Compiler
+in Advanced Mode.  Advanced Mode obfuscates any identifiers that haven't
+been specifically declared as "exported".
+Therefore, any modules/files that aren't compiled at the same time
+may not work together after being compiled.
+
+curl.js only exports identifiers needed for AMD compatibility or needed
+to process configuration settings. What this means to you:
+
+If you plan to use any of curl's plugins or other auxiliary modules,
+you may have to compile them into curl.js (see below) -- or
+compile curl.js into your application's optimized files. If you see "method
+not defined" or similar errors within curl.js, this is likely the problem.
 
 Use curl/curl.js if you are only loading AMD-formatted javascript modules.
 
 Use curl-with-js-and-domReady/curl.js if you wish to use non-AMD javascript
 files and don't have an alternative domReady implementation handy.
 
-Use curl-for-jQuery1.7 for a version of curl that has instructions for
+Use curl-for-jQuery for a version of curl that has instructions for
 jQuery 1.7 to register as an AMD module and has the js! and link! plugins
 built in.  This is an adequate configuration for many simple jQuery projects
 (and some sophisticated ones, too).
 
 curl-for-dojo1.6 has the domReady! plugin built in as well as some
-compatibility shims for dojo 1.6 (which isn't officially AMD-ready).
+compatibility shims for dojo 1.6 and dojo 1.7.
 
 You can build your own custom version of curl.js by using the `make.sh` script
 in the /bin/ folder.  You must run it from the /bin/ folder.  Syntax:
@@ -31,7 +45,6 @@ The following files can be concatenated into curl.js using make.sh:
 * ../src/curl/plugin/domReady.js (the domReady plugin)
 * ../src/curl/domReady.js (the domReady module)
 * ../src/curl/shim/dojo16.js (the dojo 1.6 compatibility shim / module)
-* ../src/curl/shim/underscore.js (the underscore compatibility shim / module)
 * ../src/curl/loader/cjsm11.js (the CommonJS Modules/1.1 compatibility shim / module)
 * Any named AMD module (does not support anonymous modules, yet!)
 * Any non-AMD javascript file

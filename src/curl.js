@@ -9,12 +9,12 @@
  * Licensed under the MIT License at:
  * 		http://www.opensource.org/licenses/mit-license.php
  *
- * @version 0.6.6
+ * @version 0.6.7
  */
 (function (global) {
 //"use strict"; don't restore this until the config routine is refactored
 	var
-		version = '0.6.6',
+		version = '0.6.7',
 		curlName = 'curl',
 		userCfg = global[curlName],
 		prevCurl,
@@ -393,7 +393,7 @@
 			if (prevDefine && hasCfg) global[defineName] = prevDefine;
 
 			// indicate our capabilities:
-			define['amd'] = { 'plugins': true, 'jQuery': true, curlName: version };
+			define['amd'] = { 'plugins': true, 'jQuery': true, 'curl': version };
 
 			// switch to re-runnable config
 			if (hasCfg) core.config = core.moreConfig;
