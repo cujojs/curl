@@ -14,7 +14,7 @@
 
 define(/*=='curl/loader/cjsm11',==*/ function () {
 
-	var head /*, findRequiresRx, myId*/;
+	var head, insertBeforeEl /*, findRequiresRx, myId*/;
 
 //	findRequiresRx = /require\s*\(\s*['"](\w+)['"]\s*\)/,
 
@@ -56,6 +56,9 @@ define(/*=='curl/loader/cjsm11',==*/ function () {
 //	}
 
 	head = document && (document['head'] || document.getElementsByTagName('head')[0]);
+	// to keep IE from crying, we need to put scripts before any
+	// <base> elements, but after any <meta>. this should do it:
+	insertBeforeEl = head && head.getElementsByTagName('base')[0] || null;
 
 	function wrapSource (source, resourceId, fullUrl) {
 		var sourceUrl = fullUrl ? '////@ sourceURL=' + fullUrl.replace(/\s/g, '%20') + '.js' : '';
@@ -76,13 +79,12 @@ define(/*=='curl/loader/cjsm11',==*/ function () {
 		var el = document.createElement('script');
 		injectSource(el, source);
 		el.charset = 'utf-8';
-		// use insertBefore to keep IE from throwing Operation Aborted (thx Bryan Forbes!)
-		head.insertBefore(el, head.firstChild);
+		head.insertBefore(el, insertBeforeEl);
 	}
 
 	return {
 		'load': function (resourceId, require, callback, config) {
-			// TODO: extract xhr from text! plugin and use that instead?
+			// TODO: extract xhr from text! plugin and use that instead (after we upgrade to cram.js)
 			require(['text!' + resourceId + '.js', 'curl/_privileged'], function (source, priv) {
 				var moduleMap;
 
