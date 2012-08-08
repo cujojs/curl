@@ -413,6 +413,7 @@
 			// set defaults and convert from closure-safe names
 			newCfg.baseUrl = newCfg['baseUrl'] || '';
 			newCfg.pluginPath = newCfg['pluginPath'] || 'curl/plugin';
+			newCfg.dontAddFileExt = new RegExp(newCfg['dontAddFileExt'] || dontAddExtRx);
 
 			// create object to hold path map.
 			// each plugin and package will have its own pathMap, too.
@@ -562,7 +563,7 @@
 		checkToAddJsExt: function (url) {
 			// don't add extension if a ? is found in the url (query params)
 			// i'd like to move this feature to a moduleLoader
-			return url + (dontAddExtRx.test(url) ? '' : '.js');
+			return url + (userCfg.dontAddFileExt.test(url) ? '' : '.js');
 		},
 
 		loadScript: function (def, success, failure) {
