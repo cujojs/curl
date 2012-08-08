@@ -21,6 +21,7 @@ What's New?
 =======
 
 * 0.7
+	* new discussion group at https://groups.google.com/d/forum/cujojs
 	* dontAddFileExt config option (RegExp or string) decides whether or not
 	  to add a .js file extension to module urls.
 	* Fix an IE/jquery-related "Permission denied" error.
@@ -171,7 +172,7 @@ How to get support
 
 It's that easy.
 
-Got more in-depth questions?  Browse the [cujojs discussion group](https://groups.google.com/forum/#!forum/cujojs).
+Got more in-depth questions?  Browse the [cujojs discussion group](https://groups.google.com/d/forum/cujojs).
 
 ----------------------------------------
 
