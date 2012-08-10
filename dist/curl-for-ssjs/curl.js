@@ -9,18 +9,21 @@
  * Licensed under the MIT License at:
  * 		http://www.opensource.org/licenses/mit-license.php
  *
- * @version 0.6.7
+ * @version 0.7
  */
 (function (global) {
 //"use strict"; don't restore this until the config routine is refactored
 	var
-		version = '0.6.7',
+		version = '0.7',
 		curlName = 'curl',
 		userCfg = global[curlName],
 		prevCurl,
 		prevDefine,
 		doc = global.document,
 		head = doc && (doc['head'] || doc.getElementsByTagName('head')[0]),
+		// to keep IE from crying, we need to put scripts before any
+		// <base> elements, but after any <meta>. this should do it:
+		insertBeforeEl = head && head.getElementsByTagName('base')[0] || null,
 		// constants / flags
 		msgUsingExports = {},
 		msgFactoryExecuted = {},
@@ -240,7 +243,7 @@
 				return core.resolvePathInfo(toAbsId(n), cfg).url;
 			}
 
-			function localRequire (ids, callback) {
+			function localRequire (ids, callback, errback) {
 				var cb, rvid, childDef, earlyExport;
 
 				// this is public, so send pure function
@@ -266,7 +269,7 @@
 				}
 				else {
 					// use same id so that relative modules are normalized correctly
-					when(core.getDeps(core.createContext(cfg, def.ctxId, ids, isPreload)), cb);
+					when(core.getDeps(core.createContext(cfg, def.ctxId, ids, isPreload)), cb, errback);
 				}
 			}
 
@@ -410,6 +413,7 @@
 			// set defaults and convert from closure-safe names
 			newCfg.baseUrl = newCfg['baseUrl'] || '';
 			newCfg.pluginPath = newCfg['pluginPath'] || 'curl/plugin';
+			newCfg.dontAddFileExt = new RegExp(newCfg['dontAddFileExt'] || dontAddExtRx);
 
 			// create object to hold path map.
 			// each plugin and package will have its own pathMap, too.
@@ -559,7 +563,7 @@
 		checkToAddJsExt: function (url) {
 			// don't add extension if a ? is found in the url (query params)
 			// i'd like to move this feature to a moduleLoader
-			return url + (dontAddExtRx.test(url) ? '' : '.js');
+			return url + (userCfg.dontAddFileExt.test(url) ? '' : '.js');
 		},
 
 		loadScript: function (def, success, failure) {
@@ -604,8 +608,8 @@
 			// IE will load the script sync if it's in the cache, so
 			// indicate the current resource definition if this happens.
 			activeScripts[def.id] = el;
-			// use insertBefore to keep IE from throwing Operation Aborted (thx Bryan Forbes!)
-			head.insertBefore(el, head.firstChild);
+
+			head.insertBefore(el, insertBeforeEl);
 
 			// the js! plugin uses this
 			return el;
@@ -739,7 +743,7 @@
 					// signal any waiters/parents that we can export
 					// early (see progress callback in getDep below).
 					// note: this may fire for `require` as well, if it
-					// is listed after `module` or `exports` in teh deps list,
+					// is listed after `module` or `exports` in the deps list,
 					// but that is okay since all waiters will only record
 					// it once.
 					if (parentDef.exports) {
@@ -928,7 +932,7 @@
 						// can use paths relative to the resource
 						normalizedDef = core.createPluginDef(resCfg, fullId, isPreload, resId);
 
-						// don't cache non-determinate "dynamic" resources (or non-existent resources)
+						// don't cache non-determinate "dynamic" resources
 						if (!dynamic) {
 							cache[fullId] = normalizedDef;
 						}
@@ -941,7 +945,7 @@
 							if (!dynamic) cache[fullId] = res;
 						};
 						loaded['resolve'] = loaded;
-						loaded['reject'] = normalizedDef.reject;
+						loaded['reject'] = loaded['error'] = normalizedDef.reject;
 
 						// load the resource!
 						plugin.load(resId, normalizedDef.require, loaded, resCfg);
@@ -996,7 +1000,7 @@
 		}
 
 		// thanks to Joop Ringelberg for helping troubleshoot the API
-		function CurlApi (ids, callback, waitFor) {
+		function CurlApi (ids, callback, errback, waitFor) {
 			var then, ctx;
 			ctx = core.createContext(userCfg, undef, [].concat(ids));
 			this['then'] = then = function (resolved, rejected) {
@@ -1012,15 +1016,15 @@
 				);
 				return this;
 			};
-			this['next'] = function (ids, cb) {
+			this['next'] = function (ids, cb, eb) {
 				// chain api
-				return new CurlApi(ids, cb, ctx);
+				return new CurlApi(ids, cb, eb, ctx);
 			};
-			if (callback) then(callback);
+			if (callback) then(callback, errback);
 			when(waitFor, function () { core.getDeps(ctx); });
 		}
 
-		return new CurlApi(args[0], args[1]);
+		return new CurlApi(args[0], args[1], args[2]);
 
 	}
 
@@ -1103,7 +1107,7 @@
 
 define('curl/loader/cjsm11', function () {
 
-	var head /*, findRequiresRx, myId*/;
+	var head, insertBeforeEl /*, findRequiresRx, myId*/;
 
 //	findRequiresRx = /require\s*\(\s*['"](\w+)['"]\s*\)/,
 
@@ -1145,6 +1149,9 @@ define('curl/loader/cjsm11', function () {
 //	}
 
 	head = document && (document['head'] || document.getElementsByTagName('head')[0]);
+	// to keep IE from crying, we need to put scripts before any
+	// <base> elements, but after any <meta>. this should do it:
+	insertBeforeEl = head && head.getElementsByTagName('base')[0] || null;
 
 	function wrapSource (source, resourceId, fullUrl) {
 		var sourceUrl = fullUrl ? '////@ sourceURL=' + fullUrl.replace(/\s/g, '%20') + '.js' : '';
@@ -1165,13 +1172,12 @@ define('curl/loader/cjsm11', function () {
 		var el = document.createElement('script');
 		injectSource(el, source);
 		el.charset = 'utf-8';
-		// use insertBefore to keep IE from throwing Operation Aborted (thx Bryan Forbes!)
-		head.insertBefore(el, head.firstChild);
+		head.insertBefore(el, insertBeforeEl);
 	}
 
 	return {
-		'load': function (resourceId, require, loaded, config) {
-			// TODO: extract xhr from text! plugin and use that instead?
+		'load': function (resourceId, require, callback, config) {
+			// TODO: extract xhr from text! plugin and use that instead (after we upgrade to cram.js)
 			require(['text!' + resourceId + '.js', 'curl/_privileged'], function (source, priv) {
 				var moduleMap;
 
@@ -1193,10 +1199,10 @@ define('curl/loader/cjsm11', function () {
 						globalEval(source);
 					}
 
-					// call loaded now that the module is defined
-					loaded(require(resourceId));
+					// call callback now that the module is defined
+					callback(require(resourceId));
 
-				});
+				}, callback['error'] || function (ex) { throw ex; });
 
 			});
 		}

@@ -105,10 +105,10 @@ define(/*=='js',==*/ ['curl/_privileged'], function (priv) {
 					// go get it (from cache hopefully)
 					fetch.apply(null, next);
 				}
-				promise['resolve'](def.resolved || true);
+				promise.resolve(def.resolved || true);
 			},
 			function (ex) {
-				promise['reject'](ex);
+				promise.reject(ex);
 			}
 		);
 
