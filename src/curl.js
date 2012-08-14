@@ -67,7 +67,8 @@
 		if (main.charAt(0) != '.') main = './' + main;
 		// trailing slashes trick reduceLeadingDots to see them as base ids
 		descriptor.main = reduceLeadingDots(main, descriptor.name + '/');
-		descriptor.mainPath = reduceLeadingDots(main, descriptor.path + '/');
+		// pre-resolve this now to save cpu later
+//		descriptor.mainPath = reduceLeadingDots(main, descriptor.path + '/');
 		descriptor.config = descriptor['config'];
 
 		return descriptor;
@@ -225,14 +226,20 @@
 			var def;
 
 			def = new Promise();
-			def.ctxId = def.id = baseId || ''; // '' == global
+			def.id = baseId || ''; // '' == global
 			def.isPreload = isPreload;
 			def.depNames = depNames;
 
 			// functions that dependencies will use:
 
+			// TODO: these functions will all be the same per config, not module. move them to the config object
+			function fixMainId (id) {
+				return id in cfg.pathMap && cfg.pathMap[id].main || id;
+			}
+
 			function toAbsId (childId) {
-				return reduceLeadingDots(childId, def.ctxId);
+				// TODO: resolve plugin ids here too
+				return fixMainId(reduceLeadingDots(childId, def.id));
 			}
 
 			function toUrl (n) {
@@ -255,6 +262,7 @@
 					// return resource
 					rvid = toAbsId(ids);
 					childDef = cache[rvid];
+					// TODO: this can return too early if childDef uses module.exports
 					earlyExport = isPromise(childDef) && childDef.exports;
 					if (!(rvid in cache)) {
 						// this should only happen when devs attempt their own
@@ -269,7 +277,7 @@
 				}
 				else {
 					// use same id so that relative modules are normalized correctly
-					when(core.getDeps(core.createContext(cfg, def.ctxId, ids, isPreload)), cb, errback);
+					when(core.getDeps(core.createContext(cfg, def.id, ids, isPreload)), cb, errback);
 				}
 			}
 
@@ -280,11 +288,10 @@
 			return def;
 		},
 
-		createResourceDef: function (cfg, id, isPreload, optCtxId) {
+		createResourceDef: function (cfg, id, isPreload) {
 			var def, origResolve, execute;
 
 			def = core.createContext(cfg, id, undef, isPreload);
-			def.ctxId = optCtxId == undef ? id : optCtxId;
 			origResolve = def.resolve;
 
 			// using countdown to only execute definition function once
@@ -322,11 +329,10 @@
 			return def;
 		},
 
-		createPluginDef: function (cfg, id, isPreload, ctxId) {
+		createPluginDef: function (cfg, id, isPreload) {
 			var def;
 
 			def = core.createContext(cfg, id, undef, isPreload);
-			def.ctxId = ctxId;
 
 			return def;
 		},
@@ -345,7 +351,8 @@
 				module = def.module = {
 					'id': def.id,
 					'uri': core.getDefUrl(def),
-					'exports': core.getCjsExports(def)
+					'exports': core.getCjsExports(def),
+					'config': function () { return def.config; }
 				};
 				module.exports = module['exports']; // oh closure compiler!
 			}
@@ -512,35 +519,17 @@
 
 		},
 
-		resolvePathInfo: function (absId, cfg, forPlugin) {
+		resolvePathInfo: function (absId, cfg) {
 			// searches through the configured path mappings and packages
-			var pathMap, pathInfo, ctxId, path, pkgCfg, found;
+			var pathMap, pathInfo, path, pkgCfg;
 
 			pathMap = cfg.pathMap;
 
-			if (forPlugin && cfg.pluginPath && absId.indexOf('/') < 0 && !(absId in pathMap)) {
-				// prepend plugin folder path, if it's missing and path isn't in pathMap
-				// Note: this munges the concepts of ids and paths for plugins,
-				// but is generally safe since it's only for non-namespaced
-				// plugins (plugins without path or package info).
-				ctxId = absId = joinPath(cfg.pluginPath, absId);
-			}
 			if (!absUrlRx.test(absId)) {
 				path = absId.replace(cfg.pathRx, function (match) {
 
 					pathInfo = pathMap[match] || {};
-					found = true;
 					pkgCfg = pathInfo.config;
-
-					// if pathInfo.main and match == absId, this is a main module
-					if (pathInfo.main && match == absId) {
-						ctxId = pathInfo.main;
-						return pathInfo.mainPath;
-					}
-					// if pathInfo.path return pathInfo.path
-					else {
-						return pathInfo.path || '';
-					}
 
 				});
 			}
@@ -549,7 +538,6 @@
 			}
 
 			return {
-				ctxId: ctxId || absId,
 				config: pkgCfg || userCfg,
 				url: core.resolveUrl(path, cfg)
 			};
@@ -850,6 +838,7 @@
 		},
 
 		fetchDep: function (depName, parentDef) {
+			// TODO: start using parentDef.config instead of userCfg
 			var toAbsId, isPreload, parts, mainId, loaderId, pluginId,
 				resId, pathInfo, def, tempDef, resCfg;
 
@@ -863,7 +852,11 @@
 
 			// get id of first resource to load (which could be a plugin)
 			mainId = toAbsId(parts.pluginId || resId);
-			pathInfo = core.resolvePathInfo(mainId, userCfg, !!parts.pluginId);
+			if (parts.pluginId && userCfg.pluginPath && mainId.indexOf('/') < 0 && !(mainId in userCfg.pathMap)) {
+				// prepend plugin folder path, if it's missing and path isn't in pathMap
+				mainId = joinPath(userCfg.pluginPath, mainId);
+			}
+			pathInfo = core.resolvePathInfo(mainId, userCfg);
 
 			// get custom module loader from package config if not a plugin
 			// TODO: figure out how to make module loaders work with plugins
@@ -884,7 +877,7 @@
 			// falsey values could be in there.
 			def = cache[mainId];
 			if (!(mainId in cache)) {
-				def = cache[mainId] = core.createResourceDef(pathInfo.config, mainId, isPreload, pathInfo.ctxId);
+				def = cache[mainId] = core.createResourceDef(pathInfo.config, mainId, isPreload);
 				def.url = core.checkToAddJsExt(pathInfo.url);
 				core.fetchResDef(def);
 			}
@@ -930,7 +923,7 @@
 
 						// because we're using resId, plugins, such as wire!,
 						// can use paths relative to the resource
-						normalizedDef = core.createPluginDef(resCfg, fullId, isPreload, resId);
+						normalizedDef = core.createPluginDef(resCfg, fullId, isPreload);
 
 						// don't cache non-determinate "dynamic" resources
 						if (!dynamic) {

@@ -35,7 +35,7 @@
 	tests = {
 		'curl should infer location/main.js as main module when not specified': function (cb, assert, require, done) {
 			function checkMain (main) {
-				assert.equal('main', main, 'main module should be "main"');
+				assert.equal('pkg/main', main.id, 'main module should be "pkg/main"');
 			}
 			curl(['pkg'])
 				.then(checkMain, cb.failure)
@@ -43,7 +43,7 @@
 		},
 		'curl should find explicit main module': function (cb, assert, require, done) {
 			function checkMain (main) {
-				assert.equal('main2', main, 'main2 module should be "main2"');
+				assert.equal('pkg2/main2', main.id, 'main2 module should be "pkg2/main2"');
 			}
 			curl(['pkg2'])
 				.then(checkMain, cb.failure)
@@ -51,23 +51,23 @@
 		},
 		'curl should find explicit main module when named the same as its package': function (cb, assert, require, done) {
 			function checkMain (main) {
-				assert.equal('main', main, 'main module should be "main"');
+				assert.equal('main/main', main.id, 'main module should be "main/main"');
 			}
 			curl(['main'])
 				.then(checkMain, cb.failure)
 				.then(done, done);
 		},
 		'curl should find main module using ".." module id': function (cb, assert, require, done) {
-			function checkMain (main) {
-				assert.equal('main', main, 'main module should be "main"');
+			function checkMain (rm) {
+				assert.equal('main/main', rm.id, 'main module should be "main/main"');
 			}
 			curl(['main/folder/returnMain'])
 				.then(checkMain, cb.failure)
 				.then(done, done);
 		},
 		'curl should find main module using "../.." module id': function (cb, assert, require, done) {
-			function checkMain (main) {
-				assert.equal('main', main, 'main module should be "main"');
+			function checkMain (rm) {
+				assert.equal('main/main', rm.id, 'main module should be "main/main"');
 			}
 			curl(['main/folder/deep/returnMain'])
 				.then(checkMain, cb.failure)
@@ -75,7 +75,7 @@
 		},
 		'curl should find relative dep from main module': function (cb, assert, require, done) {
 			function checkMain (main) {
-				assert.equal('dep', main, 'main module should return "dep"');
+				assert.equal('dep', main, 'main module should return "dep" (exported string)');
 			}
 			curl(['rel'])
 				.then(checkMain, cb.failure)
