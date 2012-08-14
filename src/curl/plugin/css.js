@@ -399,7 +399,7 @@
 
 	/***** finally! the actual plugin *****/
 
-	define(/*=='css',==*/ {
+	define(/*=='curl/plugin/css',==*/ {
 
 		'normalize': function (resourceId, normalize) {
 			var resources, normalized;

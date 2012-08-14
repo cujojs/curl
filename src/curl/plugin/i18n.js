@@ -10,7 +10,7 @@
 
 (function (global) {
 
-define(/*=='i18n',==*/ function () {
+define(/*=='curl/plugin/i18n',==*/ function () {
 
 	function getLocale () {
 		return (global.clientInformation || global.navigator).language;

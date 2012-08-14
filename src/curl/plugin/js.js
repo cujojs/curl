@@ -29,7 +29,7 @@
  *
  */
 (function (global, doc, testGlobalVar) {
-define(/*=='js',==*/ ['curl/_privileged'], function (priv) {
+define(/*=='curl/plugin/js',==*/ ['curl/_privileged'], function (priv) {
 "use strict";
 	var cache = {},
 		queue = [],

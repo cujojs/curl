@@ -37,7 +37,7 @@
 	});
 
 */
-define(/*=='async',==*/ function () {
+define(/*=='curl/plugin/async',==*/ function () {
 
 	return {
 
