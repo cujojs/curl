@@ -9,11 +9,11 @@
 		baseUrl: 'support',
 		paths: {
 			curl: '../../src/curl',
-			fake: 'fake'
+			'curl/plugin/fake': 'fake'
 		},
-		packages: {
-			fake2: { location: './fake', main: '../fake' }
-		}
+		packages: [
+			{ name: 'curl/plugin/fake2', location: '.', main: '../fake' }
+		]
 	};
 
 </script>
@@ -24,23 +24,29 @@
 
 	curl(
 		[
-			'fake!',
-			'fake2!',
-			'domReady!'
+			'fake!'
 		]
 	).then(
-		success,
-		fail
+		function success (fake1) {
+			write('SUCCESS: top-level plugin should be found at top-level using path config');
+		},
+		function fail (ex) {
+			write('FAILED: top-level plugin should be found at top-level using path config: ' + ex.message);
+		}
 	);
 
-	function success (fake1, fake2) {
-		write('SUCCESS: top-level plugin was found at top-level using path config');
-		write('SUCCESS: top-level plugin was found at top-level using packages config');
-	}
-
-	function fail (ex) {
-		write('FAILED: ' + ex.message);
-	}
+	curl(
+		[
+			'fake2!'
+		]
+	).then(
+		function success (fake2) {
+			write('SUCCESS: top-level plugin should be found at top-level using packages config');
+		},
+		function fail (ex) {
+			write('FAILED: top-level plugin should be found at top-level using packages config: ' + ex.message);
+		}
+	);
 
 	function write (msg) {
 		curl('domReady!', function () {

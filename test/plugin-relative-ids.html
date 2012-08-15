@@ -16,9 +16,9 @@
 
 <script type="text/javascript">
 
-	define('plugin-that-processes-relative-ids', function(){
+	define('curl/plugin/plugin-that-processes-relative-ids', function () {
 		return {
-			load: function(id, require, loaded, config){
+			load: function (id, require, loaded, config) {
 				// loads two instead of one
 				require(['./two'], loaded);
 			}

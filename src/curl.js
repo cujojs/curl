@@ -221,6 +221,26 @@
 
 	core = {
 
+		toAbsId: function (id, parentId, cfg) {
+			return core.fixMainId(reduceLeadingDots(id, parentId));
+		},
+
+		fixMainId: function (id, cfg) {
+			// TODO: ensure that all config objects inherit pathMap and then remove extra check:
+			return cfg.pathMap && id in cfg.pathMap && cfg.pathMap[id].main || id;
+		},
+
+		fixPluginId: function (id, cfg) {
+			// only run this on ids you know are for a plugin.
+			// prepend plugin folder path, but only if it's missing and
+			// path isn't in pathMap. JMH: removed pathMap test because
+			// it conflicts with `paths: { js: 'path/to/js', css: 'path/to/css' }`
+			if (id && cfg.pluginPath && id.indexOf('/') < 0 /*&& !(id in cfg.pathMap)*/) {
+				id = joinPath(cfg.pluginPath, id);
+			}
+			return id;
+		},
+
 		createContext: function (cfg, baseId, depNames, isPreload) {
 
 			var def;
@@ -234,7 +254,8 @@
 
 			// TODO: these functions will all be the same per config, not module. move them to the config object
 			function fixMainId (id) {
-				return id in cfg.pathMap && cfg.pathMap[id].main || id;
+				// TODO: ensure that all config objects inherit pathMap and then remove extra check:
+				return cfg.pathMap && id in cfg.pathMap && cfg.pathMap[id].main || id;
 			}
 
 			function toAbsId (childId) {
@@ -329,10 +350,11 @@
 			return def;
 		},
 
-		createPluginDef: function (cfg, id, isPreload) {
+		createPluginDef: function (cfg, id, resId, isPreload) {
 			var def;
 
-			def = core.createContext(cfg, id, undef, isPreload);
+			// use resource id for local require and toAbsId
+			def = core.createContext(cfg, resId, undef, isPreload);
 
 			return def;
 		},
@@ -412,7 +434,7 @@
 		},
 
 		moreConfig: function (cfg, prevCfg) {
-			var newCfg, pluginCfgs;
+			var newCfg, pluginCfgs, p;
 
 			if (!prevCfg) prevCfg = {};
 			newCfg = beget(prevCfg, cfg);
@@ -425,7 +447,12 @@
 			// create object to hold path map.
 			// each plugin and package will have its own pathMap, too.
 			newCfg.pathMap = beget(prevCfg.pathMap);
-			pluginCfgs = newCfg.plugins = beget(prevCfg.plugins, cfg['plugins']);
+			pluginCfgs = cfg['plugins'] || {};
+			newCfg.plugins = beget(prevCfg.plugins);
+			for (p in pluginCfgs) {
+				newCfg.plugins[core.fixPluginId(p, newCfg)] = pluginCfgs[p];
+			}
+			pluginCfgs = newCfg.plugins;
 
 			// temporary arrays of paths. this will be converted to
 			// a regexp for fast path parsing.
@@ -445,7 +472,7 @@
 					// don't remove `|| name` since data may be a string, not an object
 					parts = pluginParts(removeEndSlash(data.name || name));
 					id = parts.resourceId;
-					pluginId = parts.pluginId;
+					pluginId = core.fixPluginId(parts.pluginId, newCfg);
 					if (pluginId) {
 						// plugin-specific path
 						currCfg = pluginCfgs[pluginId];
@@ -494,7 +521,9 @@
 			fixAndPushPaths(cfg['packages'], true);
 
 			// create search regex for each path map
-			for (var p in pluginCfgs) {
+			for (p in pluginCfgs) {
+				// inherit full config
+				pluginCfgs[p] = beget(newCfg, pluginCfgs[p]);
 				var pathList = pluginCfgs[p].pathList;
 				if (pathList) {
 					pluginCfgs[p].pathList = pathList.concat(newCfg.pathList);
@@ -527,10 +556,9 @@
 
 			if (!absUrlRx.test(absId)) {
 				path = absId.replace(cfg.pathRx, function (match) {
-
 					pathInfo = pathMap[match] || {};
 					pkgCfg = pathInfo.config;
-
+					return pathInfo.path || '';
 				});
 			}
 			else {
@@ -840,10 +868,12 @@
 		fetchDep: function (depName, parentDef) {
 			// TODO: start using parentDef.config instead of userCfg
 			var toAbsId, isPreload, parts, mainId, loaderId, pluginId,
-				resId, pathInfo, def, tempDef, resCfg;
+				resId, pathInfo, def, tempDef, cfg, resCfg;
 
 			toAbsId = parentDef.toAbsId;
 			isPreload = parentDef.isPreload;
+			// TODO: remove check for userCfg when all defs have a full config
+			cfg = parentDef.config || userCfg;
 
 			// check for plugin loaderId
 			parts = pluginParts(depName);
@@ -851,12 +881,10 @@
 			resId = parts.resourceId;
 
 			// get id of first resource to load (which could be a plugin)
-			mainId = toAbsId(parts.pluginId || resId);
-			if (parts.pluginId && userCfg.pluginPath && mainId.indexOf('/') < 0 && !(mainId in userCfg.pathMap)) {
-				// prepend plugin folder path, if it's missing and path isn't in pathMap
-				mainId = joinPath(userCfg.pluginPath, mainId);
-			}
-			pathInfo = core.resolvePathInfo(mainId, userCfg);
+			mainId = parts.pluginId
+				? core.fixMainId(core.fixPluginId(parts.pluginId, cfg), cfg)
+				: toAbsId(resId);
+			pathInfo = core.resolvePathInfo(mainId, cfg);
 
 			// get custom module loader from package config if not a plugin
 			// TODO: figure out how to make module loaders work with plugins
@@ -869,7 +897,7 @@
 					// since we're not using toAbsId, transformers must be absolute
 					resId = mainId;
 					mainId = loaderId;
-					pathInfo = core.resolvePathInfo(loaderId, userCfg);
+					pathInfo = core.resolvePathInfo(loaderId, cfg);
 				}
 			}
 
@@ -896,7 +924,7 @@
 
 				// note: this means moduleLoaders can store config info in the
 				// plugins config, too.
-				resCfg = userCfg.plugins[loaderId] || userCfg;
+				resCfg = cfg.plugins[loaderId] || cfg;
 
 				// wait for plugin resource def
 				when(def, function(plugin) {
@@ -923,7 +951,7 @@
 
 						// because we're using resId, plugins, such as wire!,
 						// can use paths relative to the resource
-						normalizedDef = core.createPluginDef(resCfg, fullId, isPreload);
+						normalizedDef = core.createPluginDef(resCfg, fullId, resId, isPreload);
 
 						// don't cache non-determinate "dynamic" resources
 						if (!dynamic) {
@@ -1077,7 +1105,7 @@
 	cache['curl/_privileged'] = {
 		'core': core,
 		'cache': cache,
-		'cfg': userCfg,
+		'config': function () { return userCfg; },
 		'_define': _define,
 		'_curl': _curl,
 		'Promise': Promise

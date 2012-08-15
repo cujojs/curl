@@ -1,3 +1,3 @@
 define(function (require, exports, module) {
-	exports.id = require('..');
+	exports.id = require('..').id;
 });

@@ -27,7 +27,8 @@
 				baseUrl: '',
 				paths: beget(curl_base.paths, {
 					'plainJane.js': 'stuff/plain_old.js',
-					'js!jane2.js': 'stuff/plain_old_2.js'
+					'jane2.js': 'stuff/plain_old.js', // shouldn't get loaded
+					'js!jane2.js': 'stuff/plain_old_2.js' // this one should
 					// TODO: more tests
 				})
 			}),
@@ -40,12 +41,12 @@
 							.then(done, done);
 					},
 					'should remap plugin-specific path': function (cb, assert) {
-						function checkExports (exports) {
-							assert.equal('ketchup', exports);
+						function checkExports (junk, exports) {
+							assert.equal('ketchup', exports, 'exports verified');
 						}
-						curl(['js!plainJane.js!order', 'js!jane2.js!order'])
+						curl(['js!plainJane.js!order', 'js!jane2.js!order!exports=testDomain.awesome.sauce'])
 							.then(cb.success, cb.failure)
-							//.then(checkExports)
+							.then(checkExports)
 							.then(done, done);
 					}
 				};
