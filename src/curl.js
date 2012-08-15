@@ -402,10 +402,8 @@
 			// allow dev to rename/relocate curl() to another object
 			apiName = cfg['apiName'] || curlName;
 			apiObj = cfg['apiContext'] || global;
-			// if the dev is overwriting an existing curl()
-			if (apiObj != global || apiName != curlName ? apiObj[apiName] : prevCurl && hasCfg) {
-				throw new Error(apiName + ' already exists');
-			}
+			// we no longer throw if the dev is overwriting an existing curl()
+			// since some devs were relying on it when loading curl.js async
 			apiObj[apiName] = _curl;
 			// restore previous curl
 			if (prevCurl && hasCfg) global[curlName] = prevCurl;
@@ -413,9 +411,6 @@
 			// allow dev to rename/relocate define() to another object
 			defName = cfg['defineName'] || defineName;
 			defObj = cfg['defineContext'] || global;
-			if (defObj != global || defName != defineName ? defObj[defName] : prevDefine && hasCfg) {
-				throw new Error(defName + ' already exists');
-			}
 			defObj[defName] = define = function () {
 				// wrap inner _define so it can be replaced without losing define.amd
 				var args = core.fixArgs(arguments);
