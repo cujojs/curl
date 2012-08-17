@@ -5,24 +5,10 @@
 
 <script>
 
-	// mock console for IE
-	if (!window.console) console = {};
-	if (!('log' in console)) {
-		console._msg = [];
-		console.log = function (msg) {
-			var _msg = this._msg;
-			_msg.push(msg && msg.join ? msg.join(' ') : msg);
-			clearTimeout(this._timeout);
-			this._timeout = setTimeout(function () {
-				alert(_msg.join('\n'));
-			}, 100);
-		};
-	}
-
 	curl = {
-		debug: true,
+		baseUrl: 'support',
 		paths: {
-			curl: '../src/curl'
+			curl: '../../src/curl'
 		},
 		pluginPath: 'curl/plugin',
 		jsPrefetch: true
@@ -36,8 +22,8 @@
 
 	curl(
 		[
-			'link!stuff/base',
-			'link!stuff/second',
+			'link!../stuff/base',
+			'link!../stuff/second',
 			'domReady!'
 		]
 	).then(
@@ -60,7 +46,7 @@
 </head>
 <body>
 
-<p>This text should all be the same <span style="color: #2faced;">color</span> if the css file loaded.</p>
+<p>This text should all be the same <span style="color: #00f;">color</span> if the css file loaded.</p>
 <p>If the second file loaded, these are all caps, too.</p>
 
 </body>
