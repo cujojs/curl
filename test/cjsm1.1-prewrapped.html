@@ -23,20 +23,22 @@
 			// test modules:
 			'commonjs/exports',
 			'commonjs/this',
-			'commonjs/hybrid',
-			'domReady!'
+			'commonjs/hybrid'
 		]
 	).then(
 		function (exports, thisModule, hybrid) {
-			document.body.appendChild(document.createTextNode('A module that exports properties loaded successfully if "it works" == ' + exports.testMessage + '.'));
-			document.body.appendChild(document.createElement('br'));
-			document.body.appendChild(document.createTextNode('A module that exports as `this` loaded successfully if "it works" == ' + thisModule.testMessage + '.'));
-			document.body.appendChild(document.createElement('br'));
-			document.body.appendChild(document.createTextNode('A module that inspects `require("module")` loaded successfully if "commonjs/module" == ' + hybrid.foo.testMessage + '.'));
-			document.body.appendChild(document.createElement('br'));
-			document.body.appendChild(document.createTextNode('A module that exposes its module info loaded successfully if this "commonjs/this" == ' + thisModule._module.id + '.'));
+			write('A module that exports properties loaded successfully if "it works" == ' + exports.testMessage + '.');
+			write('A module that exports as `this` loaded successfully if "it works" == ' + thisModule.testMessage + '.');
+			write('A module that inspects `require("module")` loaded successfully if "commonjs/module" == ' + hybrid.foo.testMessage + '.');
+			write('A module that exposes its module info loaded successfully if this "commonjs/this" == ' + thisModule._module.id + '.');
 		}
 	);
+
+	function write (msg) {
+		curl('domReady!', function () {
+			document.body.appendChild(document.createElement('div')).innerHTML = msg;
+		});
+	}
 
 </script>
 

@@ -1,3 +1,3 @@
-define(function () {
-	return 'main2';
+define(function (require, exports, module) {
+	exports.id = module.id;
 });

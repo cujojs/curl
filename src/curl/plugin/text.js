@@ -9,10 +9,10 @@
 
 /**
  * TODO: load xdomain text, too
- * 
+ *
  */
 
-define(/*=='text',==*/ function () {
+define(/*=='curl/plugin/text',==*/ function () {
 
 	var progIds = ['Msxml2.XMLHTTP', 'Microsoft.XMLHTTP', 'Msxml2.XMLHTTP.4.0'];
 
@@ -67,11 +67,8 @@ define(/*=='text',==*/ function () {
 
 		load: function (resourceName, req, callback, config) {
 			// remove suffixes (future)
-			// hook up callbacks
-			var cb = callback.resolve || callback,
-				eb = callback.reject || error;
 			// get the text
-			fetchText(req['toUrl'](resourceName), cb, eb);
+			fetchText(req['toUrl'](resourceName), callback, callback['error'] || error);
 		},
 
 		'plugin-builder': './builder/text'

@@ -10,7 +10,7 @@
 
 (function (global) {
 
-define(/*=='i18n',==*/ function () {
+define(/*=='curl/plugin/i18n',==*/ function () {
 
 	function getLocale () {
 		return (global.clientInformation || global.navigator).language;
@@ -19,7 +19,7 @@ define(/*=='i18n',==*/ function () {
 	return {
 		load: function (absId, require, loaded, config) {
 			//var locale = config.locale || getLocale();
-			require([absId], loaded);
+			require([absId], loaded, loaded.error);
 		}
 	};
 

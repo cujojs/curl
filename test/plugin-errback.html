@@ -16,29 +16,22 @@
 
 <script type="text/javascript">
 
-	define('curl/plugin/plugin-that-processes-relative-ids', function () {
+	define('plugin-that-fails', function(){
 		return {
-			load: function (id, require, loaded, config) {
+			load: function(id, require, loaded, config){
 				// loads two instead of one
-				require(['./two'], loaded);
+				loaded.error(new Error('foo'));
 			}
 		};
 	});
 
-	curl(
-		['plugin-that-processes-relative-ids!stuff/one'],
-		function (two) {
-			var testId = 'should load sibling module';
-			if (2 == two) {
-				write('SUCCESS: ' + testId);
-			}
-			else {
-				write('FAILED: ' + testId);
-				write('- expected: 2, got: ' + two);
-			}
+	var testId = 'should call standard errback';
+	curl(['plugin-that-fails!anything'],
+		function () {
+			write('FAILED: ' + testId);
 		},
 		function (ex) {
-			write('ERROR: ' + ex.message);
+			write('SUCCESS: ' + testId + ' - ' + ex.message);
 		}
 	);
 

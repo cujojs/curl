@@ -20,7 +20,7 @@
 
 <script type="text/javascript">
 
-	curl(['curl/_privileged', 'MethodSpy', 'configureAsserts', 'domReady!'], function (priv, MethodSpy, configureAsserts) {
+	curl(['curl/_privileged', 'tdd/Spy', 'tdd/configureAsserts', 'domReady!'], function (priv, Spy, configureAsserts) {
 
 		// test local require
 
@@ -30,12 +30,22 @@
 
 			curl([moduleId, 'require']).then(
 				function (one, require) {
+					// basics
 					assert.equal('function', typeof require, '`require` should be a function');
 					assert.equal('function', typeof require.toUrl, '`require.toUrl` should be a function');
+					// resolution
 					assert(!!require('modules/one'), 'r-value require should return a known-cached module');
 					assert.equal('stuff/one', require.toUrl('modules/one'), '`require.toUrl` should map ids to urls (paths)');
 					assert.equal('support/commonjs/main', require.toUrl('pkg'), '`require.toUrl` should map ids to urls (packages)');
-					// TODO: async tests
+					// async callbacks
+					require(['modules/two'],
+						function () { assert(true, 'async require called callback'); },
+						function () { assert(false, 'async require called callback'); }
+					);
+					require(['modules/two-fubar'],
+						function () { assert(false, 'async require called errback'); },
+						function () { assert(true, 'async require called errback'); }
+					);
 				},
 				function (ex) {
 					failure('on ' + moduleId + ' exception:' + ex);

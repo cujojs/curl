@@ -31,7 +31,7 @@
 	).then(
 		function (exports, main) {
 			(exports.testMessage == 'it works' ? success : failure)('package.path should redirect to correct path');
-			(main == 'main' ? success : failure)('package.main should redirect to correct path');
+			(main.id == 'commonjs-test/main' ? success : failure)('package.main should redirect to correct path');
 		}
 	);
 

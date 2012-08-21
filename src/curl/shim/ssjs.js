@@ -28,7 +28,7 @@ define(/*=='curl/shim/ssjs',==*/ function (require, exports) {
 	}
 
 	priv = require('curl/_privileged');
-	config = priv.cfg;
+	config = priv.config();
     hasProtocolRx = /^\w+:/;
 	extractProtocolRx = /(^\w+:)?.*$/;
 

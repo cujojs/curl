@@ -16,7 +16,7 @@
 	define(['async!deferredResource'], function (deferredResource) {
 		// use deferredResource
 	});
-	
+
 	// deferredResource:
 	define(function () {
 		var resolved, queue, undef;
@@ -37,31 +37,19 @@
 	});
 
 */
-define(/*=='async',==*/ function () {
+define(/*=='curl/plugin/async',==*/ function () {
 
 	return {
 
 		'load': function (resourceId, require, callback, config) {
 
-			function resolved (resource) {
-				// return the resource to the callback
-				if (typeof callback.resolve == 'function') {
-					// promise-like callback
-					callback.resolve(resource);
-				}
-				else {
-					// just a function
-					callback(resource);
-				}
-			}
-
 			function rejected (error) {
 				// report that an error happened
-				if (typeof callback.reject == 'function') {
+				if (typeof callback.error == 'function') {
 					// promise-like callback
-					callback.reject(error);
+					callback.error(error);
 				}
-				// no way to report errors if the callback is not a promise
+				// no way to report errors if the callback doesn't have error()
 			}
 
 			// go get the module in the standard way
@@ -72,16 +60,16 @@ define(/*=='async',==*/ function () {
 					module.then(
 						function (resource) {
 							if (arguments.length == 0) resource = module;
-							resolved(resource);
+							callback(resource);
 						},
 						rejected
 					);
 				}
 				else {
-					// just a callback
-					resolved(module);
+					// just a normal module
+					callback(module);
 				}
-			});
+			}, callback['error'] || function (ex) { throw ex; });
 		},
 
 		// for cram's analyze phase

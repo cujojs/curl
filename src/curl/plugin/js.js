@@ -29,13 +29,16 @@
  *
  */
 (function (global, doc, testGlobalVar) {
-define(/*=='js',==*/ ['curl/_privileged'], function (priv) {
+define(/*=='curl/plugin/js',==*/ ['curl/_privileged'], function (priv) {
 "use strict";
 	var cache = {},
 		queue = [],
 		supportsAsyncFalse = doc && doc.createElement('script').async == true,
+		Promise,
 		waitForOrderedScript,
 		undef;
+
+	Promise = priv['Promise'];
 
 	function nameWithExt (name, defaultExt) {
 		return name.lastIndexOf('.') <= name.lastIndexOf('/') ?
@@ -102,10 +105,10 @@ define(/*=='js',==*/ ['curl/_privileged'], function (priv) {
 					// go get it (from cache hopefully)
 					fetch.apply(null, next);
 				}
-				promise['resolve'](def.resolved || true);
+				promise.resolve(def.resolved || true);
 			},
 			function (ex) {
-				promise['reject'](ex);
+				promise.reject(ex);
 			}
 		);
 
@@ -126,12 +129,20 @@ define(/*=='js',==*/ ['curl/_privileged'], function (priv) {
 			prefetch = 'prefetch' in config ? config['prefetch'] : true;
 			name = order || exportsPos > 0 ? name.substr(0, name.indexOf('!')) : name;
 
+			function reject (ex) {
+				(callback['error'] || function (ex) { throw ex; })(ex);
+			}
+
 			// if we've already fetched this resource, get it out of the cache
 			if (name in cache) {
-				callback(cache[name]);
+				if (cache[name] instanceof Promise) {
+					cache[name].then(callback, reject);
+				}
+				else {
+					callback(cache[name]);
+				}
 			}
 			else {
-				cache[name] = undef;
 				def = {
 					name: name,
 					url: require['toUrl'](nameWithExt(name, 'js')),
@@ -139,13 +150,14 @@ define(/*=='js',==*/ ['curl/_privileged'], function (priv) {
 					exports: exports,
 					timeoutMsec: config['timeout']
 				};
-				promise = {
-					'resolve': function (o) {
+				cache[name] = promise = new Promise();
+				promise.then(
+					function (o) {
 						cache[name] = o;
-						(callback['resolve'] || callback)(o);
+						callback(o);
 					},
-					'reject': callback['reject'] || function (ex) { throw ex; }
-				};
+					reject
+				);
 
 				// if this script has to wait for another
 				// or if we're loading, but not executing it
