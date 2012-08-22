@@ -16,9 +16,9 @@
 	var
 		version = '0.7',
 		curlName = 'curl',
-		userCfg = global[curlName],
+		userCfg,
 		prevCurl,
-		prevDefine,
+		define,
 		doc = global.document,
 		head = doc && (doc['head'] || doc.getElementsByTagName('head')[0]),
 		// to keep IE from crying, we need to put scripts before any
@@ -390,40 +390,68 @@
 		},
 
 		config: function (cfg) {
-			var hasCfg, defineName,
-				apiName, apiObj, defName, defObj, define;
+			var setDefaults, defineName, failMsg, okToOverwrite,
+				apiName, apiContext, apiObj,
+				defName, defContext, defObj;
 
-			hasCfg = cfg;
+			// no config was specified, yet
+			setDefaults = !cfg;
+
+			// switch to re-runnable config
+			if (cfg) core.config = core.moreConfig;
 
 			defineName = 'define';
+			failMsg = ' already exists';
 
 			if (!cfg) cfg = {};
 
 			// allow dev to rename/relocate curl() to another object
 			apiName = cfg['apiName'] || curlName;
-			apiObj = cfg['apiContext'] || global;
-			// we no longer throw if the dev is overwriting an existing curl()
-			// since some devs were relying on it when loading curl.js async
-			apiObj[apiName] = _curl;
-			// restore previous curl
-			if (prevCurl && hasCfg) global[curlName] = prevCurl;
-
-			// allow dev to rename/relocate define() to another object
+			apiContext = cfg['apiContext'];
+			apiObj = apiContext || global;
 			defName = cfg['defineName'] || defineName;
-			defObj = cfg['defineContext'] || global;
-			defObj[defName] = define = function () {
-				// wrap inner _define so it can be replaced without losing define.amd
-				var args = core.fixArgs(arguments);
-				_define(args);
-			};
-			// restore previous define
-			if (prevDefine && hasCfg) global[defineName] = prevDefine;
+			defContext = cfg['defineContext'];
+			defObj = defContext || global;
 
-			// indicate our capabilities:
-			define['amd'] = { 'plugins': true, 'jQuery': true, 'curl': version };
+			// is it ok to overwrite an existing api functions?
+			okToOverwrite = cfg['overwriteApi'];
 
-			// switch to re-runnable config
-			if (hasCfg) core.config = core.moreConfig;
+			// restore previous (global) curl, if it was blown away
+			// by us. this can happen when configuring curl's api
+			// after loading it. do this before any throws below.
+			if (!setDefaults && prevCurl) {
+				global[curlName] = prevCurl;
+				prevCurl = false;
+			}
+
+			// only throw if we're overwriting curl accidentally and this
+			// isn't a setDefaults pass. (see else)
+			if (!setDefaults && !okToOverwrite && apiObj[apiName] && apiObj[apiName] != _curl) {
+				throw new Error(apiName + failMsg);
+			}
+			else {
+				// if setDefaults, we must overwrite curl so that dev can
+				// configure it. (in this case, the following is the same as
+				// global.curl = _curl;)
+				apiObj[apiName] = _curl;
+			}
+
+			// if setDefaults, only create define() if it doesn't already exist.
+			if (!(setDefaults && global[defineName])) {
+				if (!setDefaults && !okToOverwrite && defObj[defName] && defObj[defName] != define) {
+					throw new Error((defName || defineName) + failMsg);
+				}
+				else {
+					// create AMD public api: define()
+					defObj[defName] = define = function () {
+						// wrap inner _define so it can be replaced without losing define.amd
+						var args = core.fixArgs(arguments);
+						_define(args);
+					};
+				}
+				// indicate our capabilities:
+				define['amd'] = { 'plugins': true, 'jQuery': true, 'curl': version };
+			}
 
 			return core.moreConfig(cfg);
 		},
@@ -1079,10 +1107,13 @@
 	}
 
 	// look for pre-existing globals
-	if (typeof define == 'function') prevDefine = define;
+	userCfg = global[curlName];
 	if (typeof userCfg == 'function') {
 		prevCurl = userCfg;
 		userCfg = false;
+	}
+	else {
+		delete global[curlName];
 	}
 
 	// configure first time
