@@ -87,22 +87,30 @@
 		// module ids of "." and ".." as meaning "grab the module whose name is
 		// the same as my folder or parent folder".  These special module ids
 		// are not included in the AMD spec but seem to work in node.js, too.
-		var levels, removeLevels, isRelative;
+		var removeLevels, normId, levels, isRelative;
+
 		removeLevels = 1;
-		childId = childId.replace(findLeadingDotsRx, function (m, dot, doubleDot, remainder) {
-			if (doubleDot) removeLevels++;
-			isRelative = true;
-			return remainder || '';
-		});
-		// TODO: throw if removeLevels > baseId levels in debug module
+		normId = childId;
+
+		// if baseId is blank, then this is the path for a top-level
+		// module/resource so we don't want to remove leading double-dots!
+		if (baseId) {
+			normId = normId.replace(findLeadingDotsRx, function (m, dot, doubleDot, remainder) {
+				if (doubleDot) removeLevels++;
+				isRelative = true;
+				return remainder || '';
+			});
+		}
+
 		if (isRelative) {
 			levels = baseId.split('/');
+			if (removeLevels > levels) throw new Error('attempt to access module beyond root of package: ' + childId);
 			levels.splice(levels.length - removeLevels, removeLevels);
 			// childId || [] is a trick to not concat if no childId
-			return levels.concat(childId || []).join('/');
+			return levels.concat(normId || []).join('/');
 		}
 		else {
-			return childId;
+			return normId;
 		}
 	}
 
