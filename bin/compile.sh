@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # run a file through google closure compiler
 
 # TODO: start using a js_externs parameter:

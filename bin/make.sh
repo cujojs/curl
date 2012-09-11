@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # get optional optimization instruction
 opt=$1
