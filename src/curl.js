@@ -1121,7 +1121,8 @@
 		userCfg = false;
 	}
 	else {
-		delete global[curlName];
+		// don't use delete here since IE6-8 fail
+		global[curlName] = undef;
 	}
 
 	// configure first time
