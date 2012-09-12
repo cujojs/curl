@@ -16,13 +16,16 @@
 
 </script>
 <script src="../src/curl.js" type="text/javascript"></script>
+</head>
+<body>
+</body>
 
 <script type="text/javascript">
 
 	var contextifiedCurl = foo.bar;
 
 	if(typeof contextifiedCurl !== 'function') {
-		alert('api context foo.bar failed');
+		write('FAILED: api context foo.bar');
 	}
 	else {
 		contextifiedCurl(
@@ -32,14 +35,15 @@
 			]
 		).then(
 			function (three) {
-				document.body.appendChild(document.createTextNode('api context foo.bar SUCCESS'));
+				write('SUCCESS: api context foo.bar');
 			}
 		);
 	}
 
+	function write (msg) {
+		document.body.appendChild(document.createElement('div')).innerHTML = msg;
+	}
+
 </script>
 
-</head>
-<body>
-</body>
 </html>

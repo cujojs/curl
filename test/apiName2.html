@@ -18,13 +18,14 @@
 
 </head>
 <body>
+</body>
 
 <script type="text/javascript">
 
 	//var contextifiedCurl = require;
 
 	if(typeof require !== 'function') {
-		alert('api context foo.bar failed');
+		write('FAILED: api context require');
 	}
 	else {
 		require(
@@ -34,12 +35,15 @@
 			]
 		).then(
 			function (three) {
-				document.body.appendChild(document.createTextNode('api context is foo.bar SUCCESS'));
+				write('SUCCESS: api context is foo.bar');
 			}
 		);
 	}
 
+	function write (msg) {
+		document.body.appendChild(document.createElement('div')).innerHTML = msg;
+	}
+
 </script>
 
-</body>
 </html>

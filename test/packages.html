@@ -22,13 +22,13 @@
 	var cfg, tests, privateCfg, domReady;
 
 	cfg = {
-		baseUrl: '',
-		paths: { curl: '../src/curl' },
+		baseUrl: 'support',
+		paths: { curl: '../../src/curl' },
 		packages: [
-			{ name: 'pkg', location: 'support/commonjs' },
-			{ name: 'pkg2', location: 'support/commonjs', main: 'main2' },
-			{ name: 'main', location: 'support/commonjs', main: 'main' },
-			{ name: 'rel', location: 'support/commonjs', main: 'main-with-relative-dep' }
+			{ name: 'pkg', location: 'commonjs' },
+			{ name: 'pkg2', location: 'commonjs', main: 'main2' },
+			{ name: 'main', location: 'commonjs', main: 'main' },
+			{ name: 'rel', location: 'commonjs', main: 'main-with-relative-dep' }
 		]
 	};
 
@@ -59,7 +59,7 @@
 		},
 		'curl should find main module using ".." module id': function (cb, assert, require, done) {
 			function checkMain (rm) {
-				assert.equal('main/main', rm.id, 'main module should be "main/main"');
+				assert.equal('main/main', rm.id(), 'main module should be "main/main"');
 			}
 			curl(['main/folder/returnMain'])
 				.then(checkMain, cb.failure)
@@ -67,7 +67,7 @@
 		},
 		'curl should find main module using "../.." module id': function (cb, assert, require, done) {
 			function checkMain (rm) {
-				assert.equal('main/main', rm.id, 'main module should be "main/main"');
+				assert.equal('main/main', rm.id(), 'main module should be "main/main"');
 			}
 			curl(['main/folder/deep/returnMain'])
 				.then(checkMain, cb.failure)
@@ -85,7 +85,7 @@
 
 	curl(
 		cfg,
-		['curl/_privileged', 'curl/tdd/runner', 'curl/domReady', 'tdd/configureAsserts']
+		['curl/_privileged', 'curl/tdd/runner', 'curl/domReady', '../tdd/configureAsserts']
 	).then(
 		function (priv, runner, ready, asserts) {
 			var testRunner, assertions;

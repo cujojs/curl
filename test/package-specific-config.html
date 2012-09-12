@@ -14,7 +14,8 @@
 				path: 'support/commonjs',
 				config: {
 					injectScript: true,
-					moduleLoader: 'curl/loader/cjsm11'
+					moduleLoader: 'curl/loader/cjsm11',
+					prop: 27
 				}
 			},
 			// this package should not use the moduleLoader above
@@ -36,14 +37,16 @@
 			// load at least one from the configured package
 			'commonjs/nakedDependentCjsm1.1',
 			'commonjs/nakedSimpleCjsm1.1',
+			'commonjs/return-config',
 			'hybrid/module'
 		]
 	).then(
-		function (dep, simple, module) {
+		function (dep, simple, cfg, module) {
 			var test3 = !!module,
 				test4 = !!dep;
-			write((test3 ? 'SUCCESS' : 'FAILED') + ': package without custom module loader loaded correctly');
-			write((test4 ? 'SUCCESS' : 'FAILED') + ': package with custom module loader loaded correctly');
+			write((test3 ? 'SUCCESS' : 'FAILED') + ': package without custom module loader should be loaded');
+			write((test4 ? 'SUCCESS' : 'FAILED') + ': package with custom module loader should be loaded');
+			write((cfg.config.prop == 27 ? 'SUCCESS' : 'FAILED') + ': package config should be passed through');
 		},
 		function (ex) {
 			write('FAILED: ' + ex.message);

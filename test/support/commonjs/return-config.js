@@ -1,0 +1,1 @@
+exports.config = module.config();

@@ -15,16 +15,15 @@ var curl = function () {}, orig = curl;
 
 try {
 	curl({
-			paths: {
-				curl: '../src/curl/'
-			}
-		}
-	);
-	write('FAILED: curl should not overwrite global curl');
+		apiContext: this, apiName: 'curl2'
+	});
+	write('SUCCESS: curl should should create non-conflicting curl2()');
 }
 catch (ex) {
-	write('SUCCESS: curl should throw when it conflicts with no recourse: ' + ex.message);
+	write('FAILED: curl should should create non-conflicting curl2(): ' + ex.message);
 }
+
+write((orig == curl ? 'SUCCESS' : 'FAILED') + ': curl should restore previous curl()');
 
 	function write (msg) {
 		document.body.appendChild(document.createElement('div')).innerHTML = msg;
