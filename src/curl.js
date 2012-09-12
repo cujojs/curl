@@ -623,8 +623,8 @@
 				ev = ev || global.event;
 				// detect when it's done loading
 				// ev.type == 'load' is for all browsers except IE6-9
-				// IE6-9 need to use onreadystatechange and look for el.readyState in (loaded, complete)
-				// TODO: test if IE6-8 actually use 'loaded' or if that can be removed
+				// IE6-9 need to use onreadystatechange and look for
+				// el.readyState in {loaded, complete} (yes, we need both)
 				if (ev.type == 'load' || readyStates[el.readyState]) {
 					delete activeScripts[def.id];
 					// release event listeners
