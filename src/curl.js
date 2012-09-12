@@ -27,7 +27,6 @@
 		// constants / flags
 		msgUsingExports = {},
 		msgFactoryExecuted = {},
-		interactive = {},
 		// this is the list of scripts that IE is loading. one of these will
 		// be the "interactive" script. too bad IE doesn't send a readystatechange
 		// event to tell us exactly which one.
@@ -36,8 +35,6 @@
 		cleanPrototype = {},
 		toString = cleanPrototype.toString,
 		undef,
-		// script ready states that signify it's loaded
-		readyStates = { 'loaded': 1, 'interactive': interactive, 'complete': 1 },
 		// local cache of resource definitions (lightweight promises)
 		cache = {},
 		// preload are files that must be loaded before any others
@@ -623,10 +620,10 @@
 			function process (ev) {
 				ev = ev || global.event;
 				// detect when it's done loading
-				if (ev.type == 'load' || readyStates[el.readyState]) {
+				if (ev.type == 'load') {
 					delete activeScripts[def.id];
 					// release event listeners
-					el.onload = el.onreadystatechange = el.onerror = ''; // ie cries if we use undefined
+					el.onload = el.onerror = ''; // ie cries if we use undefined
 					success();
 				}
 			}
@@ -642,7 +639,7 @@
 			// actually, we don't even need to set this at all
 			//el.type = 'text/javascript';
 			// using dom0 event handlers instead of wordy w3c/ms
-			el.onload = el.onreadystatechange = process;
+			el.onload = process;
 			el.onerror = fail;
 			// js! plugin uses alternate mimetypes
 			el.type = def.mimetype || 'text/javascript';
@@ -1026,7 +1023,7 @@
 			var def;
 			if (!isType(global.opera, 'Opera')) {
 				for (var d in activeScripts) {
-					if (readyStates[activeScripts[d].readyState] == interactive) {
+					if (activeScripts[d].readyState == 'interactive') {
 						def = d;
 						break;
 					}
