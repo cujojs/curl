@@ -31,6 +31,8 @@
 		// be the "interactive" script. too bad IE doesn't send a readystatechange
 		// event to tell us exactly which one.
 		activeScripts = {},
+		// readyStates for IE6-9
+		readyStates = 'addEventListener' in global ? {} : { 'loaded': 1, 'complete': 1 },
 		// these are always handy :)
 		cleanPrototype = {},
 		toString = cleanPrototype.toString,
@@ -620,10 +622,13 @@
 			function process (ev) {
 				ev = ev || global.event;
 				// detect when it's done loading
-				if (ev.type == 'load') {
+				// ev.type == 'load' is for all browsers except IE6-9
+				// IE6-9 need to use onreadystatechange and look for el.readyState in (loaded, complete)
+				// TODO: test if IE6-8 actually use 'loaded' or if that can be removed
+				if (ev.type == 'load' || readyStates[el.readyState]) {
 					delete activeScripts[def.id];
 					// release event listeners
-					el.onload = el.onerror = ''; // ie cries if we use undefined
+					el.onload = el.onreadystatechange = el.onerror = ''; // ie cries if we use undefined
 					success();
 				}
 			}
@@ -639,7 +644,7 @@
 			// actually, we don't even need to set this at all
 			//el.type = 'text/javascript';
 			// using dom0 event handlers instead of wordy w3c/ms
-			el.onload = process;
+			el.onload = el.onreadystatechange = process;
 			el.onerror = fail;
 			// js! plugin uses alternate mimetypes
 			el.type = def.mimetype || 'text/javascript';
@@ -1015,7 +1020,7 @@
 		},
 
 		getCurrentDefName: function () {
-			// IE marks the currently executing thread as "interactive"
+			// IE6-9 mark the currently executing thread as "interactive"
 			// Note: Opera lies about which scripts are "interactive", so we
 			// just have to test for it. Opera provides a true browser test, not
 			// a UA sniff, thankfully.
