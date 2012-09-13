@@ -121,39 +121,40 @@ define(/*=='curl/plugin/js',==*/ ['curl/_privileged'], function (priv) {
 
 		'load': function (name, require, callback, config) {
 
-			var order, exportsPos, exports, prefetch, def, promise;
+			var order, exportsPos, exports, prefetch, url, def, promise;
 
 			order = name.indexOf('!order') > 0; // can't be zero
 			exportsPos = name.indexOf('!exports=');
 			exports = exportsPos > 0 && name.substr(exportsPos + 9); // must be last option!
 			prefetch = 'prefetch' in config ? config['prefetch'] : true;
 			name = order || exportsPos > 0 ? name.substr(0, name.indexOf('!')) : name;
+			url = require['toUrl'](nameWithExt(name, 'js'));
 
 			function reject (ex) {
 				(callback['error'] || function (ex) { throw ex; })(ex);
 			}
 
 			// if we've already fetched this resource, get it out of the cache
-			if (name in cache) {
-				if (cache[name] instanceof Promise) {
-					cache[name].then(callback, reject);
+			if (url in cache) {
+				if (cache[url] instanceof Promise) {
+					cache[url].then(callback, reject);
 				}
 				else {
-					callback(cache[name]);
+					callback(cache[url]);
 				}
 			}
 			else {
 				def = {
 					name: name,
-					url: require['toUrl'](nameWithExt(name, 'js')),
+					url: url,
 					order: order,
 					exports: exports,
 					timeoutMsec: config['timeout']
 				};
-				cache[name] = promise = new Promise();
+				cache[url] = promise = new Promise();
 				promise.then(
 					function (o) {
-						cache[name] = o;
+						cache[url] = o;
 						callback(o);
 					},
 					reject
