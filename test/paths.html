@@ -85,7 +85,7 @@
 	function configureCallbacks (success, failure, msg) {
 		return {
 			success: function () { success(msg); },
-			failure: function () { failure(msg); }
+			failure: function (ex) { failure(msg + (ex ? ': ' + ex.message : '')); }
 		};
 	}
 
