@@ -36,7 +36,7 @@
 				var tests;
 				tests = {
 					'should remap plugin-loaded resource': function (cb, assert) {
-						curl(['js!plainJane.js'])
+						curl(['js!plainJane.js!order'])
 							.then(cb.success, cb.failure)
 							.then(done, done);
 					},
