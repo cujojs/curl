@@ -445,8 +445,8 @@
 
 			// if setDefaults, only create define() if it doesn't already exist.
 			if (!(setDefaults && global[defineName])) {
-				if (!setDefaults && !okToOverwrite && defObj[defName] && defObj[defName] != define) {
-					throw new Error((defName || defineName) + failMsg);
+				if (!setDefaults && !okToOverwrite && defName in defObj && defObj[defName] != define) {
+					throw new Error(defName + failMsg);
 				}
 				else {
 					// create AMD public api: define()
