@@ -9,12 +9,11 @@
  * Licensed under the MIT License at:
  * 		http://www.opensource.org/licenses/mit-license.php
  *
- * @version 0.7
  */
 (function (global) {
 //"use strict"; don't restore this until the config routine is refactored
 	var
-		version = '0.7',
+		version = '0.7.0',
 		curlName = 'curl',
 		userCfg,
 		prevCurl,
@@ -259,15 +258,9 @@
 
 			// functions that dependencies will use:
 
-			// TODO: these functions will all be the same per config, not module. move them to the config object
-			function fixMainId (id) {
-				// TODO: ensure that all config objects inherit pathMap and then remove extra check:
-				return cfg.pathMap && id in cfg.pathMap && cfg.pathMap[id].main || id;
-			}
-
 			function toAbsId (childId) {
 				// TODO: resolve plugin ids here too
-				return fixMainId(reduceLeadingDots(childId, def.id));
+				return core.fixMainId(reduceLeadingDots(childId, def.id), cfg);
 			}
 
 			function toUrl (n) {
@@ -538,7 +531,7 @@
 			function convertPathMatcher (cfg) {
 				var pathMap = cfg.pathMap;
 				cfg.pathRx = new RegExp('^(' +
-					cfg.pathList.sort(function (a, b) { return pathMap[a].specificity < pathMap[b].specificity; } )
+					cfg.pathList.sort(function (a, b) { return pathMap[b].specificity - pathMap[a].specificity; } )
 						.join('|')
 						.replace(/\/|\./g, '\\$&') +
 					')(?=\\/|$)'
