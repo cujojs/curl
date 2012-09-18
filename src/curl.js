@@ -909,7 +909,8 @@
 
 			// get id of first resource to load (which could be a plugin)
 			mainId = parts.pluginId
-				? core.fixMainId(core.fixPluginId(parts.pluginId, cfg), cfg)
+				// TODO: this should be abstracted
+				? core.fixMainId(core.fixPluginId(reduceLeadingDots(parts.pluginId, parentDef.id), cfg), cfg)
 				: toAbsId(resId);
 			pathInfo = core.resolvePathInfo(mainId, cfg);
 
