@@ -255,6 +255,7 @@
 			def.id = baseId || ''; // '' == global
 			def.isPreload = isPreload;
 			def.depNames = depNames;
+			def.config = cfg;
 
 			// functions that dependencies will use:
 
@@ -386,7 +387,7 @@
 			// the parent's config was used to find this module
 			// the toUrl fallback is for named modules in built files
 			// which must have absolute ids.
-			return def.url || (def.url = core.checkToAddJsExt(def.require['toUrl'](def.id)));
+			return def.url || (def.url = core.checkToAddJsExt(def.require['toUrl'](def.id)), def.config);
 		},
 
 		config: function (cfg) {
@@ -599,10 +600,10 @@
 			return baseUrl && !absUrlRx.test(path) ? joinPath(baseUrl, path) : path;
 		},
 
-		checkToAddJsExt: function (url) {
+		checkToAddJsExt: function (url, cfg) {
 			// don't add extension if a ? is found in the url (query params)
 			// i'd like to move this feature to a moduleLoader
-			return url + (userCfg.dontAddFileExt.test(url) ? '' : '.js');
+			return url + ((cfg || userCfg).dontAddFileExt.test(url) ? '' : '.js');
 		},
 
 		loadScript: function (def, success, failure) {
@@ -932,7 +933,7 @@
 			def = cache[mainId];
 			if (!(mainId in cache)) {
 				def = cache[mainId] = core.createResourceDef(pathInfo.config, mainId, isPreload);
-				def.url = core.checkToAddJsExt(pathInfo.url);
+				def.url = core.checkToAddJsExt(pathInfo.url, def.config);
 				core.fetchResDef(def);
 			}
 
