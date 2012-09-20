@@ -19,11 +19,11 @@
 	// to repro issue #14
 	curl(['js!stuff/plain_old.js'],
 		function () { write('SUCCESS: curl should load js! resource'); },
-		function () { write('FAILED: curl should load js! resource: ' + ex.message); }
+		function (ex) { write('FAILED: curl should load js! resource: ' + ex.message); }
 	);
 	curl(['stuff/wants-js-and-css'],
 		function () { write('SUCCESS: curl should load multiple plugin resources'); },
-		function () { write('FAILED: curl should load multiple plugin resources: ' + ex.message); }
+		function (ex) { write('FAILED: curl should load multiple plugin resources: ' + ex.message); }
 	);
 
 	function write (msg) {
