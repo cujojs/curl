@@ -6,6 +6,7 @@
 <script>
 
 	curl = {
+		baseUrl: '.',
 		paths: {
 			curl: '../src/curl'
 		},
@@ -46,8 +47,12 @@
 				test4 = !!dep;
 			write((test3 ? 'SUCCESS' : 'FAILED') + ': package without custom module loader should be loaded');
 			write((test4 ? 'SUCCESS' : 'FAILED') + ': package with custom module loader should be loaded');
-			write((cfg.config.prop == 27 ? 'SUCCESS' : 'FAILED') + ': package config should be passed through to module');
-			write(('baseUrl' in cfg.config ? 'SUCCESS' : 'FAILED') + ': base config should be passed through to module');
+			write((cfg.config().prop == 27 ? 'SUCCESS' : 'FAILED') + ': package config should be passed through to module');
+			write(('baseUrl' in cfg.config() ? 'SUCCESS' : 'FAILED') + ': base config should be passed through to module');
+			curl({
+				baseUrl: 'foo'
+			});
+			write((cfg.config().baseUrl == 'foo' ? 'FAILED' : 'SUCCESS') + ': module config should not change when curl\'s config is modified: ' + cfg.config().baseUrl);
 		},
 		function (ex) {
 			write('FAILED: ' + ex.message);

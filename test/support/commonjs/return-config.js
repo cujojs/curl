@@ -1,1 +1,1 @@
-exports.config = module.config();
+exports.config = function () { return module.config() };
