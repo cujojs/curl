@@ -510,6 +510,7 @@
 					}
 					if (isPkg) {
 						info = normalizePkgDescriptor(data);
+						if (info.config) info.config = beget(newCfg, info.config);
 					}
 					else {
 						info = { path: removeEndSlash(data) };
