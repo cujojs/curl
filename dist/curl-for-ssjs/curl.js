@@ -9,12 +9,11 @@
  * Licensed under the MIT License at:
  * 		http://www.opensource.org/licenses/mit-license.php
  *
- * @version 0.7
  */
 (function (global) {
 //"use strict"; don't restore this until the config routine is refactored
 	var
-		version = '0.7',
+		version = '0.7.0',
 		curlName = 'curl',
 		userCfg,
 		prevCurl,
@@ -256,18 +255,13 @@
 			def.id = baseId || ''; // '' == global
 			def.isPreload = isPreload;
 			def.depNames = depNames;
+			def.config = cfg;
 
 			// functions that dependencies will use:
 
-			// TODO: these functions will all be the same per config, not module. move them to the config object
-			function fixMainId (id) {
-				// TODO: ensure that all config objects inherit pathMap and then remove extra check:
-				return cfg.pathMap && id in cfg.pathMap && cfg.pathMap[id].main || id;
-			}
-
 			function toAbsId (childId) {
 				// TODO: resolve plugin ids here too
-				return fixMainId(reduceLeadingDots(childId, def.id));
+				return core.fixMainId(reduceLeadingDots(childId, def.id), cfg);
 			}
 
 			function toUrl (n) {
@@ -393,7 +387,7 @@
 			// the parent's config was used to find this module
 			// the toUrl fallback is for named modules in built files
 			// which must have absolute ids.
-			return def.url || (def.url = core.checkToAddJsExt(def.require['toUrl'](def.id)));
+			return def.url || (def.url = core.checkToAddJsExt(def.require['toUrl'](def.id)), def.config);
 		},
 
 		config: function (cfg) {
@@ -445,8 +439,8 @@
 
 			// if setDefaults, only create define() if it doesn't already exist.
 			if (!(setDefaults && global[defineName])) {
-				if (!setDefaults && !okToOverwrite && defObj[defName] && defObj[defName] != define) {
-					throw new Error((defName || defineName) + failMsg);
+				if (!setDefaults && !okToOverwrite && defName in defObj && defObj[defName] != define) {
+					throw new Error(defName + failMsg);
 				}
 				else {
 					// create AMD public api: define()
@@ -516,6 +510,7 @@
 					}
 					if (isPkg) {
 						info = normalizePkgDescriptor(data);
+						if (info.config) info.config = beget(newCfg, info.config);
 					}
 					else {
 						info = { path: removeEndSlash(data) };
@@ -538,7 +533,7 @@
 			function convertPathMatcher (cfg) {
 				var pathMap = cfg.pathMap;
 				cfg.pathRx = new RegExp('^(' +
-					cfg.pathList.sort(function (a, b) { return pathMap[a].specificity < pathMap[b].specificity; } )
+					cfg.pathList.sort(function (a, b) { return pathMap[b].specificity - pathMap[a].specificity; } )
 						.join('|')
 						.replace(/\/|\./g, '\\$&') +
 					')(?=\\/|$)'
@@ -606,10 +601,10 @@
 			return baseUrl && !absUrlRx.test(path) ? joinPath(baseUrl, path) : path;
 		},
 
-		checkToAddJsExt: function (url) {
+		checkToAddJsExt: function (url, cfg) {
 			// don't add extension if a ? is found in the url (query params)
 			// i'd like to move this feature to a moduleLoader
-			return url + (userCfg.dontAddFileExt.test(url) ? '' : '.js');
+			return url + ((cfg || userCfg).dontAddFileExt.test(url) ? '' : '.js');
 		},
 
 		loadScript: function (def, success, failure) {
@@ -681,7 +676,7 @@
 				else if (!currQuote) {
 					ids.push(id);
 				}
-				return m; // uses least RAM/CPU
+				return ''; // uses least RAM/CPU
 			});
 			return ids;
 		},
@@ -915,7 +910,8 @@
 
 			// get id of first resource to load (which could be a plugin)
 			mainId = parts.pluginId
-				? core.fixMainId(core.fixPluginId(parts.pluginId, cfg), cfg)
+				// TODO: this should be abstracted
+				? core.fixMainId(core.fixPluginId(reduceLeadingDots(parts.pluginId, parentDef.id), cfg), cfg)
 				: toAbsId(resId);
 			pathInfo = core.resolvePathInfo(mainId, cfg);
 
@@ -939,7 +935,7 @@
 			def = cache[mainId];
 			if (!(mainId in cache)) {
 				def = cache[mainId] = core.createResourceDef(pathInfo.config, mainId, isPreload);
-				def.url = core.checkToAddJsExt(pathInfo.url);
+				def.url = core.checkToAddJsExt(pathInfo.url, def.config);
 				core.fetchResDef(def);
 			}
 
