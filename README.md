@@ -20,6 +20,8 @@ Helpful link for updating submodules:
 What's New?
 =======
 
+* 0.7.1
+	* Fixed inability to load non-anonymous "main" modules (packages)
 * 0.7.0
 	* IE10 compatibility! you must upgrade to 0.7+ to support IE10!
 	* new module.config() method when using CommonJS-wrapped modules
