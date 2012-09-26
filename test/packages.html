@@ -28,7 +28,9 @@
 			{ name: 'pkg', location: 'commonjs' },
 			{ name: 'pkg2', location: 'commonjs', main: 'main2' },
 			{ name: 'main', location: 'commonjs', main: 'main' },
-			{ name: 'rel', location: 'commonjs', main: 'main-with-relative-dep' }
+			{ name: 'rel', location: 'commonjs', main: 'main-with-relative-dep' },
+			{ name: 'named', location: 'commonjs', main: 'named-main' },
+			{ name: 'top', location: '', main: 'commonjs/main' }
 		]
 	};
 
@@ -78,6 +80,22 @@
 				assert.equal('dep', main, 'main module should return "dep" (exported string)');
 			}
 			curl(['rel'])
+				.then(checkMain, cb.failure)
+				.then(done, done);
+		},
+		'curl should load a named main module': function (cb, assert, require, done) {
+			function checkMain (main) {
+				assert.equal('named', main.name, 'named main module should have loaded');
+			}
+			curl(['named'])
+				.then(checkMain, cb.failure)
+				.then(done, done);
+		},
+		'curl should allow blank location (baseUrl)': function (cb, assert, require, done) {
+			function checkMain (main) {
+				assert.equal('pkg/main', main.id, 'main module should be "pkg/main"');
+			}
+			curl(['top'])
 				.then(checkMain, cb.failure)
 				.then(done, done);
 		}
