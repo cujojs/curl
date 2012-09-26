@@ -1143,4 +1143,4 @@
 		'Promise': Promise
 	};
 
-}(this.window || global));
+}(this.window || typeof global == 'undefined' ? this : global));
