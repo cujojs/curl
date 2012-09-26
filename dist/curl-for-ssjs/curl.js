@@ -13,7 +13,7 @@
 (function (global) {
 //"use strict"; don't restore this until the config routine is refactored
 	var
-		version = '0.7.0',
+		version = '0.7.1',
 		curlName = 'curl',
 		userCfg,
 		prevCurl,
@@ -260,7 +260,7 @@
 			// functions that dependencies will use:
 
 			function toAbsId (childId) {
-				// TODO: resolve plugin ids here too
+				// TODO: resolve plugin ids here too?
 				return core.fixMainId(reduceLeadingDots(childId, def.id), cfg);
 			}
 
@@ -916,7 +916,6 @@
 			pathInfo = core.resolvePathInfo(mainId, cfg);
 
 			// get custom module loader from package config if not a plugin
-			// TODO: figure out how to make module loaders work with plugins
 			if (parts.pluginId) {
 				loaderId = mainId;
 			}
@@ -1082,7 +1081,7 @@
 
 	function _define (args) {
 
-		var id = args.id;
+		var id = core.fixMainId(args.id, userCfg);
 
 		if (id == undef) {
 			if (argsNet !== undef) {
