@@ -28,14 +28,12 @@
  * http://wiki.whatwg.org/wiki/Dynamic_Script_Execution_Order
  *
  */
-(function (global, doc) {
+(function (global, doc, testGlobalVar) {
+define(/*=='js',==*/ ['curl/_privileged'], function (priv) {
 "use strict";
 	var cache = {},
 		queue = [],
 		supportsAsyncFalse = doc && doc.createElement('script').async == true,
-		readyStates = { 'loaded': 1, 'interactive': 1, 'complete': 1 },
-		orsc = 'onreadystatechange',
-		head = doc && (doc['head'] || doc.getElementsByTagName('head')[0]),
 		waitForOrderedScript,
 		undef;
 
@@ -44,43 +42,31 @@
 			name + '.' + defaultExt : name;
 	}
 
-	// TODO: find a way to reuse the loadScript from curl.js
 	function loadScript (def, success, failure) {
 		// script processing rules learned from RequireJS
 
-		var deadline, el;
+		var deadline, completed, el;
 
 		// default deadline is very far in the future (5 min)
 		// devs should set something reasonable if they want to use it
-		deadline = new Date().valueOf() + (def.timeoutMsec || 300) * 1000;
-
-		// insert script
-		el = doc.createElement('script');
+		deadline = new Date().valueOf() + (def.timeoutMsec || 300000);
 
 		// initial script processing
-		function process (ev) {
-			ev = ev || global.event;
-			// detect when it's done loading
-			if (ev.type == 'load' || readyStates[el.readyState]) {
-				// release event listeners
-				el.onload = el[orsc] = el.onerror = "";
-				if (def.exports) def.resolved = testGlobalVar(def.exports);
-				if (!def.exports || def.resolved) {
-					success(el);
-				}
-				else {
-					fail();
-				}
+		function process () {
+			completed = true;
+			if (def.exports) def.resolved = testGlobalVar(def.exports);
+			if (!def.exports || def.resolved) {
+				success(el); // pass el so it can be removed (text/cache)
+			}
+			else {
+				failure();
 			}
 		}
 
-		function fail () {
-			// some browsers send an event, others send a string,
-			// but none of them send anything useful, so just say we failed:
-			el.onload = el[orsc] = el.onerror = "";
-			if (failure) {
-				failure(new Error('Script error or http error: ' + def.url));
-			}
+		function fail (ex) {
+			// Exception is squashed by curl.js unfortunately
+			completed = true;
+			failure(ex);
 		}
 
 		// some browsers (Opera and IE6-8) don't support onerror and don't fire
@@ -89,31 +75,19 @@
 		// is defined (see below)
 		function poller () {
 			// if the script loaded
-			if (el.onload && readyStates[el.readyState]) {
-				process({});
-			}
-			// if neither process or fail as run and our deadline is in the past
-			else if (el.onload && deadline < new Date()) {
-				fail();
-			}
-			else {
-				setTimeout(poller, 10);
+			if (!completed) {
+				// if neither process or fail as run and our deadline is in the past
+				if (deadline < new Date()) {
+					failure();
+				}
+				else {
+					setTimeout(poller, 10);
+				}
 			}
 		}
 		if (failure && def.exports) setTimeout(poller, 10);
 
-		// set type first since setting other properties could
-		// prevent us from setting this later
-		el.type = def.mimetype || 'text/javascript';
-		// using dom0 event handlers instead of wordy w3c/ms
-		el.onload = el[orsc] = process;
-		el.onerror = fail;
-		el.charset = def.charset || 'utf-8';
-		el.async = !def.order;
-		el.src = def.url;
-
-		// use insertBefore to keep IE from throwing Operation Aborted (thx Bryan Forbes!)
-		head.insertBefore(el, head.firstChild);
+		el = priv['core'].loadScript(def, process, fail);
 
 	}
 
@@ -137,16 +111,7 @@
 
 	}
 
-	function testGlobalVar (varName) {
-		try {
-			return eval('global.' + varName);
-		}
-		catch (ex) {
-			return undef;
-		}
-	}
-
-	define(/*=='js',==*/ {
+	return {
 
 		// the !options force us to cache ids in the plugin
 		'dynamic': true,
@@ -194,8 +159,8 @@
 						def.mimetype = 'text/cache';
 						loadScript(def,
 							// remove the fake script when loaded
-							function (el) { el.parentNode.removeChild(el); },
-							false
+							function (el) { el && el.parentNode.removeChild(el); },
+							function () {}
 						);
 						def.mimetype = '';
 					}
@@ -209,6 +174,10 @@
 
 		}
 
-	});
-
-}(this, this.document));
+	};
+});
+}(
+	this,
+	this.document,
+	function () { try { return eval(arguments[0]); } catch (ex) { return; } }
+));

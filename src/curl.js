@@ -9,29 +9,30 @@
  * Licensed under the MIT License at:
  * 		http://www.opensource.org/licenses/mit-license.php
  *
- * @version 0.6.2
  */
 (function (global) {
 
 	var
-		version = '0.6.2',
+		version = '0.6.2a',
 		userCfg = global['curl'],
 		doc = global.document,
 		head = doc && (doc['head'] || doc.getElementsByTagName('head')[0]),
-//		// constants / flags
+		// to keep IE from crying, we need to put scripts before any
+		// <base> elements, but after any <meta>. this should do it:
+		insertBeforeEl = head && head.getElementsByTagName('base')[0] || null,
+		// constants / flags
 		msgUsingExports = {},
 		msgFactoryExecuted = {},
-		interactive = {},
 		// this is the list of scripts that IE is loading. one of these will
 		// be the "interactive" script. too bad IE doesn't send a readystatechange
 		// event to tell us exactly which one.
 		activeScripts = {},
+		// readyStates for IE6-9
+		readyStates = 'addEventListener' in global ? {} : { 'loaded': 1, 'complete': 1 },
 		// these are always handy :)
 		cleanPrototype = {},
 		toString = cleanPrototype.toString,
 		undef,
-		// script ready states that signify it's loaded
-		readyStates = { 'loaded': 1, 'interactive': interactive, 'complete': 1 },
 		// local cache of resource definitions (lightweight promises)
 		cache = {},
 		// preload are files that must be loaded before any others
@@ -230,7 +231,7 @@
 			function toUrl (n) {
 				// even though internally, we don't seem to need to do
 				// toAbsId, the AMD spec says we need to do this for plugins.
-				// also, thesec states that we should not append an extension
+				// also, the spec states that we should not append an extension
 				// in this function.
 				return core.resolvePathInfo(toAbsId(n), cfg).url;
 			}
@@ -517,6 +518,9 @@
 			function process (ev) {
 				ev = ev || global.event;
 				// detect when it's done loading
+				// ev.type == 'load' is for all browsers except IE6-9
+				// IE6-9 need to use onreadystatechange and look for
+				// el.readyState in {loaded, complete} (yes, we need both)
 				if (ev.type == 'load' || readyStates[el.readyState]) {
 					delete activeScripts[def.id];
 					// release event listeners
@@ -547,9 +551,8 @@
 			// IE will load the script sync if it's in the cache, so
 			// indicate the current resource definition if this happens.
 			activeScripts[def.id] = el;
-			// use insertBefore to keep IE from throwing Operation Aborted (thx Bryan Forbes!)
-			head.insertBefore(el, head.firstChild);
 
+			head.insertBefore(el, insertBeforeEl);
 		},
 
 		extractCjsDeps: function (defFunc) {
@@ -569,7 +572,7 @@
 				else if (!currQuote) {
 					ids.push(id);
 				}
-				return m; // uses least RAM/CPU
+				return ''; // uses least RAM/CPU
 			});
 			return ids;
 		},
@@ -683,7 +686,7 @@
 					// signal any waiters/parents that we can export
 					// early (see progress callback in getDep below).
 					// note: this may fire for `require` as well, if it
-					// is listed after `module` or `exports` in teh deps list,
+					// is listed after `module` or `exports` in the deps list,
 					// but that is okay since all waiters will only record
 					// it once.
 					if (parentDef.exports) {
@@ -906,7 +909,7 @@
 		},
 
 		getCurrentDefName: function () {
-			// IE marks the currently executing thread as "interactive"
+			// IE6-9 mark the currently executing thread as "interactive"
 			// Note: Opera lies about which scripts are "interactive", so we
 			// just have to test for it. Opera provides a true browser test, not
 			// a UA sniff, thankfully.
@@ -914,7 +917,7 @@
 			var def;
 			if (!isType(global.opera, 'Opera')) {
 				for (var d in activeScripts) {
-					if (readyStates[activeScripts[d].readyState] == interactive) {
+					if (activeScripts[d].readyState == 'interactive') {
 						def = d;
 						break;
 					}
