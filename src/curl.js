@@ -42,10 +42,10 @@
 		preload = false,
 		// net to catch anonymous define calls' arguments (non-IE browsers)
 		argsNet,
-		// RegExp's used later, "cached" here
+		// RegExp's used later, pre-compiled here
 		dontAddExtRx = /\?/,
 		absUrlRx = /^\/|^[^:]+:\/\//,
-		findLeadingDotsRx = /(\.)(\.?)(?:$|\/([^\.\/]+.*)?)/g, // /(?:^|\/)(\.)(\.?)\/?/g,
+		findLeadingDotsRx = /(\.)(\.?)(?:$|\/([^\.\/]+.*)?)/g,
 		removeCommentsRx = /\/\*[\s\S]*?\*\/|(?:[^\\])\/\/.*?[\n\r]/g,
 		findRValueRequiresRx = /require\s*\(\s*["']([^"']+)["']\s*\)|(?:[^\\]?)(["'])/g,
 		cjsGetters,
@@ -61,15 +61,18 @@
 		var main;
 
 		descriptor.path = removeEndSlash(descriptor['path'] || descriptor['location'] || '');
-		main = removeEndSlash(descriptor['main']) || 'main';
+		main = descriptor['main'] || './main';
 		if (main.charAt(0) != '.') main = './' + main;
 		// trailing slashes trick reduceLeadingDots to see them as base ids
 		descriptor.main = reduceLeadingDots(main, descriptor.name + '/');
-		// pre-resolve this now to save cpu later
-//		descriptor.mainPath = reduceLeadingDots(main, descriptor.path + '/');
+		//if (descriptor.main.charAt(0) == '.') throw new Error('invalid main (' + main + ') in ' + descriptor.name);
 		descriptor.config = descriptor['config'];
 
 		return descriptor;
+	}
+
+	function isAbsUrl (it) {
+		return absUrlRx.test(it);
 	}
 
 	function joinPath (path, file) {
@@ -85,27 +88,28 @@
 		// module ids of "." and ".." as meaning "grab the module whose name is
 		// the same as my folder or parent folder".  These special module ids
 		// are not included in the AMD spec but seem to work in node.js, too.
-		var removeLevels, normId, levels, isRelative;
+		var removeLevels, normId, levels, isRelative, diff;
 
 		removeLevels = 1;
 		normId = childId;
 
-		// if baseId is blank, then this is the path for a top-level
-		// module/resource so we don't want to remove leading double-dots!
-		if (baseId) {
-			normId = normId.replace(findLeadingDotsRx, function (m, dot, doubleDot, remainder) {
-				if (doubleDot) removeLevels++;
-				isRelative = true;
-				return remainder || '';
-			});
-		}
+		// remove dots and count levels
+		normId = normId.replace(findLeadingDotsRx, function (m, dot, doubleDot, remainder) {
+			if (doubleDot) removeLevels++;
+			isRelative = true;
+			return remainder || '';
+		});
 
 		if (isRelative) {
 			levels = baseId.split('/');
-			if (removeLevels > levels) throw new Error('attempt to access module beyond root of package: ' + childId);
-			levels.splice(levels.length - removeLevels, removeLevels);
-			// childId || [] is a trick to not concat if no childId
-			return levels.concat(normId || []).join('/');
+			diff = levels.length - removeLevels;
+			if (diff < 0) {
+				// this is an attempt to navigate above parent module.
+				// maybe dev wants a url or something. punt and return url;
+				return childId;
+			}
+			levels.splice(diff, removeLevels);
+			return levels.concat(normId).join('/');
 		}
 		else {
 			return normId;
@@ -227,24 +231,48 @@
 
 	core = {
 
+		/**
+		 * * reduceLeadingDots of id against parentId
+		 *		- if there are too many dots (path goes beyond parent), it's a url
+		 *			- return reduceLeadingDots of id against baseUrl + parentId;
+		 *	* if id is a url (starts with dots or slash or protocol)
+		 *		- pathInfo = { config: userCfg, url: url }
+		 *	* if not a url, id-to-id transform here.
+		 *		- main module expansion
+		 *		- plugin prefix expansion
+		 *		- coordinate main module expansion with plugin expansion
+		 *			- main module expansion happens first
+		 *		- future: other transforms?
+		 * @param id
+		 * @param parentId
+		 * @param cfg
+		 * @return {*}
+		 */
 		toAbsId: function (id, parentId, cfg) {
-			return core.fixMainId(reduceLeadingDots(id, parentId));
-		},
-
-		fixMainId: function (id, cfg) {
-			// TODO: ensure that all config objects inherit pathMap and then remove extra check:
-			return cfg.pathMap && id in cfg.pathMap && cfg.pathMap[id].main || id;
-		},
-
-		fixPluginId: function (id, cfg) {
-			// only run this on ids you know are for a plugin.
-			// prepend plugin folder path, but only if it's missing and
-			// path isn't in pathMap. JMH: removed pathMap test because
-			// it conflicts with `paths: { js: 'path/to/js', css: 'path/to/css' }`
-			if (id && cfg.pluginPath && id.indexOf('/') < 0 /*&& !(id in cfg.pathMap)*/) {
-				id = joinPath(cfg.pluginPath, id);
+			var absId, parts;
+			if (isAbsUrl(id)) return id;
+			absId = reduceLeadingDots(id, parentId);
+			if (absId.charAt(0) == '.') {
+				// this is a relative url. resolve against baseUrl.
+				// note: since baseUrl is probably not at the root of the
+				// host server, leading dots can still be returned here.
+//				absId = reduceLeadingDots(id, joinPath(cfg.baseUrl, parentId));
 			}
-			return id;
+			else {
+				// main id expansion
+				if (absId in cfg.pathMap) {
+					absId = cfg.pathMap[absId].main || absId;
+				}
+				// plugin id expansion
+				parts = pluginParts(absId);
+				if (parts.pluginId) {
+					if (parts.pluginId.indexOf('/') < 0) {
+						absId = joinPath(cfg.pluginPath, parts.pluginId)
+							+ '!' + parts.resourceId;
+					}
+				}
+			}
+			return absId;
 		},
 
 		createContext: function (cfg, baseId, depNames, isPreload) {
@@ -260,8 +288,7 @@
 			// functions that dependencies will use:
 
 			function toAbsId (childId) {
-				// TODO: resolve plugin ids here too?
-				return core.fixMainId(reduceLeadingDots(childId, def.id), cfg);
+				return core.toAbsId(childId, def.id, cfg);
 			}
 
 			function toUrl (n) {
@@ -281,24 +308,22 @@
 
 				// RValue require (CommonJS)
 				if (isType(ids, 'String')) {
+					if (cb) {
+						throw new Error('require(id, callback) not allowed');
+					}
 					// return resource
 					rvid = toAbsId(ids);
 					childDef = cache[rvid];
-					// TODO: this can return too early if childDef uses module.exports
-					earlyExport = isPromise(childDef) && childDef.exports;
 					if (!(rvid in cache)) {
 						// this should only happen when devs attempt their own
 						// manual wrapping of cjs modules or get confused with
 						// the callback syntax:
 						throw new Error('Module not resolved: '  + rvid);
 					}
-					if (cb) {
-						throw new Error('require(id, callback) not allowed');
-					}
+					earlyExport = isPromise(childDef) && childDef.exports;
 					return earlyExport || childDef;
 				}
 				else {
-					// use same id so that relative modules are normalized correctly
 					when(core.getDeps(core.createContext(cfg, def.id, ids, isPreload)), cb, errback);
 				}
 			}
@@ -383,11 +408,8 @@
 		},
 
 		getDefUrl: function (def) {
-			// note: don't look up an anon module's id from it's own toUrl cuz
-			// the parent's config was used to find this module
-			// the toUrl fallback is for named modules in built files
-			// which must have absolute ids.
-			return def.url || (def.url = core.checkToAddJsExt(def.require['toUrl'](def.id)), def.config);
+			// note: this is used by cjs module.uri
+			return def.url || (def.url = core.checkToAddJsExt(def.require['toUrl'](def.id), def.config));
 		},
 
 		config: function (cfg) {
@@ -474,7 +496,7 @@
 			pluginCfgs = cfg['plugins'] || {};
 			newCfg.plugins = beget(prevCfg.plugins);
 			for (p in pluginCfgs) {
-				newCfg.plugins[core.fixPluginId(p, newCfg)] = pluginCfgs[p];
+				newCfg.plugins[core.toAbsId(p, '', newCfg)] = pluginCfgs[p];
 			}
 			pluginCfgs = newCfg.plugins;
 
@@ -489,14 +511,17 @@
 				var id, pluginId, data, parts, currCfg, info;
 				for (var name in coll) {
 					data = coll[name];
+					if (isType(data, 'String')) data = {
+						path: coll[name]
+					};
 					// grab the package id, if specified. default to
-					// property name.
-					data.name = data['id'] || data['name'] || name;
+					// property name, if missing.
+					data.name = data['name'] || name;
 					currCfg = newCfg;
-					// don't remove `|| name` since data may be a string, not an object
-					parts = pluginParts(removeEndSlash(data.name || name));
+					// check if this is a plugin-specific path
+					parts = pluginParts(removeEndSlash(core.toAbsId(data.name, '', newCfg)));
 					id = parts.resourceId;
-					pluginId = core.fixPluginId(parts.pluginId, newCfg);
+					pluginId = parts.pluginId;
 					if (pluginId) {
 						// plugin-specific path
 						currCfg = pluginCfgs[pluginId];
@@ -513,7 +538,7 @@
 						if (info.config) info.config = beget(newCfg, info.config);
 					}
 					else {
-						info = { path: removeEndSlash(data) };
+						info = { path: removeEndSlash(data.path) };
 					}
 					info.specificity = id.split('/').length;
 					if (id) {
@@ -524,7 +549,7 @@
 						// naked plugin name signifies baseUrl for plugin
 						// resources. baseUrl could be relative to global
 						// baseUrl.
-						currCfg.baseUrl = core.resolveUrl(data, newCfg);
+						currCfg.baseUrl = core.resolveUrl(data.path, newCfg);
 					}
 				}
 			}
@@ -579,7 +604,7 @@
 
 			pathMap = cfg.pathMap;
 
-			if (!absUrlRx.test(absId)) {
+			if (!isAbsUrl(absId)) {
 				path = absId.replace(cfg.pathRx, function (match) {
 					pathInfo = pathMap[match] || {};
 					pkgCfg = pathInfo.config;
@@ -598,7 +623,7 @@
 
 		resolveUrl: function (path, cfg) {
 			var baseUrl = cfg.baseUrl;
-			return baseUrl && !absUrlRx.test(path) ? joinPath(baseUrl, path) : path;
+			return baseUrl && !isAbsUrl(path) ? joinPath(baseUrl, path) : path;
 		},
 
 		checkToAddJsExt: function (url, cfg) {
@@ -894,25 +919,21 @@
 		},
 
 		fetchDep: function (depName, parentDef) {
-			// TODO: start using parentDef.config instead of userCfg
-			var toAbsId, isPreload, parts, mainId, loaderId, pluginId,
-				resId, pathInfo, def, tempDef, cfg, resCfg;
+			var toAbsId, isPreload, cfg, parts, mainId, loaderId, pluginId,
+				resId, pathInfo, def, tempDef, resCfg;
 
 			toAbsId = parentDef.toAbsId;
 			isPreload = parentDef.isPreload;
-			// TODO: remove check for userCfg when all defs have a full config
 			cfg = parentDef.config || userCfg;
 
+			mainId = toAbsId(depName);
 			// check for plugin loaderId
-			parts = pluginParts(depName);
+			parts = pluginParts(mainId);
 			// resId is not normalized since the plugin may need to do it
 			resId = parts.resourceId;
 
 			// get id of first resource to load (which could be a plugin)
-			mainId = parts.pluginId
-				// TODO: this should be abstracted
-				? core.fixMainId(core.fixPluginId(reduceLeadingDots(parts.pluginId, parentDef.id), cfg), cfg)
-				: toAbsId(resId);
+			mainId = parts.pluginId || resId;
 			pathInfo = core.resolvePathInfo(mainId, cfg);
 
 			// get custom module loader from package config if not a plugin
@@ -920,35 +941,39 @@
 				loaderId = mainId;
 			}
 			else {
+				// TODO: move pkg.config.moduleLoader to pkg.transform
 				loaderId = pathInfo.config['moduleLoader'];
 				if (loaderId) {
-					// since we're not using toAbsId, transformers must be absolute
+					// TODO: allow transforms to have relative module ids
+					// (we could do this by returning package location from
+					// resolvePathInfo. why not return all package info?)
 					resId = mainId;
 					mainId = loaderId;
 					pathInfo = core.resolvePathInfo(loaderId, cfg);
 				}
 			}
 
-			// find resource definition. ALWAYS check via (id in cache) b/c
-			// falsey values could be in there.
 			def = cache[mainId];
 			if (!(mainId in cache)) {
-				def = cache[mainId] = core.createResourceDef(pathInfo.config, mainId, isPreload);
+				def = core.createResourceDef(pathInfo.config, mainId, isPreload);
+				// TODO: can this go inside createResourceDef?
+				// TODO: can we pass pathInfo.url to createResourceDef instead?
 				def.url = core.checkToAddJsExt(pathInfo.url, def.config);
+				cache[mainId] = def;
 				core.fetchResDef(def);
 			}
 
 			// plugin or transformer
 			if (mainId == loaderId) {
 
-				// we need to use depName until plugin tells us normalized id.
-				// if the plugin changes the id, we need to consolidate
-				// def promises below.  Note: exports objects will be different
-				// between pre-normalized and post-normalized defs! does this matter?
+				// we need to use an anonymous promise until plugin tells
+				// us normalized id. then, we need to consolidate the promises
+				// below. Note: exports objects will be different between
+				// pre-normalized and post-normalized defs! does this matter?
 				// don't put this resource def in the cache because if the
 				// resId doesn't change, the check if this is a new
 				// normalizedDef (below) will think it's already being loaded.
-				tempDef = /*cache[depName] =*/ new Promise();
+				tempDef = new Promise();
 
 				// note: this means moduleLoaders can store config info in the
 				// plugins config, too.
@@ -1081,11 +1106,13 @@
 
 	function _define (args) {
 
-		var id = core.fixMainId(args.id, userCfg);
+		var id, def, pathInfo;
+
+		id = args.id;
 
 		if (id == undef) {
 			if (argsNet !== undef) {
-				argsNet = {ex: 'Multiple anonymous defines in url'};
+				argsNet = { ex: 'Multiple anonymous defines in url' };
 			}
 			else if (!(id = core.getCurrentDefName())/* intentional assignment */) {
 				// anonymous define(), defer processing until after script loads
@@ -1095,13 +1122,12 @@
 		if (id != undef) {
 			// named define(), it is in the cache if we are loading a dependency
 			// (could also be a secondary define() appearing in a built file, etc.)
-			var def = cache[id];
+			def = cache[id];
 			if (!(id in cache)) {
 				// id is an absolute id in this case, so we can get the config.
-				// there's no way to allow a named define to fetch dependencies
-				// in the preload phase since we can't cascade the parent def.
-				var cfg = core.resolvePathInfo(id, userCfg).config;
-				def = cache[id] = core.createResourceDef(cfg, id);
+				pathInfo = core.resolvePathInfo(id, userCfg);
+				def = core.createResourceDef(pathInfo.config, id);
+				cache[id] = def;
 			}
 			if (!isPromise(def)) throw new Error('duplicate define: ' + id);
 			// check if this resource has already been resolved
