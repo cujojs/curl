@@ -10,11 +10,14 @@
 
 /**
  * usage:
- *  curl({ debug: true }, ['curl/debug']).next(['other/modules'], function (otherModules) {
+ *  curl({ preloads: ['curl/debug'] }, ['my/app'], function (myApp) {
  * 		// do stuff while logging debug messages
  * 	});
  *
- * The debug module must be used in conjunction with the debug: true config param!
+ * TODO: warn when main module still has leading dots (normalizePackageDescriptor)
+ * TODO: warn when a module id still has leading dots (toAbsId)
+ * TODO: use curl/tdd/undefine module instead of quick-and-dirty method below
+ * TODO: only add logging to some of the useful core functions
  *
  */
 define(['require', 'curl/_privileged'], function (require, priv) {
