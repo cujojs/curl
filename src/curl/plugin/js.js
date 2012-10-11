@@ -116,8 +116,13 @@ define(/*=='curl/plugin/js',==*/ ['curl/_privileged'], function (priv) {
 
 	return {
 
-		// the !options force us to cache ids in the plugin
+		// the !options force us to cache ids in the plugin and provide normalize
 		'dynamic': true,
+
+		'normalize': function (id, toAbsId, config) {
+			var end = id.indexOf('!');
+			return toAbsId(end > 0 ? id.substr(0, end) : id);
+		},
 
 		'load': function (name, require, callback, config) {
 
