@@ -443,7 +443,7 @@
 				resourceId = resources[i];
 
 				var url, link;
-				url = require['toUrl'](nameWithExt(resourceId, 'css'));
+				url = nameWithExt(require['toUrl'](resourceId), 'css');
 
 				if (cssNoWait) {
 					link = createLink();
