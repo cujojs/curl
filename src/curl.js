@@ -45,7 +45,7 @@
 		// RegExp's used later, pre-compiled here
 		dontAddExtRx = /\?/,
 		absUrlRx = /^\/|^[^:]+:\/\//,
-		findLeadingDotsRx = /(\.)(\.?)(?:$|\/([^\.\/]+.*)?)/g,
+		findDotsRx = /(\.)(\.?)(?:$|\/([^\.\/]+.*)?)/g,
 		removeCommentsRx = /\/\*[\s\S]*?\*\/|(?:[^\\])\/\/.*?[\n\r]/g,
 		findRValueRequiresRx = /require\s*\(\s*["']([^"']+)["']\s*\)|(?:[^\\]?)(["'])/g,
 		cjsGetters,
@@ -62,13 +62,17 @@
 
 		descriptor.path = removeEndSlash(descriptor['path'] || descriptor['location'] || '');
 		main = descriptor['main'] || './main';
-		if (main.charAt(0) != '.') main = './' + main;
+		if (!isRelUrl(main)) main = './' + main;
 		// trailing slashes trick reduceLeadingDots to see them as base ids
 		descriptor.main = reduceLeadingDots(main, descriptor.name + '/');
-		//if (descriptor.main.charAt(0) == '.') throw new Error('invalid main (' + main + ') in ' + descriptor.name);
+		//if (isRelUrl(descriptor.main)) throw new Error('invalid main (' + main + ') in ' + descriptor.name);
 		descriptor.config = descriptor['config'];
 
 		return descriptor;
+	}
+
+	function isRelUrl (it) {
+		return it.charAt(0) == '.';
 	}
 
 	function isAbsUrl (it) {
@@ -93,12 +97,14 @@
 		removeLevels = 1;
 		normId = childId;
 
-		// remove dots and count levels
-		normId = normId.replace(findLeadingDotsRx, function (m, dot, doubleDot, remainder) {
-			if (doubleDot) removeLevels++;
+		// remove leading dots and count levels
+		if (isRelUrl(normId)) {
 			isRelative = true;
-			return remainder || '';
-		});
+			normId = normId.replace(findDotsRx, function (m, dot, doubleDot, remainder) {
+				if (doubleDot) removeLevels++;
+				return remainder || '';
+			});
+		}
 
 		if (isRelative) {
 			levels = baseId.split('/');
@@ -251,24 +257,32 @@
 		 * @return {*}
 		 */
 		toAbsId: function (id, parentId, cfg) {
-			var absId, parts;
+			var absId, pluginId, parts;
+
 			absId = reduceLeadingDots(id, parentId);
+
 			// if this is still a relative path, it must be a url
 			// so just punt, otherwise...
-			if (absId.charAt(0) != '.') {
-				// main id expansion
-				if (absId in cfg.pathMap) {
-					absId = cfg.pathMap[absId].main || absId;
-				}
-				// plugin id expansion
-				parts = pluginParts(absId);
-				if (parts.pluginId) {
-					if (parts.pluginId.indexOf('/') < 0) {
-						absId = joinPath(cfg.pluginPath, parts.pluginId)
-							+ '!' + parts.resourceId;
-					}
-				}
+			if (isRelUrl(absId)) return absId;
+
+			// plugin id split
+			parts = pluginParts(absId);
+			pluginId = parts.pluginId;
+			absId = pluginId || parts.resourceId;
+
+			// main id expansion
+			if (absId in cfg.pathMap) {
+				absId = cfg.pathMap[absId].main || absId;
 			}
+
+			// plugin id expansion
+			if (pluginId) {
+				if (pluginId.indexOf('/') < 0 && !(pluginId in cfg.pathMap)) {
+					absId = joinPath(cfg.pluginPath, pluginId);
+				}
+				absId = absId + '!' + parts.resourceId;
+			}
+
 			return absId;
 		},
 
@@ -289,10 +303,9 @@
 			}
 
 			function toUrl (n) {
-				// even though internally, we don't seem to need to do
-				// toAbsId, the AMD spec says we need to do this for plugins.
-				// also, the spec states that we should not append an extension
-				// in this function.
+				// the AMD spec states that we should not append an extension
+				// in this function since it could already be appended.
+				// we need to use toAbsId in case this is a module id.
 				return core.resolvePathInfo(toAbsId(n), cfg).url;
 			}
 
@@ -563,9 +576,10 @@
 				delete cfg.pathList;
 			}
 
-			// fix all new paths and packages
-			fixAndPushPaths(cfg['paths'], false);
+			// fix all new packages, then paths (in case there are
+			// plugin-specific paths for a main module, such as wire!)
 			fixAndPushPaths(cfg['packages'], true);
+			fixAndPushPaths(cfg['paths'], false);
 
 			// create search regex for each path map
 			for (p in pluginCfgs) {
@@ -603,6 +617,7 @@
 
 			if (!isAbsUrl(absId)) {
 				path = absId.replace(cfg.pathRx, function (match) {
+					// TODO: remove fallbacks here since they should never need to happen
 					pathInfo = pathMap[match] || {};
 					pkgCfg = pathInfo.config;
 					return pathInfo.path || '';
@@ -923,12 +938,10 @@
 			isPreload = parentDef.isPreload;
 			cfg = parentDef.config || userCfg;
 
-			mainId = toAbsId(depName);
 			// check for plugin loaderId
-			parts = pluginParts(mainId);
-			// resId is not normalized since the plugin may need to do it
+			// TODO: this runs pluginParts() twice. how to run it just once?
+			parts = pluginParts(toAbsId(depName));
 			resId = parts.resourceId;
-
 			// get id of first resource to load (which could be a plugin)
 			mainId = parts.pluginId || resId;
 			pathInfo = core.resolvePathInfo(mainId, cfg);
@@ -941,7 +954,7 @@
 				// TODO: move pkg.config.moduleLoader to pkg.transform
 				loaderId = pathInfo.config['moduleLoader'];
 				if (loaderId) {
-					// TODO: allow transforms to have relative module ids
+					// TODO: allow transforms to have relative module ids?
 					// (we could do this by returning package location from
 					// resolvePathInfo. why not return all package info?)
 					resId = mainId;
@@ -983,7 +996,7 @@
 					dynamic = plugin['dynamic'];
 					// check if plugin supports the normalize method
 					if ('normalize' in plugin) {
-						// dojo/has may return falsey values (0, actually)
+						// note: dojo/has may return falsey values (0, actually)
 						resId = plugin['normalize'](resId, toAbsId, resCfg) || '';
 					}
 					else {
