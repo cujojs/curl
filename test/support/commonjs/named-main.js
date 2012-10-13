@@ -1,4 +1,4 @@
-define('named', function (require, exports) {
+define('named/named-main', function (require, exports) {
 
 	exports.name = 'named';
 

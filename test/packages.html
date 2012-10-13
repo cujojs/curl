@@ -30,7 +30,7 @@
 			{ name: 'main', location: 'commonjs', main: 'main' },
 			{ name: 'rel', location: 'commonjs', main: 'main-with-relative-dep' },
 			{ name: 'named', location: 'commonjs', main: 'named-main' },
-			{ name: 'top', location: '', main: 'commonjs/main' }
+			{ name: 'app', location: '', main: '../commonjs/main' }
 		]
 	};
 
@@ -93,9 +93,9 @@
 		},
 		'curl should allow blank location (baseUrl)': function (cb, assert, require, done) {
 			function checkMain (main) {
-				assert.equal('pkg/main', main.id, 'main module should be "pkg/main"');
+				assert.equal('commonjs/main', main.id, 'main module should be "commonjs/main"');
 			}
-			curl(['top'])
+			curl(['app'])
 				.then(checkMain, cb.failure)
 				.then(done, done);
 		}
