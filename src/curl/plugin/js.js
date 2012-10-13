@@ -121,7 +121,7 @@ define(/*=='curl/plugin/js',==*/ ['curl/_privileged'], function (priv) {
 
 		'normalize': function (id, toAbsId, config) {
 			var end = id.indexOf('!');
-			return toAbsId(end > 0 ? id.substr(0, end) : id);
+			return toAbsId(end > 0 ? id.substr(0, end) : id) + id.substr(end);
 		},
 
 		'load': function (name, require, callback, config) {
