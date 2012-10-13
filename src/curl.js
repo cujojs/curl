@@ -252,7 +252,6 @@
 		 */
 		toAbsId: function (id, parentId, cfg) {
 			var absId, parts;
-			if (isAbsUrl(id)) return id;
 			absId = reduceLeadingDots(id, parentId);
 			// if this is still a relative path, it must be a url
 			// so just punt, otherwise...
