@@ -109,7 +109,9 @@
 				return childId;
 			}
 			levels.splice(diff, removeLevels);
-			return levels.concat(normId).join('/');
+			// normId || [] prevents concat from adding extra "/" when
+			// normId is reduced to a blank string
+			return levels.concat(normId || []).join('/');
 		}
 		else {
 			return normId;
@@ -252,13 +254,9 @@
 			var absId, parts;
 			if (isAbsUrl(id)) return id;
 			absId = reduceLeadingDots(id, parentId);
-			if (absId.charAt(0) == '.') {
-				// this is a relative url. resolve against baseUrl.
-				// note: since baseUrl is probably not at the root of the
-				// host server, leading dots can still be returned here.
-//				absId = reduceLeadingDots(id, joinPath(cfg.baseUrl, parentId));
-			}
-			else {
+			// if this is still a relative path, it must be a url
+			// so just punt, otherwise...
+			if (absId.charAt(0) != '.') {
 				// main id expansion
 				if (absId in cfg.pathMap) {
 					absId = cfg.pathMap[absId].main || absId;
