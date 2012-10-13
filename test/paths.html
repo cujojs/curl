@@ -45,14 +45,14 @@
 					},
 					'should remap plugin-specific path': function (cb, assert) {
 						function checkExports (junk, exports) {
-							assert.equal('ketchup', exports, 'exports verified');
+							assert.equal('ketchup', exports, 'verify exports');
 						}
 						curl(['js!plainJane.js!order', 'js!jane2.js!order!exports=testDomain.awesome.sauce'])
 							.then(cb.success, cb.failure)
 							.then(checkExports)
 							.then(done, done);
 					},
-					'should recognize both a fully-pathed and path-mapped module as the same': function (cb, assert) {
+					'// TODO: should recognize both a fully-pathed and path-mapped module as the same': function (cb, assert) {
 						function checkIncrements (inc1, inc2) {
 							assert.equal(inc2, inc1, 'should be same (not incremented)');
 						}
