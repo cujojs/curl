@@ -9,10 +9,10 @@
 		baseUrl: 'support',
 		paths: {
 			curl: '../../src/curl',
-			'curl/plugin/fake': 'fake'
+			'fake': 'fake' // prevent pluginPath from being prepended
 		},
 		packages: [
-			{ name: 'curl/plugin/fake2', location: '.', main: '../fake' }
+			{ name: 'fake2', location: '', main: '../fake' }
 		]
 	};
 
