@@ -20,6 +20,11 @@ Helpful link for updating submodules:
 What's New?
 =======
 
+IE10 compatibility: the following commits are compatible with IE10 (and Safari 6): 
+	* [anything 0.7.x or higher](https://github.com/cujojs/curl)
+	* [0.6.8](https://github.com/cujojs/curl/tree/3568bea941a6a6068995bfbeb56fa72c65835056)
+	* [0.6.2a](https://github.com/cujojs/curl/tree/2683057e4cdf45eec44dd69dfd814ece75b7ae70)
+
 * 0.7.0
 	* new module.config() method when using CommonJS-wrapped modules
 	* dontAddFileExt config option (RegExp or string) decides whether or not
