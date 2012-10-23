@@ -21,18 +21,19 @@ What's New?
 =======
 
 * 0.7.0
-	* IE10 compatibility! you must upgrade to 0.7+ to support IE10!
 	* new module.config() method when using CommonJS-wrapped modules
-	* new discussion group at https://groups.google.com/d/forum/cujojs check it!
 	* dontAddFileExt config option (RegExp or string) decides whether or not
 	  to add a .js file extension to module urls.
-	* Fix an IE/jquery-related "Permission denied" error.
 	* Implement error callbacks in require() and plugin load() methods.
 	* Improved css! plugin no longer fails on blank stylesheets and supports
 	  all features in all browsers (except for error callbacks in Opera, IE6,
 	  Safari 5 (and below) and Firefox 8 (and below)).
 	* shell scripts now work in more environments
 	* many other fixes
+* 0.6.8
+	* IE10 compatibility! you must upgrade to 0.6.8+ to support IE10!
+	* new discussion group at https://groups.google.com/d/forum/cujojs check it!
+	* Fix an IE/jquery-related "Permission denied" error.
 * 0.6.7
 	* Fix problems using google closure compiler to create "dist" versions.
 * 0.6.6
