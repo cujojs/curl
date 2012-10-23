@@ -936,7 +936,7 @@
 
 			toAbsId = parentDef.toAbsId;
 			isPreload = parentDef.isPreload;
-			cfg = parentDef.config || userCfg;
+			cfg = parentDef.config || userCfg; // is this fallback necessary?
 
 			// check for plugin loaderId
 			// TODO: this runs pluginParts() twice. how to run it just once?
@@ -951,12 +951,10 @@
 				loaderId = mainId;
 			}
 			else {
-				// TODO: move pkg.config.moduleLoader to pkg.transform
+				// TODO: move config.moduleLoader to config.transform
 				loaderId = pathInfo.config['moduleLoader'];
 				if (loaderId) {
 					// TODO: allow transforms to have relative module ids?
-					// (we could do this by returning package location from
-					// resolvePathInfo. why not return all package info?)
 					resId = mainId;
 					mainId = loaderId;
 					pathInfo = core.resolvePathInfo(loaderId, cfg);
@@ -968,7 +966,7 @@
 				def = core.createResourceDef(pathInfo.config, mainId, isPreload);
 				// TODO: can this go inside createResourceDef?
 				// TODO: can we pass pathInfo.url to createResourceDef instead?
-				def.url = core.checkToAddJsExt(pathInfo.url, def.config);
+				def.url = core.checkToAddJsExt(pathInfo.url, pathInfo.config);
 				cache[mainId] = def;
 				core.fetchResDef(def);
 			}
@@ -997,7 +995,7 @@
 					// check if plugin supports the normalize method
 					if ('normalize' in plugin) {
 						// note: dojo/has may return falsey values (0, actually)
-						resId = plugin['normalize'](resId, toAbsId, resCfg) || '';
+						resId = plugin['normalize'](resId, toAbsId, def.config) || '';
 					}
 					else {
 						resId = toAbsId(resId);
