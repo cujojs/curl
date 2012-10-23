@@ -20,6 +20,8 @@ Helpful link for updating submodules:
 What's New?
 =======
 
+* 0.6.2a
+	* IE10 compatibility!
 * 0.6.2
 	* curl no longer repeatedly downloads modules that don't return any value
 	  (bug introduced in 0.6 refactor) fixes issue #63
