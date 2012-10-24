@@ -490,7 +490,7 @@
 		},
 
 		moreConfig: function (cfg, prevCfg) {
-			var newCfg, pluginCfgs, p;
+			var newCfg, pluginCfgs, p, absId;
 
 			if (!prevCfg) prevCfg = {};
 			newCfg = beget(prevCfg, cfg);
@@ -505,10 +505,6 @@
 			newCfg.pathMap = beget(prevCfg.pathMap);
 			pluginCfgs = cfg['plugins'] || {};
 			newCfg.plugins = beget(prevCfg.plugins);
-			for (p in pluginCfgs) {
-				newCfg.plugins[core.toAbsId(p, '', newCfg)] = pluginCfgs[p];
-			}
-			pluginCfgs = newCfg.plugins;
 
 			// temporary arrays of paths. this will be converted to
 			// a regexp for fast path parsing.
@@ -580,6 +576,14 @@
 			// plugin-specific paths for a main module, such as wire!)
 			fixAndPushPaths(cfg['packages'], true);
 			fixAndPushPaths(cfg['paths'], false);
+
+			// process plugins after packages in case we already perform an
+			// id transform on a plugin (i.e. it's a package.main)
+			for (p in pluginCfgs) {
+				var absId = core.toAbsId(p + '!', '', newCfg);
+				newCfg.plugins[absId.substr(0, absId.length - 1)] = pluginCfgs[p];
+			}
+			pluginCfgs = newCfg.plugins;
 
 			// create search regex for each path map
 			for (p in pluginCfgs) {
