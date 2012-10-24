@@ -959,6 +959,8 @@
 				loaderId = pathInfo.config['moduleLoader'];
 				if (loaderId) {
 					// TODO: allow transforms to have relative module ids?
+					// (we could do this by returning package location from
+					// resolvePathInfo. why not return all package info?)
 					resId = mainId;
 					mainId = loaderId;
 					pathInfo = core.resolvePathInfo(loaderId, cfg);
