@@ -38,6 +38,8 @@
 		undef,
 		// local cache of resource definitions (lightweight promises)
 		cache = {},
+		// local url cache
+		urlCache = {},
 		// preload are files that must be loaded before any others
 		preload = false,
 		// net to catch anonymous define calls' arguments (non-IE browsers)
@@ -366,7 +368,7 @@
 			// before resolving
 			def.resolve = function resolve (deps) {
 				when(isPreload || preload, function () {
-					origResolve((cache[def.id] = execute(deps)));
+					origResolve((cache[def.id] = urlCache[def.url] = execute(deps)));
 				});
 			};
 
@@ -967,13 +969,21 @@
 				}
 			}
 
-			def = cache[mainId];
-			if (!(mainId in cache)) {
+			if (mainId in cache) {
+				def = cache[mainId];
+console.log('found', mainId, 'in cache');
+			}
+//			else if (pathInfo.url in urlCache) {
+//				def = cache[mainId] = urlCache[pathInfo.url];
+//console.log('found', mainId, 'in urlCache at', pathInfo.url);
+//			}
+			else {
 				def = core.createResourceDef(pathInfo.config, mainId, isPreload);
 				// TODO: can this go inside createResourceDef?
 				// TODO: can we pass pathInfo.url to createResourceDef instead?
 				def.url = core.checkToAddJsExt(pathInfo.url, pathInfo.config);
-				cache[mainId] = def;
+				cache[mainId] = urlCache[pathInfo.url] = def;
+console.log('created', mainId, 'at', pathInfo.url);
 				core.fetchResDef(def);
 			}
 

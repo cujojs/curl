@@ -73,7 +73,10 @@
 		},
 		'curl should find main module using "../.." module id': function (cb, assert, require, done) {
 			function checkMain (rm) {
-				assert.equal('main/main', rm.id(), 'main module should be "main/main"');
+				// either pkg/main or main/main is acceptable since there's a
+				// race condition to this edge case. (note that pkg and main
+				// packages point to same code.)
+				assert(rm.id() == 'main/main' || rm.id() == 'pkg/main', 'main module should be "main/main" or "pkg/main"');
 			}
 			curl(['main/folder/deep/returnMain'])
 				.then(checkMain, cb.failure)
