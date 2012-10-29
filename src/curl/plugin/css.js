@@ -175,13 +175,14 @@
 	 * DOM/BOM is what matters in IE.
 	 *
 	 * In other words: the bungling of the IE team (both in allowing sheet
-	 * error handlers to execute multiple times and in allowing us to use
+	 * error handlers to execute multiple times and in forcing us to use
 	 * temporal order rather than dom order) has allowed us to implement
-	 * this work-around.
+	 * this work-around.  Almost seems like they planned it.
 	 *
-	 * Note: CSS debugging tools in IE 6-8 seem to fail when inserting
-	 * stylesheets dynamically no matter which method we use to insert them.
+	 * Note: CSS debugging tools in IE 6-8 seem to sometimes fail when inserting
+	 * stylesheets dynamically, no matter which method we use to insert them.
 	 *
+	 * IE only.
 	 * @private
 	 * @param url {String}
 	 * @param cb {Function}
@@ -200,7 +201,7 @@
 		// find an available collector
 		coll = getIeCollector();
 
-		// if we have an available collector, import a stylesheet off queue
+		// if we have an available collector, import a stylesheet from the queue
 		if (coll) {
 			loadNextImport(coll);
 		}
@@ -210,24 +211,26 @@
 	/**
 	 * Grabs the next sheet/callback item from the queue and imports it into
 	 * the provided collector sheet.
+	 * IE only.
 	 * @private
 	 * @param coll {Stylesheet}
 	 */
 	function loadNextImport (coll) {
-		var imp;
+		var imp, collSheet;
 
 		imp = ieCollectorQueue.shift();
+		collSheet = coll.styleSheet;
 
 		if (imp) {
 			coll.onload = function () {
-				imp.cb();
+				imp.cb(imp.ss);
 				loadNextImport(coll);
 			};
 			coll.onerror = function () {
 				imp.eb();
 				loadNextImport(coll);
 			};
-			coll.styleSheet.addImport(imp.url);
+			imp.ss = collSheet.imports[collSheet.addImport(imp.url)];
 		}
 		else {
 			finalize(coll);
@@ -237,6 +240,7 @@
 
 	/**
 	 * Returns a collector sheet to the pool.
+	 * IE only.
 	 * @private
 	 * @param coll {Stylesheet}
 	 */
@@ -315,7 +319,7 @@
 		// watches a stylesheet for loading signs.
 		if (hasEvent['load']) return; // always check on re-entry
 		if (isLinkReady(link)) {
-			cb();
+			cb(link.sheet);
 		}
 		else if (!isFinalized(link)) {
 			setTimeout(function () { loadWatcher(link, wait, cb); }, wait);
@@ -335,7 +339,7 @@
 			// only executes once (link.onload is acting as a flag)
 			if (isFinalized(link)) return;
 			finalize(link);
-			waitForDocumentComplete(cb);
+			waitForDocumentComplete(function () { cb(link.sheet); });
 		}
 		// always try standard handler
 		loadHandler(link, load);
@@ -347,8 +351,8 @@
 		// very few browsers (Chrome 19+ and FF9+ as of Apr 2012) have a
 		// functional onerror handler (and those only detect 40X/50X http
 		// errors, not parsing errors as per the w3c spec).
-		// IE6-9 call onload when there's an http error. (nice, real nice)
-		// this only matters in IE9 since IE6-8 use the addImport method
+		// IE6-10 call onload when there's an http error. (nice, real nice)
+		// this only matters in IE10 since IE6-9 use the addImport method
 		// which does call onerror.
 		function error () {
 			// only executes once (link.onload is acting as a flag)
@@ -417,16 +421,18 @@
 		},
 
 		'load': function (resourceId, require, callback, config) {
-			var resources, cssWatchPeriod, cssNoWait, loadingCount, i;
+			var sheets, resources, cssWatchPeriod, cssNoWait, loadingCount, i;
+			sheets = [];
 			resources = (resourceId || '').split(",");
 			cssWatchPeriod = config['cssWatchPeriod'] || 50;
 			cssNoWait = config['cssNoWait'];
 			loadingCount = resources.length;
 
 			// this function must get called just once per stylesheet!
-			function loaded () {
+			function loaded (ss) {
+				if (resources.length > 1) sheets.push(ss);
 				if (--loadingCount == 0) {
-					callback();
+					callback(resources.length == 1 ? ss : sheets);
 				}
 			}
 
@@ -449,7 +455,7 @@
 					link = createLink();
 					link.href = url;
 					head.appendChild(link);
-					loaded();
+					loaded(link.sheet || link.styleSheet);
 				}
 				else {
 					loadSheet(url, loaded, failed, cssWatchPeriod);

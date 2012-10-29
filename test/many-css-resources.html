@@ -56,12 +56,17 @@
 		}
 	);
 
-	// test cascade
-	curl(['css!stuff/cascade-start.css', 'css!stuff/cascade-middle.css', 'css!stuff/cascade-end.css']).then(
-		function () {
-			var testEl = document.getElementById('test-cascade');
+	// test cascade and comma-separated resource Ids
+	curl(['css!stuff/cascade-start.css,stuff/cascade-middle.css,stuff/cascade-end.css']).then(
+		function (sheets) {
+			var testEl = document.getElementById('test-cascade'), i, sheet;
 			write((testEl.offsetTop == 33 ? 'SUCCESS' : 'FAILED') + ': css cascaded correctly through three levels.');
 			write((testEl.offsetLeft == 20 ? 'SUCCESS' : 'FAILED') + ': css cascaded correctly through two levels.');
+			write((sheets.length == 3 ? 'SUCCESS' : 'FAILED') + ': multiple sheets returned when comma-separated.');
+			for (i = 0; i < sheets.length; i++) {
+				sheet = sheets[i];
+				write((sheet.rules || sheet.cssRules ? 'SUCCESS' : 'FAILED') + ': sheet returned as ' + i + 'th array item.');
+			}
 		},
 		function (ex) { write('FAILED: cascade tests did not run.') }
 	);
