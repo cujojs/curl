@@ -45,7 +45,7 @@ function cssLoaded () {
 		return el1.currentStyle.color == el2.currentStyle.color;
 	}
 	else {
-		return window.getComputedStyle(el1).color == window.getComputedStyle(el2).color;
+		return window.getComputedStyle(el1, false).color == window.getComputedStyle(el2, false).color;
 	}
 }
 

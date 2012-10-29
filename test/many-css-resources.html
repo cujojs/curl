@@ -20,7 +20,7 @@
 "use strict";
 
 	// local css file
-	curl(['css!stuff/base.css'/*, 'domReady!'*/]).then(
+	curl(['css!stuff/base.css', 'domReady!']).then(
 		function () {
 			write('SUCCESS! loaded local css file.');
 			// TODO: we need a better test than this:

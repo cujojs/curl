@@ -49,7 +49,7 @@
 			doc.body.appendChild(doc.createElement('div')).innerHTML = msg;
 
 			testVal = getStyle(testEl, 'fontFamily');
-			msg = testVal.toLowerCase().indexOf('tahoma') >= 0 ?
+			msg = /tahoma|myriad/i.test(testVal) ?
 				'SUCCESS: dojo.css file loaded.' :
 				'FAILED: dojo.css file not loaded.';
 			doc.body.appendChild(doc.createElement('div')).innerHTML = msg;

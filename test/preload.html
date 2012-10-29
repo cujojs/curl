@@ -19,7 +19,7 @@
 			]
 		};
 	// IE needs a console to operate the debug module
-	console = { log: function () {} };
+	if (typeof console == 'undefined') console = { log: function () {} };
 
 </script>
 <script src="../src/curl.js" type="text/javascript"></script>
