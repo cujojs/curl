@@ -27,7 +27,12 @@ IE10 compatibility: the following commits are compatible with IE10 (and Safari 6
 * [0.6.2a](https://github.com/cujojs/curl/tree/2683057e4cdf45eec44dd69dfd814ece75b7ae70)
 
 * 0.7.1
-	* Fixed inability to load non-anonymous "main" modules (packages)
+	* fixed inability to load non-anonymous "main" modules (packages) (also #138)
+	* restored ability to use urls in place of module ids as dependencies
+	* fixed duplicate downloads/execution of modules if dev specified
+	  module in two different ways (e.g. as module and as url) (#137)
+	* fixed early callback in IE under load (#136)
+	* restored plugin-specific config and paths
 * 0.7.0
 	* new module.config() method when using CommonJS-wrapped modules
 	* dontAddFileExt config option (RegExp or string) decides whether or not
