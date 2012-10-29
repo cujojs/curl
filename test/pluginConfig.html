@@ -15,17 +15,18 @@
 	curl(
 		{
 			baseUrl: '..',
+			pluginPath: 'test/support',
 			paths: {
 				stuff: 'test/stuff'
 			},
 			plugins: {
-				'test/support/fake': {
+				'fake': {
 					testValue: testValue
 				}
 			}
 		},
 		[
-			'test/support/fake!', // explicitly configured plugin
+			'fake!', // explicitly configured plugin
 			'test/support/simple-plugin', // un-configured plugin should still get config
 			'test/support/simple-plugin!stuff/zero', // just to run load method
 			'src/curl/domReady'

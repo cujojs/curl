@@ -80,7 +80,7 @@
 		'load': function (resourceId, require, callback, config) {
 			var url, link, fix;
 
-			url = require['toUrl'](nameWithExt(resourceId, 'css'));
+			url = nameWithExt(require['toUrl'](resourceId), 'css');
 			fix = 'fixSchemalessUrls' in config ? config['fixSchemalessUrls'] : doc.location.protocol;
 			url = fix ? fixProtocol(url, fix) : url;
 			link = createLink(doc, url);

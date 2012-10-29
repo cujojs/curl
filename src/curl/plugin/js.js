@@ -116,8 +116,13 @@ define(/*=='curl/plugin/js',==*/ ['curl/_privileged'], function (priv) {
 
 	return {
 
-		// the !options force us to cache ids in the plugin
+		// the !options force us to cache ids in the plugin and provide normalize
 		'dynamic': true,
+
+		'normalize': function (id, toAbsId, config) {
+			var end = id.indexOf('!');
+			return end >= 0 ? toAbsId(id.substr(0, end)) + id.substr(end) : toAbsId(id);
+		},
 
 		'load': function (name, require, callback, config) {
 
@@ -128,7 +133,8 @@ define(/*=='curl/plugin/js',==*/ ['curl/_privileged'], function (priv) {
 			exports = exportsPos > 0 && name.substr(exportsPos + 9); // must be last option!
 			prefetch = 'prefetch' in config ? config['prefetch'] : true;
 			name = order || exportsPos > 0 ? name.substr(0, name.indexOf('!')) : name;
-			url = require['toUrl'](nameWithExt(name, 'js'));
+			// add extension afterwards so js!-specific path mappings don't need extension, too
+			url = nameWithExt(require['toUrl'](name), 'js');
 
 			function reject (ex) {
 				(callback['error'] || function (ex) { throw ex; })(ex);

@@ -12,7 +12,9 @@
 	};
 
 </script>
-<script src="../src/curl.js" type="text/javascript"></script>
+<script src="../src/curl.js"></script>
+<!--<script src="https://raw.github.com/cujojs/curl/dev/src/curl.js"></script>-->
+<!--<script src="https://raw.github.com/cujojs/curl/ec8c7e4b7aa6ac6d1fbcd369f50ba26883cc6b57/src/curl.js"></script>-->
 
 <script type="text/javascript">
 
@@ -28,7 +30,8 @@
 				paths: beget(curl_base.paths, {
 					'plainJane.js': 'stuff/plain_old.js',
 					'jane2.js': 'stuff/plain_old.js', // shouldn't get loaded
-					'js!jane2.js': 'stuff/plain_old_2.js' // this one should
+					'js!jane2.js': 'stuff/plain_old_2.js', // this one should
+					'increments': 'stuff/increments'
 					// TODO: more tests
 				})
 			}),
@@ -42,11 +45,20 @@
 					},
 					'should remap plugin-specific path': function (cb, assert) {
 						function checkExports (junk, exports) {
-							assert.equal('ketchup', exports, 'exports verified');
+							assert.equal('ketchup', exports, 'verify exports');
 						}
 						curl(['js!plainJane.js!order', 'js!jane2.js!order!exports=testDomain.awesome.sauce'])
 							.then(cb.success, cb.failure)
 							.then(checkExports)
+							.then(done, done);
+					},
+					'should recognize both a fully-pathed and path-mapped module as the same': function (cb, assert) {
+						function checkIncrements (inc1, inc2) {
+							assert.equal(inc2, inc1, 'should be same (not incremented)');
+						}
+						curl(['stuff/increments', 'increments'])
+							.then(cb.success, cb.failure)
+							.then(checkIncrements)
 							.then(done, done);
 					}
 				};
