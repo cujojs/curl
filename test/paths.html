@@ -52,7 +52,7 @@
 							.then(checkExports)
 							.then(done, done);
 					},
-					'// TODO: should recognize both a fully-pathed and path-mapped module as the same': function (cb, assert) {
+					'should recognize both a fully-pathed and path-mapped module as the same': function (cb, assert) {
 						function checkIncrements (inc1, inc2) {
 							assert.equal(inc2, inc1, 'should be same (not incremented)');
 						}
