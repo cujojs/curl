@@ -43,7 +43,7 @@
 			doc.body.appendChild(doc.createElement('div')).innerHTML = msg;
 
 			testVal = getStyle(testEl, 'display');
-			msg = testVal.toLowerCase() == 'inline-block' ?
+			msg = /inline/.test(testVal.toLowerCase()) ?
 				'SUCCESS: claro.css file loaded.' :
 				'FAILED: claro.css file not loaded.';
 			doc.body.appendChild(doc.createElement('div')).innerHTML = msg;
