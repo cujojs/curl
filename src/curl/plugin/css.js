@@ -90,7 +90,6 @@
 		createElement = 'createElement',
 		parentNode = 'parentNode',
 		setTimeout = global.setTimeout,
-		pluginBuilder = './builder/css',
 		// doc will be undefined during a build
 		doc = global.document,
 		// find the head element and set it to it's standard property if nec.
@@ -153,8 +152,6 @@
 	 */
 	function loadHandler (link, cb) {
 		link.onload = function () {
-// TODO: figure out why Opera seems to work fine for local stylesheets, but not remote
-//console.log('compliant');
 			// we know browser is compliant now!
 			setLoadDetection('load', true);
 			cb();
@@ -315,7 +312,6 @@
 		if (!link.href || !isDocumentComplete()) return false;
 
 		ready = false;
-
 		try {
 			sheet = link.sheet;
 			if (sheet) {
@@ -336,7 +332,10 @@
 		catch (ex) {
 			// a "security" or "access denied" error indicates that an XD
 			// stylesheet has been successfully loaded in old FF
-			ready = /security|denied/i.test(ex.message);
+			// Opera throws before the sheet is loaded (and before onload
+			// in some cases, so we have to test for it here)
+			ready = window.opera.toString() != '[object Opera]'
+				&& /security|denied/i.test(ex.message);
 		}
 
 		return ready;
@@ -574,8 +573,8 @@
 
 		},
 
-		'plugin-builder': pluginBuilder,
-		'pluginBuilder': pluginBuilder
+		'plugin-builder': './builder/css',
+		'pluginBuilder': './builder/css'
 
 	});
 
