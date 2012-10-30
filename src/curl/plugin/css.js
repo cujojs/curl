@@ -48,7 +48,8 @@
  *
  * cssNoWait: Boolean. You can instruct this plugin to not wait
  * for any css resources. They'll get loaded asap, but other code won't wait
- * for them.
+ * for them.  Note: you cannot use this option and use more than 31
+ * stylesheets in IE6-9!
  *
  * cssWatchPeriod: if direct load-detection techniques fail, this option
  * determines the msec to wait between brute-force checks for rules. The
@@ -68,7 +69,7 @@
  *      require(['css!myWidget']);
  *
  * Tested in:
- *      Firefox 3.6, 4.0, 11, 21
+ *      Firefox 3.6, 4.0, 11-16
  *      Safari 3.0.4, 3.2.1, 5.0
  *      Chrome 19
  *      Opera 11.62, 12.01
@@ -77,11 +78,11 @@
  *  	Firefox 12+
  *  	Safari 6+
  *  	Chrome 9+
- *  	IE7-9
+ *  	IE6-9
  *  Error handlers don't work in:
  *  	Opera 11.62, 12.01
  *  	Firefox 3.6, 4.0
- *  	IE 6 and 10
+ *  	IE 10
 */
 
 	var
@@ -116,10 +117,23 @@
 		}
 	}
 
+	/**
+	 * Once we've absolutely determined if the current browser supports an
+	 * event handler, we set it with this function.
+	 * @private
+	 * @param event
+	 * @param hasNative
+	 */
 	function setLoadDetection (event, hasNative) {
 		hasEvent[event] = hasEvent[event] || hasNative;
 	}
 
+	/**
+	 * Creates a link element.
+	 * IE6-9 don't use this function.
+	 * @private
+	 * @return {Element}
+	 */
 	function createLink () {
 		var link;
 		link = doc[createElement]('link');
@@ -130,14 +144,30 @@
 
 	/***** load functions for compliant browsers *****/
 
+	/**
+	 * This is the load handler for compliant browsers.
+	 * Latest Chrome, Safari, Opera, FF, IE10
+	 * @private
+	 * @param link
+	 * @param cb
+	 */
 	function loadHandler (link, cb) {
 		link.onload = function () {
+// TODO: figure out why Opera seems to work fine for local stylesheets, but not remote
+//console.log('compliant');
 			// we know browser is compliant now!
 			setLoadDetection('load', true);
 			cb();
 		};
 	}
 
+	/**
+	 * This is the load handler for compliant browsers.
+	 * Latest Chrome, Safari (not Opera 12 or IE10)
+	 * @private
+	 * @param link
+	 * @param cb
+	 */
 	function errorHandler (link, cb) {
 		link.onerror = function () {
 			// we know browser is compliant now!
@@ -182,7 +212,7 @@
 	 * Note: CSS debugging tools in IE 6-8 seem to sometimes fail when inserting
 	 * stylesheets dynamically, no matter which method we use to insert them.
 	 *
-	 * IE only.
+	 * IE 6-9 only.
 	 * @private
 	 * @param url {String}
 	 * @param cb {Function}
@@ -211,7 +241,7 @@
 	/**
 	 * Grabs the next sheet/callback item from the queue and imports it into
 	 * the provided collector sheet.
-	 * IE only.
+	 * IE 6-9 only.
 	 * @private
 	 * @param coll {Stylesheet}
 	 */
@@ -240,7 +270,7 @@
 
 	/**
 	 * Returns a collector sheet to the pool.
-	 * IE only.
+	 * IE 6-9 only.
 	 * @private
 	 * @param coll {Stylesheet}
 	 */
@@ -253,6 +283,7 @@
 	 * in the pool and less than the maximum collector sheets has been created,
 	 * a new one is created. If the max collectors have been created,
 	 * undefined is returned.
+	 * IE 6-9 only.
 	 * @private
 	 * @return {HTMLElement} a stylesheet element to act as a collector sheet
 	 */
@@ -270,11 +301,17 @@
 		return el;
 	}
 
-	/***** load functions for legacy browsers (old Safari and FF) *****/
+	/***** load functions for legacy browsers (old Safari and FF, Opera) *****/
 
+	/**
+	 * Try all sorts of crazy shiz to determine when the stylesheet is loaded.
+	 * @private
+	 * @param link
+	 * @return {Boolean}
+	 */
 	function isLinkReady (link) {
 		var ready, sheet, rules;
-		// don't bother testing until we've fully initialized the link and doc;
+		// don't bother testing until we've fully initialized the link and doc.
 		if (!link.href || !isDocumentComplete()) return false;
 
 		ready = false;
@@ -287,7 +324,7 @@
 				// will return null when an XD sheet is loaded
 				rules = sheet.cssRules;
 				ready = rules === null;
-				if (!ready && 'length' in rules) {
+				if (!ready && rules) {
 					// Safari needs to further test for rule manipulation
 					// on local stylesheets (Opera too?)
 					sheet.insertRule('-curl-css-test {}', 0);
@@ -305,16 +342,36 @@
 		return ready;
 	}
 
+	/**
+	 * Indicate that a link element is loaded or errored.
+	 * @private
+	 * @param link
+	 */
 	function finalize (link) {
 		// noop serves as a flag that a link event fired
 		// note: Opera and IE won't clear handlers if we use a non-function
 		link.onload = link.onerror = noop;
 	}
 
+	/**
+	 * Detect is a link is loaded or errored.
+	 * @private
+	 * @param link
+	 * @return {Boolean}
+	 */
 	function isFinalized (link) {
 		return link.onload == noop || !link.onload;
 	}
 
+	/**
+	 * This is the function that will be used when a browser doesn't support
+	 * the standard onload and handler -- or until we've verified that the
+	 * browser supports it.
+	 * @private
+	 * @param link
+	 * @param wait {Number} msec between checks
+	 * @param cb
+	 */
 	function loadWatcher (link, wait, cb) {
 		// watches a stylesheet for loading signs.
 		if (hasEvent['load']) return; // always check on re-entry
@@ -326,11 +383,32 @@
 		}
 	}
 
+	/**
+	 * This is the function that wil be used when a browser doens't support
+	 * the standard onerror handler -- or until we've verifies that the
+	 * browser supports it.
+	 * Note: so far we don't have a good way to check or failed stylesheets
+	 * without attempting to refetch the stylesheet using an IMG, OBJECT,
+	 * or any other means, so we haven't implemented this.
+	 * @private
+	 * @param link
+	 * @param wait {Number} msec between checks
+	 * @param eb
+	 */
 	function errorWatcher (link, wait, eb) {
 		if (hasEvent['error']) return;
 		// TODO: figure out a method to test for stylesheet failure without risk of re-fetching
+		// TODO: timeout?
 	}
 
+	/**
+	 * Launch both standards-compliant onload and fallback at the same time.
+	 * One of these will eventually work.
+	 * @private
+	 * @param link
+	 * @param wait {Number} msec between checks
+	 * @param cb
+	 */
 	function linkLoaded (link, wait, cb) {
 		// most browsers now support link.onload, but many older browsers
 		// don't. Browsers that don't will launch the loadWatcher to repeatedly
@@ -347,6 +425,14 @@
 		loadWatcher(link, wait, load);
 	}
 
+	/**
+	 * Launch both standards-compliant onerror and fallback at the same time.
+	 * One of these will eventually work in most browsers.
+	 * @private
+	 * @param link
+	 * @param wait {Number} msec between checks
+	 * @param cb
+	 */
 	function linkErrored (link, wait, cb) {
 		// very few browsers (Chrome 19+ and FF9+ as of Apr 2012) have a
 		// functional onerror handler (and those only detect 40X/50X http
@@ -366,6 +452,14 @@
 		errorWatcher(link, wait, error);
 	}
 
+	/**
+	 * Kick-start the load and detection process.
+	 * @private
+	 * @param url
+	 * @param cb
+	 * @param eb
+	 * @param period {Number} msec between checks
+	 */
 	function loadLink (url, cb, eb, period) {
 		var link;
 		link = createLink();
@@ -375,6 +469,15 @@
 		head.appendChild(link);
 	}
 
+	/**
+	 * Keep checking for the document readyState to be "complete" since
+	 * Chrome doesn't apply the styles to the document until that time.
+	 * If we return before readyState == 'complete', Chrome may not have
+	 * applied the styles, yet.
+	 * Chrome only.
+	 * @private
+	 * @param cb
+	 */
 	function waitForDocumentComplete (cb) {
 		// this isn't exactly the same as domReady (when dom can be
 		// manipulated). it's later (when styles are applied).
@@ -390,6 +493,13 @@
 		complete();
 	}
 
+	/**
+	 * Returns true if the documents' readyState == 'complete' or the
+	 * document doesn't implement readyState.
+	 * Chrome only.
+	 * @private
+	 * @return {Boolean}
+	 */
 	function isDocumentComplete () {
 		return !doc.readyState || doc.readyState == 'complete';
 	}
