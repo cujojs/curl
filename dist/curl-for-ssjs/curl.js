@@ -13,7 +13,7 @@
 (function (global) {
 //"use strict"; don't restore this until the config routine is refactored
 	var
-		version = '0.7.1',
+		version = '0.7.2',
 		curlName = 'curl',
 		userCfg,
 		prevCurl,
@@ -1094,33 +1094,33 @@
 			core.checkPreloads(cfg);
 		}
 
-		// thanks to Joop Ringelberg for helping troubleshoot the API
-		function CurlApi (ids, callback, errback, waitFor) {
-			var then, ctx;
-			ctx = core.createContext(userCfg, undef, [].concat(ids));
-			this['then'] = then = function (resolved, rejected) {
-				when(ctx,
-					// return the dependencies as arguments, not an array
-					function (deps) {
-						if (resolved) resolved.apply(undef, deps);
-					},
-					// just throw if the dev didn't specify an error handler
-					function (ex) {
-						if (rejected) rejected(ex); else throw ex;
-					}
-				);
-				return this;
-			};
-			this['next'] = function (ids, cb, eb) {
-				// chain api
-				return new CurlApi(ids, cb, eb, ctx);
-			};
-			if (callback) then(callback, errback);
-			when(waitFor, function () { core.getDeps(ctx); });
-		}
-
 		return new CurlApi(args[0], args[1], args[2]);
 
+	}
+
+	// thanks to Joop Ringelberg for helping troubleshoot the API
+	function CurlApi (ids, callback, errback, waitFor) {
+		var then, ctx;
+		ctx = core.createContext(userCfg, undef, [].concat(ids));
+		this['then'] = then = function (resolved, rejected) {
+			when(ctx,
+				// return the dependencies as arguments, not an array
+				function (deps) {
+					if (resolved) resolved.apply(undef, deps);
+				},
+				// just throw if the dev didn't specify an error handler
+				function (ex) {
+					if (rejected) rejected(ex); else throw ex;
+				}
+			);
+			return this;
+		};
+		this['next'] = function (ids, cb, eb) {
+			// chain api
+			return new CurlApi(ids, cb, eb, ctx);
+		};
+		if (callback || errback) then(callback, errback);
+		when(waitFor, function () { core.getDeps(ctx); });
 	}
 
 	_curl['version'] = version;
