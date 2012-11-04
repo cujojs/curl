@@ -36,24 +36,44 @@
 
 define(/*=='curl/plugin/i18n',==*/ function () {
 
+	var appendLocaleRx;
+
+	// finds the end and an optional .js extension since some devs may have
+	// added it, which is legal since plugins sometimes require an extension.
+	appendLocaleRx = /(\.js)?$/;
+
 	return {
 		load: function (absId, require, loaded, config) {
-			var locale, toFile, ids, bundles, fetched, i;
+			var eb, toFile, locale, bundles, fetched, id, parts, specifiers, i;
 
-			locale = config.locale || getLocale;
+			eb = loaded.error;
+
+			if (!absId) {
+				eb(new Error('blank i18n bundle id.'));
+			}
+
+			// resolve config options
+			toFile = config['localeToModuleId'] || localeToModuleId;
+			locale = config['locale'] || getLocale;
 			if (typeof locale == 'function') locale = locale(absId);
 
-			toFile = config.localeToModuleId || localeToModuleId;
-
-			ids = localeToModuleIds(absId, locale, toFile);
-
+			// keep track of what bundles we've found
 			bundles = [];
-
 			fetched = 0;
 
-			for (i = 0; i < ids.length; i++) {
-				// save found bundles, just silently skip missing ones
-				fetch(require, ids[i], i, got, countdown);
+			// determine all the variations / specificities we might find
+			parts = locale.split('-');
+			specifiers = [];
+
+			// correct. run loop length+1 times!
+			for (i = 0; i <= parts.length; i++) {
+				// create bundle id
+				id = toFile(absId, specifiers.join('-'));
+				// fetch and save found bundles, while silently skipping
+				// missing ones
+				fetch(require, id, i, got, countdown);
+				// add next part to specifiers
+				specifiers[i] = parts[i];
 			}
 
 			function got (bundle, i) {
@@ -62,10 +82,10 @@ define(/*=='curl/plugin/i18n',==*/ function () {
 			}
 
 			function countdown () {
-				var base, bundle;
-				if (++fetched == ids.length) {
+				var base;
+				if (++fetched == parts.length) {
 					if (bundles.length == 0) {
-						loaded.error(new Error('No bundles found for ' + absId + ' and locale ' + locale));
+						eb(new Error('No i18n bundles found: "' + absId + '", locale "' + locale + '"'));
 					}
 					else {
 						base = {};
@@ -84,18 +104,6 @@ define(/*=='curl/plugin/i18n',==*/ function () {
 		require([id], function (bundle) { cb(bundle, i); }, eb);
 	}
 
-	function localeToModuleIds (absId, locale, formatter) {
-		var parts, specifier, ids, part;
-		parts = locale.split(/-|_/);
-		specifier = '';
-		ids = [formatter(absId, '')];
-		while ((part = parts.shift())) {
-			specifier += part;
-			ids.push(formatter(absId, specifier));
-		}
-		return ids;
-	}
-
 	function mixin (base, props) {
 		if (props) {
 			for (var p in props) {
@@ -106,13 +114,12 @@ define(/*=='curl/plugin/i18n',==*/ function () {
 	}
 
 	function getLocale () {
-		var ci = global.clientInformation || global.navigator;
-		return ci.language || ci.userLanguage;
+		var ci = global['clientInformation'] || global.navigator;
+		return ci.language || ci['userLanguage'];
 	}
 
 	function localeToModuleId (absId, locale) {
-		// TODO: is this regex robust enough?
-		return absId.replace(/$|\.js/, locale ? '/' + locale  : '');
+		return absId.replace(appendLocaleRx, locale ? '/' + locale  : '');
 	}
 
 });
