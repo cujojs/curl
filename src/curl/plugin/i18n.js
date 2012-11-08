@@ -107,7 +107,7 @@ define(/*=='curl/plugin/i18n',==*/ function () {
 
 			// resolve config options
 			toFile = config['localeToModuleId'] || localeToModuleId;
-			locale = 'locale' in config && config['locale']; // default: false
+			locale = !('locale' in config) || config['locale']; // default: true
 			if (locale === true) locale = getLocale;
 			if (typeof locale == 'function') locale = locale(absId);
 
