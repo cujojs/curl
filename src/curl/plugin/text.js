@@ -60,10 +60,10 @@ define(/*=='curl/plugin/text',==*/ function () {
 
 	return {
 
-//		'normalize': function (resourceId, toAbsId) {
-//			// remove options
-//			return resourceId ? toAbsId(resourceId.split("!")[0]) : resourceId;
-//		},
+		'normalize': function (resourceId, toAbsId) {
+			// remove options
+			return resourceId ? toAbsId(resourceId.split("!")[0]) : resourceId;
+		},
 
 		load: function (resourceName, req, callback, config) {
 			// remove suffixes (future)
@@ -71,7 +71,8 @@ define(/*=='curl/plugin/text',==*/ function () {
 			fetchText(req['toUrl'](resourceName), callback, callback['error'] || error);
 		},
 
-		'plugin-builder': './builder/text'
+		'plugin-builder': './builder/text',
+		'pluginBuilder': './builder/text'
 
 	};
 
