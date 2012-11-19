@@ -13,7 +13,7 @@
 (function (global) {
 //"use strict"; don't restore this until the config routine is refactored
 	var
-		version = '0.7.2',
+		version = '0.7.3',
 		curlName = 'curl',
 		userCfg,
 		prevCurl,
@@ -45,7 +45,7 @@
 		// net to catch anonymous define calls' arguments (non-IE browsers)
 		argsNet,
 		// RegExp's used later, pre-compiled here
-		dontAddExtRx = /\?/,
+		dontAddExtRx = /\?|\.(?!.*\/)/,
 		absUrlRx = /^\/|^[^:]+:\/\//,
 		findDotsRx = /(\.)(\.?)(?:$|\/([^\.\/]+.*)?)/g,
 		removeCommentsRx = /\/\*[\s\S]*?\*\/|(?:[^\\])\/\/.*?[\n\r]/g,
@@ -1090,12 +1090,26 @@
 		// extract config, if it's specified
 		if (isType(args[0], 'Object')) {
 			cfg = args.shift();
-			userCfg = core.config(cfg, userCfg);
-			core.checkPreloads(cfg);
+			_config(cfg);
 		}
 
 		return new CurlApi(args[0], args[1], args[2]);
 
+	}
+
+	function _config (cfg) {
+		userCfg = core.config(cfg, userCfg);
+		// check for preloads
+		core.checkPreloads(cfg);
+		// check for main module(s)
+		if (cfg && 'main' in cfg) {
+			// start in next turn to wait for other modules in current file
+			setTimeout(function () {
+				var ctx;
+				ctx = core.createContext(userCfg, undef, [].concat(cfg['main']));
+				core.getDeps(ctx);
+			}, 0);
+		}
 	}
 
 	// thanks to Joop Ringelberg for helping troubleshoot the API
@@ -1119,6 +1133,7 @@
 			// chain api
 			return new CurlApi(ids, cb, eb, ctx);
 		};
+		this['config'] = _config;
 		if (callback || errback) then(callback, errback);
 		when(waitFor, function () { core.getDeps(ctx); });
 	}
@@ -1170,8 +1185,7 @@
 	}
 
 	// configure first time
-	userCfg = core.config(userCfg);
-	core.checkPreloads(userCfg);
+	_config(userCfg);
 
 	// allow curl to be a dependency
 	cache[curlName] = _curl;
@@ -1190,7 +1204,7 @@
 		'Promise': Promise
 	};
 
-}(this.window || global));
+}(this.window || (typeof global != 'undefined' && global) || this));
 /** MIT License (c) copyright B Cavalier & J Hann */
 
 /**
