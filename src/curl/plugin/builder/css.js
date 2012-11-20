@@ -9,10 +9,11 @@
 define(['./jsEncode'], function (jsEncode) {
 	"use strict";
 
-	var template, nonRelUrlRe, findUrlRx;
+	var template, templateRx, nonRelUrlRe, findUrlRx;
 
 	template = 'define("${resourceId}", function () { return ${text}; });\n' +
 		'define("${absId}", ["${runtimePlugin}${resourceId}"], function (sheet) { return sheet; });';
+	templateRx = /\${([^}]+)}/g;
 
 	// tests for absolute urls and root-relative urls
 	nonRelUrlRe = /^\/|^[^:]*:\/\//;
@@ -89,7 +90,7 @@ define(['./jsEncode'], function (jsEncode) {
 	};
 
 	function replace (text, values) {
-		return text.replace(/${([^}])}/g, function (m, id) {
+		return text.replace(templateRx, function (m, id) {
 			return values[id];
 		});
 	}
