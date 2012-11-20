@@ -12,7 +12,7 @@ define(['./jsEncode'], function (jsEncode) {
 	var template, templateRx, nonRelUrlRe, findUrlRx;
 
 	template = 'define("${resourceId}", function () { return ${text}; });\n' +
-		'define("${absId}", ["${runtimePlugin}${resourceId}"], function (sheet) { return sheet; });';
+		'define("${absId}", ["${runtimePlugin}${resourceId}"], function (sheet) { return sheet; });\n';
 	templateRx = /\${([^}]+)}/g;
 
 	// tests for absolute urls and root-relative urls
