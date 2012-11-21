@@ -2,9 +2,6 @@
 
 /**
  * curl text! builder plugin
- *
- * Licensed under the MIT License at:
- * 		http://www.opensource.org/licenses/mit-license.php
  */
 define(['./jsEncode'], function (jsEncode) {
 

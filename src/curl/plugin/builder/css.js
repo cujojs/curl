@@ -2,9 +2,6 @@
 
 /**
  * curl css! plugin build-time module
- *
- * Licensed under the MIT License at:
- * 		http://www.opensource.org/licenses/mit-license.php
  */
 define(['./jsEncode'], function (jsEncode) {
 	"use strict";
