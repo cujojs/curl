@@ -56,6 +56,27 @@ function test1 (priv) {
 	// test for new values
 	write((paths.baz.path == 'only-baz' ? 'SUCCESS' : 'FAILED') + ': path should have been added.');
 	write((packages.bonny && packages.bonny.location == 'seven-seas' ? 'SUCCESS' : 'FAILED') + ': package should have been added.');
+
+	// config again
+	curl.config({
+		baseUrl: 'third',
+		paths: {
+			// change a path
+			foo: 'third-foo'
+		},
+		packages: {
+			// change a package
+			dorothy: { location: 'canada', main: 'fido' }
+		}
+	});
+
+	config = priv.config();
+	paths = config.paths;
+	packages = config.packages;
+	// test for changed values
+	write((config.baseUrl == 'third' ? 'SUCCESS' : 'FAILED') + ': baseUrl should have been modified again.');
+	write((paths.foo.path == 'third-foo' ? 'SUCCESS' : 'FAILED') + ': path should have been modified again.');
+	write((packages.dorothy && packages.dorothy.location == 'canada' ? 'SUCCESS' : 'FAILED') + ': package main should have been modified again.');
 }
 
 function test2 () {
