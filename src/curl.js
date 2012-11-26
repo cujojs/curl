@@ -17,7 +17,7 @@
 		curlName = 'curl',
 		userCfg,
 		prevCurl,
-		define,
+		prevCfg,
 		doc = global.document,
 		head = doc && (doc['head'] || doc.getElementsByTagName('head')[0]),
 		// to keep IE from crying, we need to put scripts before any
@@ -59,16 +59,20 @@
 		return toString.call(obj).indexOf('[object ' + type) == 0;
 	}
 
-	function normalizePkgDescriptor (descriptor) {
+	function normalizePkgDescriptor (descriptor, isPkg) {
 		var main;
 
-		descriptor.path = removeEndSlash(descriptor['path'] || descriptor['location'] || '');
-		main = descriptor['main'] || './main';
-		if (!isRelUrl(main)) main = './' + main;
-		// trailing slashes trick reduceLeadingDots to see them as base ids
-		descriptor.main = reduceLeadingDots(main, descriptor.name + '/');
-		//if (isRelUrl(descriptor.main)) throw new Error('invalid main (' + main + ') in ' + descriptor.name);
-		descriptor.config = descriptor['config'];
+		// obfuscators don't obfuscate "path", "location", or "name"
+		descriptor.path = removeEndSlash(descriptor.path || descriptor.location || '');
+
+		// protect from obfuscation (closure compiler)
+		if ('config' in descriptor) descriptor.config = descriptor['config'];
+		if (isPkg) {
+			main = descriptor['main'] || descriptor.main || './main';
+			if (!isRelUrl(main)) main = './' + main;
+			// trailing slashes trick reduceLeadingDots to see them as base ids
+			descriptor.main = reduceLeadingDots(main, descriptor.name + '/');
+		}
 
 		return descriptor;
 	}
@@ -137,11 +141,18 @@
 
 	function Begetter () {}
 
-	function beget (parent, mixin) {
+	function beget (parent, mixin, levels) {
 		Begetter.prototype = parent || cleanPrototype;
 		var child = new Begetter();
 		Begetter.prototype = cleanPrototype;
-		for (var p in mixin) child[p] = mixin[p];
+		for (var p in mixin) {
+			if (levels && isType(parent[p], 'Object')) {
+				child[p] = beget(child[p], mixin[p], levels - 1);
+			}
+			else {
+				child[p] = mixin[p];
+			}
+		}
 		return child;
 	}
 
@@ -424,141 +435,166 @@
 			return def.url || (def.url = core.checkToAddJsExt(def.require['toUrl'](def.id), def.config));
 		},
 
-		config: function (cfg) {
-			var setDefaults, defineName, failMsg, okToOverwrite,
-				apiName, apiContext, apiObj,
-				defName, defContext, defObj;
+		/**
+		 * Sets the curl() and define() APIs.
+		 * @param [cfg] {Object|Null} set of config params. If missing or null,
+		 *   this function will set the default API!
+		 */
+		setApi: function (cfg) {
+			/*
+			scenarios:
+			1. global config sets apiName: "require"
+				- first call to config sets api
+				- second and later calls are ignored
+				- prevCurl cannot exist
+			2. no global config, first call to config() sets api
+				- first call to config has no api info
+				- second call to config sets api
+				- third and later calls must be ignored
+			3. global config that doesn't set api, first call does though
+				- same as #2
+			4. api info is never set
+				- how to know when to stop ignoring?
 
-			// no config was specified, yet
-			setDefaults = !cfg;
+			objectives:
+			1. fail before mistakenly overwriting global[curlName]
+			2. allow rename/relocate of curl() and define()
+			3. restore curl() if we overwrote it
+			 */
 
-			// switch to re-runnable config
-			if (cfg) core.config = core.moreConfig;
+			var apiName, defName, apiObj, defObj,
+				failMsg, okToOverwrite;
 
-			defineName = 'define';
+			apiName = curlName;
+			defName = 'define';
+			apiObj = defObj = global;
 			failMsg = ' already exists';
 
-			if (!cfg) cfg = {};
+			// if we're not setting defaults
+			if (cfg) {
+				// is it ok to overwrite existing api functions?
+				okToOverwrite = cfg['overwriteApi'] || cfg.overwriteApi;
+				// allow dev to rename/relocate curl() to another object
+				apiName = cfg['apiName'] || cfg.apiName || apiName;
+				apiObj = cfg['apiContext'] || cfg.apiContext || apiObj;
+				// define() too
+				defName = cfg['defineName'] || cfg.defineName || defName;
+				defObj = cfg['defineContext'] || cfg.defineContext || defObj;
 
-			// allow dev to rename/relocate curl() to another object
-			apiName = cfg['apiName'] || curlName;
-			apiContext = cfg['apiContext'];
-			apiObj = apiContext || global;
-			defName = cfg['defineName'] || defineName;
-			defContext = cfg['defineContext'];
-			defObj = defContext || global;
-
-			// is it ok to overwrite an existing api functions?
-			okToOverwrite = cfg['overwriteApi'];
-
-			// restore previous (global) curl, if it was blown away
-			// by us. this can happen when configuring curl's api
-			// after loading it. do this before any throws below.
-			if (!setDefaults && prevCurl) {
-				global[curlName] = prevCurl;
-				prevCurl = false;
-			}
-
-			// only throw if we're overwriting curl accidentally and this
-			// isn't a setDefaults pass. (see else)
-			if (!setDefaults && !okToOverwrite && apiObj[apiName] && apiObj[apiName] != _curl) {
-				throw new Error(apiName + failMsg);
-			}
-			else {
-				// if setDefaults, we must overwrite curl so that dev can
-				// configure it. (in this case, the following is the same as
-				// global.curl = _curl;)
-				apiObj[apiName] = _curl;
-			}
-
-			// if setDefaults, only create define() if it doesn't already exist.
-			if (!(setDefaults && global[defineName])) {
-				if (!setDefaults && !okToOverwrite && defName in defObj && defObj[defName] != define) {
-					throw new Error(defName + failMsg);
+				// curl() already existed, restore it if this is not a setDefaults
+				// pass. dev must be a good citizen and set apiName/apiContext (
+				// see below).
+				if (prevCurl) {
+					// restore previous curl()
+					global[curlName] = prevCurl;
 				}
-				else {
-					// create AMD public api: define()
-					defObj[defName] = define = function () {
-						// wrap inner _define so it can be replaced without losing define.amd
-						var args = core.fixArgs(arguments);
-						_define(args);
-					};
+				prevCurl = null; // don't check ever again
+
+				// check if we're mistakenly overwriting either api
+				// if we're configuring, and there's a curl(), and it's not
+				// ours -- and we're not explicitly overwriting -- throw!
+				// Note: if we're setting defaults, we *must* overwrite curl
+				// so that dev can configure it.  This is no different than
+				// noConflict()-type methods.
+				if (!okToOverwrite) {
+					if (apiObj[apiName] && apiObj[apiName] != _curl) {
+						throw new Error(apiName + failMsg);
+					}
+					// check if we're overwriting amd api
+					if (defObj[defName] && defObj[defName] != define) {
+						throw new Error(defName + failMsg);
+					}
 				}
-				// indicate our capabilities:
-				define['amd'] = { 'plugins': true, 'jQuery': true, 'curl': version };
+
 			}
 
-			return core.moreConfig(cfg);
+			// set curl api
+			apiObj[apiName] = _curl;
+
+			// set AMD public api: define()
+			defObj[defName] = define;
+
 		},
 
-		moreConfig: function (cfg, prevCfg) {
-			var newCfg, pluginCfgs, p, absId;
+		config: function (cfg) {
+			var prevCfg, newCfg;
+			/*
+			0. create default userCfg
+				a. baseUrl, etc.
+			curl.config({});
+			1. normalize new cfg
+			2. beget prev cfg --> curr Cfg
+			3. copy new cfg props onto curr Cfg
+			4. compute pathMap, etc.
+			*/
 
-			if (!prevCfg) prevCfg = {};
-			newCfg = beget(prevCfg, cfg);
+			prevCfg = userCfg;
 
-			// set defaults and convert from closure-safe names
-			newCfg.baseUrl = newCfg['baseUrl'] || '';
-			newCfg.pluginPath = newCfg['pluginPath'] || 'curl/plugin';
-			newCfg.dontAddFileExt = new RegExp(newCfg['dontAddFileExt'] || dontAddExtRx);
+			// normalize cfg
 
-			// create object to hold path map.
-			// each plugin and package will have its own pathMap, too.
+			// protect from obfuscation (closure compiler)
+			// TODO: more config options?
+			if ('baseUrl' in cfg) cfg.baseUrl = cfg['baseUrl'];
+			if ('paths' in cfg) cfg.paths = cfg['paths'];
+			if ('packages' in cfg) cfg.packages = cfg['packages'];
+			if ('plugins' in cfg) cfg.plugins = cfg['plugins'];
+			if (cfg.dontAddFileExt || 'dontAddFileExt' in cfg) {
+				cfg.dontAddFileExt = new RegExp(cfg['dontAddFileExt']);
+			}
+
+			// convert lists to hashmaps or normalize hashmaps
+			if (cfg.paths) cfg.paths = normalizeCollection(cfg.paths);
+			if (cfg.packages) cfg.packages = normalizeCollection(cfg.packages, true);
+			if (cfg.plugins) cfg.plugins = normalizeCollection(cfg.plugins);
+
+			// inherit from prevCfg
+			newCfg = beget(prevCfg, cfg, 99);
+
+			// inherit pathMap and create temporary pathList
 			newCfg.pathMap = beget(prevCfg.pathMap);
-			pluginCfgs = cfg['plugins'] || {};
-			newCfg.plugins = beget(prevCfg.plugins);
-
-			// temporary arrays of paths. this will be converted to
-			// a regexp for fast path parsing.
 			newCfg.pathList = [];
 
-			// normalizes path/package info and places info on either
-			// the global cfg.pathMap or on a plugin-specific altCfg.pathMap.
-			// also populates a pathList on cfg or plugin configs.
-			function fixAndPushPaths (coll, isPkg) {
-				var id, pluginId, data, parts, currCfg, info;
-				for (var name in coll) {
-					data = coll[name];
-					if (isType(data, 'String')) data = {
-						path: coll[name]
-					};
-					// grab the package id, if specified. default to
-					// property name, if missing.
-					data.name = data['name'] || name;
-					currCfg = newCfg;
-					// check if this is a plugin-specific path
-					parts = pluginParts(removeEndSlash(core.toAbsId(data.name, '', newCfg)));
-					id = parts.resourceId;
-					pluginId = parts.pluginId;
-					if (pluginId) {
-						// plugin-specific path
-						currCfg = pluginCfgs[pluginId];
+			// push paths, packages, and plugins to pathMap
+			collToPathMap(newCfg, newCfg.paths);
+			collToPathMap(newCfg, newCfg.packages, true);
+			collToPathMap(newCfg, newCfg.plugins);
+
+			convertPathMatcher(newCfg);
+			delete newCfg.pathList;
+
+			return newCfg;
+
+			// TODO: hoist these
+			function collToPathMap (cfg, coll, isPkg) {
+				var id, currId, currCfg, descriptor, parts;
+				for (id in coll) {
+					currId = id;
+					currCfg = cfg;
+					descriptor = coll[id];
+
+					// TODO: deprecate legacy plugin-specific paths
+					parts = pluginParts(id);
+					if (parts.pluginId) {
+						// create plugin config
+						currCfg = cfg.plugins[parts.pluginId];
+						currId = parts.resourceId;
 						if (!currCfg) {
-							currCfg = pluginCfgs[pluginId] = beget(newCfg);
-							currCfg.pathMap = beget(newCfg.pathMap);
-							currCfg.pathList = [];
+							currCfg = cfg.plugins[parts.pluginId] = beget(cfg);
 						}
-						// remove plugin-specific path from coll
-						delete coll[name];
+						if (!currId) {
+							// naked resourceId signifies a base url for the plugin
+							currCfg.baseUrl = core.resolveUrl(descriptor.path, cfg);
+						}
+						else {
+							(isPkg ? currCfg.packages : currCfg.paths)[currId] = normalizePkgDescriptor(descriptor, isPkg);
+						}
+						// remove plugin!path entry from original config
+						delete cfg[id];
 					}
-					if (isPkg) {
-						info = normalizePkgDescriptor(data);
-						if (info.config) info.config = beget(newCfg, info.config);
-					}
-					else {
-						info = { path: removeEndSlash(data.path) };
-					}
-					info.specificity = id.split('/').length;
-					if (id) {
-						currCfg.pathMap[id] = info;
-						currCfg.pathList.push(id);
-					}
-					else {
-						// naked plugin name signifies baseUrl for plugin
-						// resources. baseUrl could be relative to global
-						// baseUrl.
-						currCfg.baseUrl = core.resolveUrl(data.path, newCfg);
-					}
+
+					descriptor.specificity = currId.split('/').length;
+					currCfg.pathMap[currId] = descriptor;
+					currCfg.pathList.push(currId);
 				}
 			}
 
@@ -571,35 +607,152 @@
 						.replace(/\/|\./g, '\\$&') +
 					')(?=\\/|$)'
 				);
-				delete cfg.pathList;
 			}
 
-			// fix all new packages, then paths (in case there are
-			// plugin-specific paths for a main module, such as wire!)
-			fixAndPushPaths(cfg['packages'], true);
-			fixAndPushPaths(cfg['paths'], false);
+			function normalizeCollection (list, isPkg) {
+				var obj, i, item;
 
-			// process plugins after packages in case we already perform an
-			// id transform on a plugin (i.e. it's a package.main)
-			for (p in pluginCfgs) {
-				var absId = core.toAbsId(p + '!', '', newCfg);
-				newCfg.plugins[absId.substr(0, absId.length - 1)] = pluginCfgs[p];
-			}
-			pluginCfgs = newCfg.plugins;
-
-			// create search regex for each path map
-			for (p in pluginCfgs) {
-				// inherit full config
-				pluginCfgs[p] = beget(newCfg, pluginCfgs[p]);
-				var pathList = pluginCfgs[p].pathList;
-				if (pathList) {
-					pluginCfgs[p].pathList = pathList.concat(newCfg.pathList);
-					convertPathMatcher(pluginCfgs[p]);
+				if (!isType(list, 'Array')) {
+					obj = list;
+					for (i in obj) {
+						item = obj[i];
+						// convert from simplified string (foo: 'path/to/foo')
+						if (isType(item, 'String')) item = { path: item };
+						// fill-in name from key unless it was provided
+						item.name = item.name || i;
+						obj[i] = normalizePkgDescriptor(item, isPkg);
+					}
 				}
-			}
-			convertPathMatcher(newCfg);
+				else {
+					obj = {};
+					for (i = 0; i < list.length; i++) {
+						item = normalizePkgDescriptor(list[i], isPkg);
+						obj[item.name] = item;
+					}
+				}
 
-			return newCfg;
+				return obj;
+			}
+
+
+
+
+
+
+
+
+
+
+
+
+//			var newCfg, pluginCfgs, p, absId;
+//
+//			if (!prevCfg) prevCfg = {};
+//			newCfg = beget(prevCfg, cfg);
+//
+//			// set defaults and convert from closure-safe names
+//			newCfg.baseUrl = newCfg['baseUrl'] || '';
+//			newCfg.pluginPath = newCfg['pluginPath'] || 'curl/plugin';
+//			newCfg.dontAddFileExt = new RegExp(newCfg['dontAddFileExt'] || dontAddExtRx);
+//
+//			// create object to hold path map.
+//			// each plugin and package will have its own pathMap, too.
+//			newCfg.pathMap = beget(prevCfg.pathMap);
+//			pluginCfgs = cfg['plugins'] || {};
+//			newCfg.plugins = beget(prevCfg.plugins);
+//
+//			// temporary arrays of paths. this will be converted to
+//			// a regexp for fast path parsing.
+//			newCfg.pathList = [];
+//
+//			// normalizes path/package info and places info on either
+//			// the global cfg.pathMap or on a plugin-specific altCfg.pathMap.
+//			// also populates a pathList on cfg or plugin configs.
+//			function fixAndPushPaths (coll, isPkg) {
+//				var id, pluginId, data, parts, currCfg, info;
+//				for (var name in coll) {
+//					data = coll[name];
+//					if (isType(data, 'String')) data = {
+//						path: coll[name]
+//					};
+//					// grab the package id, if specified. default to
+//					// property name, if missing.
+//					data.name = data['name'] || name;
+//					currCfg = newCfg;
+//					// check if this is a plugin-specific path
+//					parts = pluginParts(removeEndSlash(core.toAbsId(data.name, '', newCfg)));
+//					id = parts.resourceId;
+//					pluginId = parts.pluginId;
+//					if (pluginId) {
+//						// plugin-specific path
+//						currCfg = pluginCfgs[pluginId];
+//						if (!currCfg) {
+//							currCfg = pluginCfgs[pluginId] = beget(newCfg);
+//							currCfg.pathMap = beget(newCfg.pathMap);
+//							currCfg.pathList = [];
+//						}
+//						// remove plugin-specific path from coll
+//						delete coll[name];
+//					}
+//					if (isPkg) {
+//						info = normalizePkgDescriptor(data);
+//						if (info.config) info.config = beget(newCfg, info.config);
+//					}
+//					else {
+//						info = { path: removeEndSlash(data.path) };
+//					}
+//					info.specificity = id.split('/').length;
+//					if (id) {
+//						currCfg.pathMap[id] = info;
+//						currCfg.pathList.push(id);
+//					}
+//					else {
+//						// naked plugin name signifies baseUrl for plugin
+//						// resources. baseUrl could be relative to global
+//						// baseUrl.
+//						currCfg.baseUrl = core.resolveUrl(data.path, newCfg);
+//					}
+//				}
+//			}
+//
+//			// adds the path matching regexp onto the cfg or plugin cfgs.
+//			function convertPathMatcher (cfg) {
+//				var pathMap = cfg.pathMap;
+//				cfg.pathRx = new RegExp('^(' +
+//					cfg.pathList.sort(function (a, b) { return pathMap[b].specificity - pathMap[a].specificity; } )
+//						.join('|')
+//						.replace(/\/|\./g, '\\$&') +
+//					')(?=\\/|$)'
+//				);
+//				delete cfg.pathList;
+//			}
+//
+//			// fix all new packages, then paths (in case there are
+//			// plugin-specific paths for a main module, such as wire!)
+//			fixAndPushPaths(cfg['packages'], true);
+//			fixAndPushPaths(cfg['paths'], false);
+//
+//			// process plugins after packages in case we already perform an
+//			// id transform on a plugin (i.e. it's a package.main)
+//			for (p in pluginCfgs) {
+//				absId = core.toAbsId(p + '!', '', newCfg);
+//				newCfg.plugins[absId.substr(0, absId.length - 1)] = pluginCfgs[p];
+//			}
+//			pluginCfgs = newCfg.plugins;
+//
+//			// create search regex for each path map
+//			for (p in pluginCfgs) {
+//				// inherit full config
+//				pluginCfgs[p] = beget(newCfg, pluginCfgs[p]);
+//				var pathList = pluginCfgs[p].pathList;
+//				if (pathList) {
+//					pluginCfgs[p].pathList = pathList.concat(newCfg.pathList);
+//					convertPathMatcher(pluginCfgs[p]);
+//				}
+//			}
+//			convertPathMatcher(newCfg);
+//
+//			return newCfg;
 
 		},
 
@@ -1098,17 +1251,20 @@
 	}
 
 	function _config (cfg) {
-		userCfg = core.config(cfg, userCfg);
-		// check for preloads
-		core.checkPreloads(cfg);
-		// check for main module(s)
-		if (cfg && 'main' in cfg) {
-			// start in next turn to wait for other modules in current file
-			setTimeout(function () {
-				var ctx;
-				ctx = core.createContext(userCfg, undef, [].concat(cfg['main']));
-				core.getDeps(ctx);
-			}, 0);
+		if (cfg) {
+			core.setApi(cfg);
+			userCfg = core.config(cfg);
+			// check for preloads
+			core.checkPreloads(cfg);
+			// check for main module(s)
+			if ('main' in cfg) {
+				// start in next turn to wait for other modules in current file
+				setTimeout(function () {
+					var ctx;
+					ctx = core.createContext(userCfg, undef, [].concat(cfg['main']));
+					core.getDeps(ctx);
+				}, 0);
+			}
 		}
 	}
 
@@ -1133,12 +1289,12 @@
 			// chain api
 			return new CurlApi(ids, cb, eb, ctx);
 		};
-		this['config'] = _config;
 		if (callback || errback) then(callback, errback);
 		when(waitFor, function () { core.getDeps(ctx); });
 	}
 
 	_curl['version'] = version;
+	_curl.config = _config;
 
 	function _define (args) {
 
@@ -1173,19 +1329,39 @@
 
 	}
 
-	// look for pre-existing globals
-	userCfg = global[curlName];
-	if (typeof userCfg == 'function') {
-		prevCurl = userCfg;
-		userCfg = false;
-	}
-	else {
-		// don't use delete here since IE6-8 fail
-		global[curlName] = undef;
+	function define () {
+		// wrap inner _define so it can be replaced without losing define.amd
+		var args = core.fixArgs(arguments);
+		_define(args);
 	}
 
-	// configure first time
-	_config(userCfg);
+	// indicate our capabilities:
+	define['amd'] = { 'plugins': true, 'jQuery': true, 'curl': version };
+
+	// default configs
+	userCfg = {
+		baseUrl: '',
+		pluginPath: 'curl/plugin',
+		dontAddFileExt: dontAddExtRx,
+		paths: {},
+		packages: {},
+		plugins: {},
+		pathMap: {},
+		pathRx: /$^/
+	};
+
+	// handle pre-existing global
+	prevCfg = global[curlName];
+	global[curlName] = undef;
+	if (isType(prevCfg, 'Function')) {
+		prevCurl = prevCfg;
+		// set default api
+		core.setApi();
+	}
+	else {
+		// configure curl
+		_config(prevCfg);
+	}
 
 	// allow curl to be a dependency
 	cache[curlName] = _curl;
