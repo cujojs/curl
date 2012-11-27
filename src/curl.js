@@ -45,7 +45,7 @@
 		// net to catch anonymous define calls' arguments (non-IE browsers)
 		argsNet,
 		// RegExp's used later, pre-compiled here
-		dontAddExtRx = /\?|\.(?!.*\/)/,
+		dontAddExtRx = /\?|\.js\b/,
 		absUrlRx = /^\/|^[^:]+:\/\//,
 		findDotsRx = /(\.)(\.?)(?:$|\/([^\.\/]+.*)?)/g,
 		removeCommentsRx = /\/\*[\s\S]*?\*\/|(?:[^\\])\/\/.*?[\n\r]/g,
