@@ -492,7 +492,7 @@
 		},
 
 		moreConfig: function (cfg, prevCfg) {
-			var newCfg, pluginCfgs, p, absId;
+			var newCfg, pluginCfgs, p;
 
 			if (!prevCfg) prevCfg = {};
 			newCfg = beget(prevCfg, cfg);
@@ -507,6 +507,8 @@
 			newCfg.pathMap = beget(prevCfg.pathMap);
 			pluginCfgs = cfg['plugins'] || {};
 			newCfg.plugins = beget(prevCfg.plugins);
+			newCfg.paths = beget(prevCfg.paths, cfg.paths);
+			newCfg.packages = beget(prevCfg.packages, cfg.packages);
 
 			// temporary arrays of paths. this will be converted to
 			// a regexp for fast path parsing.
@@ -527,7 +529,7 @@
 					data.name = data['name'] || name;
 					currCfg = newCfg;
 					// check if this is a plugin-specific path
-					parts = pluginParts(removeEndSlash(core.toAbsId(data.name, '', newCfg)));
+					parts = pluginParts(removeEndSlash(data.name));
 					id = parts.resourceId;
 					pluginId = parts.pluginId;
 					if (pluginId) {
@@ -597,6 +599,13 @@
 					convertPathMatcher(pluginCfgs[p]);
 				}
 			}
+
+			// ugh, this is ugly, but necessary until we refactor this function
+			// copy previous pathMap items onto pathList
+			for (p in prevCfg.pathMap) {
+				if (!newCfg.pathMap.hasOwnProperty(p)) newCfg.pathList.push(p);
+			}
+
 			convertPathMatcher(newCfg);
 
 			return newCfg;
@@ -1139,6 +1148,7 @@
 	}
 
 	_curl['version'] = version;
+	_curl['config'] = _config;
 
 	function _define (args) {
 
