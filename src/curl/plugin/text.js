@@ -12,7 +12,7 @@
  *
  */
 
-define(/*=='curl/plugin/text',==*/ ['./fetchText'], function (fetchText) {
+define(/*=='curl/plugin/text',==*/ ['./_fetchText'], function (fetchText) {
 
 	return {
 
