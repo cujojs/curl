@@ -116,9 +116,6 @@ define(/*=='curl/plugin/i18n',==*/ function () {
 			bundles = [];
 			fetched = 0;
 
-			// get the default bundle, if any
-			fetch(require, absId, 0, got, countdown);
-
 			if (locale !== false) {
 				// get variations / specificities
 
@@ -137,6 +134,10 @@ define(/*=='curl/plugin/i18n',==*/ function () {
 					fetch(require, id, i, got, countdown);
 				}
 			}
+
+			// get the default bundle, if any. this goes after we get
+			// variations to ensure that ids.length is set correctly.
+			fetch(require, absId, 0, got, countdown);
 
 			function got (bundle, i) {
 				bundles[i] = bundle;
