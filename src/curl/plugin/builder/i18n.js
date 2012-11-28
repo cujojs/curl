@@ -29,6 +29,12 @@ define(['../i18n'], function (i18n) {
 				str = JSON.stringify(bundle, replacer, ' ');
 				// remove specially-marked quotes
 				str = str.replace(remove$QuotesRx, '');
+				// wrap in define()
+				str = 'define("'
+					+ absId
+					+ '", function () { return '
+					+ str
+					+ '; });';
 				io.write(str);
 			};
 			loaded.error = io.error;
