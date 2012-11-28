@@ -715,9 +715,9 @@
 			// Note: ignores require() inside strings and comments
 			var source, ids = [], currQuote;
 			// prefer toSource (FF) since it strips comments
-			source = typeof defFunc == 'string' ?
-					 defFunc :
-					 defFunc.toSource ? defFunc.toSource() : defFunc.toString();
+			source = typeof defFunc == 'string'
+				? defFunc
+				: defFunc.toSource ? defFunc.toSource() : defFunc.toString();
 			// remove comments, then look for require() or quotes
 			source.replace(removeCommentsRx, '').replace(findRValueRequiresRx, function (m, id, qq) {
 				// if we encounter a quote
