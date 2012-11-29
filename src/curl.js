@@ -15,9 +15,10 @@
 	var
 		version = '0.7.3',
 		curlName = 'curl',
+		defineName = 'define',
 		userCfg,
 		prevCurl,
-		define,
+		prevDefine,
 		doc = global.document,
 		head = doc && (doc['head'] || doc.getElementsByTagName('head')[0]),
 		// to keep IE from crying, we need to put scripts before any
@@ -424,83 +425,107 @@
 			return def.url || (def.url = core.checkToAddJsExt(def.require['toUrl'](def.id), def.config));
 		},
 
-		config: function (cfg) {
-			var setDefaults, defineName, failMsg, okToOverwrite,
-				apiName, apiContext, apiObj,
-				defName, defContext, defObj;
+		/**
+		 * Sets the curl() and define() APIs.
+		 * @param [cfg] {Object|Null} set of config params. If missing or null,
+		 *   this function will set the default API!
+		 */
+		setApi: function (cfg) {
+			/*
+			scenarios:
+			1. global config sets apiName: "require"
+				- first call to config sets api
+				- second and later calls are ignored
+				- prevCurl cannot exist
+			2. no global config, first call to config() sets api
+				- first call to config has no api info
+				- second call to config sets api
+				- third and later calls must be ignored
+			3. global config that doesn't set api, first call does though
+				- same as #2
+			4. api info is never set
+				- how to know when to stop ignoring?
 
-			// no config was specified, yet
-			setDefaults = !cfg;
+			objectives:
+			1. fail before mistakenly overwriting global[curlName]
+			2. allow rename/relocate of curl() and define()
+			3. restore curl() if we overwrote it
+			 */
 
-			// switch to re-runnable config
-			if (cfg) core.config = core.moreConfig;
+			var apiName, defName, apiObj, defObj,
+				failMsg, okToOverwrite;
 
-			defineName = 'define';
+			apiName = curlName;
+			defName = defineName;
+			apiObj = defObj = global;
 			failMsg = ' already exists';
 
-			if (!cfg) cfg = {};
+			// if we're not setting defaults
+			if (cfg) {
+				// is it ok to overwrite existing api functions?
+				okToOverwrite = cfg['overwriteApi'] || cfg.overwriteApi;
+				// allow dev to rename/relocate curl() to another object
+				apiName = cfg['apiName'] || cfg.apiName || apiName;
+				apiObj = cfg['apiContext'] || cfg.apiContext || apiObj;
+				// define() too
+				defName = cfg['defineName'] || cfg.defineName || defName;
+				defObj = cfg['defineContext'] || cfg.defineContext || defObj;
 
-			// allow dev to rename/relocate curl() to another object
-			apiName = cfg['apiName'] || curlName;
-			apiContext = cfg['apiContext'];
-			apiObj = apiContext || global;
-			defName = cfg['defineName'] || defineName;
-			defContext = cfg['defineContext'];
-			defObj = defContext || global;
-
-			// is it ok to overwrite an existing api functions?
-			okToOverwrite = cfg['overwriteApi'];
-
-			// restore previous (global) curl, if it was blown away
-			// by us. this can happen when configuring curl's api
-			// after loading it. do this before any throws below.
-			if (!setDefaults && prevCurl) {
-				global[curlName] = prevCurl;
-				prevCurl = false;
-			}
-
-			// only throw if we're overwriting curl accidentally and this
-			// isn't a setDefaults pass. (see else)
-			if (!setDefaults && !okToOverwrite && apiObj[apiName] && apiObj[apiName] != _curl) {
-				throw new Error(apiName + failMsg);
-			}
-			else {
-				// if setDefaults, we must overwrite curl so that dev can
-				// configure it. (in this case, the following is the same as
-				// global.curl = _curl;)
-				apiObj[apiName] = _curl;
-			}
-
-			// if setDefaults, only create define() if it doesn't already exist.
-			if (!(setDefaults && global[defineName])) {
-				if (!setDefaults && !okToOverwrite && defName in defObj && defObj[defName] != define) {
-					throw new Error(defName + failMsg);
+				// curl() already existed, restore it if this is not a
+				// setDefaults pass. dev must be a good citizen and set
+				// apiName/apiContext (see below).
+				if (prevCurl && isType(prevCurl, 'Function')) {
+					// restore previous curl()
+					global[curlName] = prevCurl;
 				}
-				else {
-					// create AMD public api: define()
-					defObj[defName] = define = function () {
-						// wrap inner _define so it can be replaced without losing define.amd
-						var args = core.fixArgs(arguments);
-						_define(args);
-					};
+				prevCurl = null; // don't check ever again
+				// ditto for define()
+				if (prevDefine && isType(prevDefine, 'Function')) {
+					// restore previous curl()
+					global[defineName] = prevDefine;
 				}
-				// indicate our capabilities:
-				define['amd'] = { 'plugins': true, 'jQuery': true, 'curl': version };
+				prevDefine = null; // don't check ever again
+
+				// check if we're mistakenly overwriting either api
+				// if we're configuring, and there's a curl(), and it's not
+				// ours -- and we're not explicitly overwriting -- throw!
+				// Note: if we're setting defaults, we *must* overwrite curl
+				// so that dev can configure it.  This is no different than
+				// noConflict()-type methods.
+				if (!okToOverwrite) {
+					if (apiObj[apiName] && apiObj[apiName] != _curl) {
+						throw new Error(apiName + failMsg);
+					}
+					// check if we're overwriting amd api
+					if (defObj[defName] && defObj[defName] != define) {
+						throw new Error(defName + failMsg);
+					}
+				}
+
 			}
 
-			return core.moreConfig(cfg);
+			// set curl api
+			apiObj[apiName] = _curl;
+
+			// set AMD public api: define()
+			defObj[defName] = define;
+
 		},
 
-		moreConfig: function (cfg, prevCfg) {
-			var newCfg, pluginCfgs, p;
+		config: function (cfg) {
+			var prevCfg, newCfg, pluginCfgs, p;
 
-			if (!prevCfg) prevCfg = {};
+			// convert from closure-safe names
+			if ('baseUrl' in cfg) cfg.baseUrl = cfg['baseUrl'];
+			if ('main' in cfg) cfg.main = cfg['main'];
+			if ('preloads' in cfg) cfg.preloads = cfg['preloads'];
+			if ('pluginPath' in cfg) cfg.pluginPath = cfg['pluginPath'];
+			if ('dontAddFileExt' in cfg || cfg.dontAddFileExt) {
+				cfg.dontAddFileExt = new RegExp(cfg['dontAddFileExt'] || cfg.dontAddFileExt);
+			}
+
+			prevCfg = userCfg;
 			newCfg = beget(prevCfg, cfg);
-
-			// set defaults and convert from closure-safe names
-			newCfg.baseUrl = newCfg['baseUrl'] || '';
-			newCfg.pluginPath = newCfg['pluginPath'] || 'curl/plugin';
-			newCfg.dontAddFileExt = new RegExp(newCfg['dontAddFileExt'] || dontAddExtRx);
 
 			// create object to hold path map.
 			// each plugin and package will have its own pathMap, too.
@@ -526,7 +551,7 @@
 					};
 					// grab the package id, if specified. default to
 					// property name, if missing.
-					data.name = data['name'] || name;
+					data.name = data.name || name;
 					currCfg = newCfg;
 					// check if this is a plugin-specific path
 					parts = pluginParts(removeEndSlash(data.name));
@@ -715,9 +740,9 @@
 			// Note: ignores require() inside strings and comments
 			var source, ids = [], currQuote;
 			// prefer toSource (FF) since it strips comments
-			source = typeof defFunc == 'string'
-				? defFunc
-				: defFunc.toSource ? defFunc.toSource() : defFunc.toString();
+			source = typeof defFunc == 'string' ?
+					 defFunc :
+					 defFunc.toSource ? defFunc.toSource() : defFunc.toString();
 			// remove comments, then look for require() or quotes
 			source.replace(removeCommentsRx, '').replace(findRValueRequiresRx, function (m, id, qq) {
 				// if we encounter a quote
@@ -967,7 +992,7 @@
 			}
 			else {
 				// TODO: move config.moduleLoader to config.transform
-				loaderId = pathInfo.config['moduleLoader'];
+				loaderId = pathInfo.config['moduleLoader'] || pathInfo.config.moduleLoader;
 				if (loaderId) {
 					// TODO: allow transforms to have relative module ids?
 					// (we could do this by returning package location from
@@ -1107,17 +1132,20 @@
 	}
 
 	function _config (cfg) {
-		userCfg = core.config(cfg, userCfg);
-		// check for preloads
-		core.checkPreloads(cfg);
-		// check for main module(s)
-		if (cfg && 'main' in cfg) {
-			// start in next turn to wait for other modules in current file
-			setTimeout(function () {
-				var ctx;
-				ctx = core.createContext(userCfg, undef, [].concat(cfg['main']));
-				core.getDeps(ctx);
-			}, 0);
+		if (cfg) {
+			core.setApi(cfg);
+			userCfg = core.config(cfg);
+			// check for preloads
+			core.checkPreloads(cfg);
+			// check for main module(s)
+			if ('main' in cfg) {
+				// start in next turn to wait for other modules in current file
+				setTimeout(function () {
+					var ctx;
+					ctx = core.createContext(userCfg, undef, [].concat(cfg['main']));
+					core.getDeps(ctx);
+				}, 0);
+			}
 		}
 	}
 
@@ -1183,19 +1211,40 @@
 
 	}
 
-	// look for pre-existing globals
-	userCfg = global[curlName];
-	if (typeof userCfg == 'function') {
-		prevCurl = userCfg;
-		userCfg = false;
-	}
-	else {
-		// don't use delete here since IE6-8 fail
-		global[curlName] = undef;
+	function define () {
+		// wrap inner _define so it can be replaced without losing define.amd
+		var args = core.fixArgs(arguments);
+		_define(args);
 	}
 
-	// configure first time
-	_config(userCfg);
+	// indicate our capabilities:
+	define['amd'] = { 'plugins': true, 'jQuery': true, 'curl': version };
+
+	// default configs
+	userCfg = {
+		baseUrl: '',
+		pluginPath: 'curl/plugin',
+		dontAddFileExt: dontAddExtRx,
+		paths: {},
+		packages: {},
+		plugins: {},
+		pathMap: {},
+		pathRx: /$^/
+	};
+
+	// handle pre-existing global
+	prevCurl = global[curlName];
+	prevDefine = global[defineName];
+	if (!prevCurl || isType(prevCurl, 'Function')) {
+		// set default api
+		core.setApi();
+	}
+	else {
+		// remove global curl object
+		global[curlName] = undef; // can't use delete in IE 6-8
+		// configure curl
+		_config(prevCurl);
+	}
 
 	// allow curl to be a dependency
 	cache[curlName] = _curl;
