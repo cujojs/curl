@@ -2,22 +2,86 @@
 
 /**
  * curl css! plugin build-time module
- *
- * TODO: support comma-separated resource ids
  */
 define(['./jsEncode'], function (jsEncode) {
 	"use strict";
 
-	var template, templateRx, nonRelUrlRe, findUrlRx;
+	var templateWithRuntimeModule, templateWithRuntimePlugin, templateRx,
+		nonRelUrlRe, findUrlRx, commaSepRx;
 
-	template = 'define("${resourceId}", function () { return "${text}"; });\n' +
-		'define("${absId}", ["${runtimePlugin}!${resourceId}", "${runtimePlugin}"], function (sheet) { return sheet; });\n';
+	templateWithRuntimeModule = 'define("${absId}", ["${runtime}"], function (injector) { return injector("${text}"); });\n';
+	templateWithRuntimePlugin = 'define("${resourceId}", function () { return "${text}"; });\n' +
+		'define("${absId}", ["${runtime}!${resourceId}", "${runtime}"], function (sheet) { return sheet; });\n';
 	templateRx = /\${([^}]+)}/g;
+	commaSepRx = /\s*,\s*/g;
 
 	// tests for absolute urls and root-relative urls
 	nonRelUrlRe = /^\/|^[^:]*:\/\//;
 	// Note: this will fail if there are parentheses in the url
 	findUrlRx = /url\s*\(['"]?([^'"\)]*)['"]?\)/g;
+
+	return {
+
+		normalize: function (resourceId, normalize) {
+			var resources, normalized;
+
+			if (!resourceId) return resourceId;
+
+			resources = resourceId.split(commaSepRx);
+			normalized = [];
+
+			for (var i = 0, len = resources.length; i < len; i++) {
+				normalized.push(normalize(resources[i]));
+			}
+
+			return normalized.join(',');
+		},
+
+		compile: function (pluginId, resId, req, io, config) {
+			var cssWatchPeriod, cssNoWait, template, resources, eachId;
+
+			cssWatchPeriod = parseInt(config['cssWatchPeriod']) || 50;
+			cssNoWait = config['cssNoWait'];
+			template = cssNoWait
+				? templateWithRuntimeModule
+				: templateWithRuntimePlugin;
+			resources = (resId || '').split(commaSepRx);
+
+			while ((eachId = resources.unshift())) templatize(eachId);
+
+			function templatize (resId) {
+				var absId = pluginId + '!' + resId;
+
+				io.read(resId, function (text) {
+					var moduleText;
+
+					// TODO: we should *remove* url bits from paths here!
+					text = translateUrls(text, resId);
+
+					moduleText = replace(
+						template,
+						{
+							absId: absId,
+							runtime: 'curl/plugin/style',
+							resourceId: resId,
+							text: jsEncode(text)
+						}
+					);
+
+					io.write(moduleText);
+
+				}, io.error);
+
+			}
+		}
+
+	};
+
+	function replace (text, values) {
+		return text.replace(templateRx, function (m, id) {
+			return values[id];
+		});
+	}
 
 	function translateUrls (cssText, baseUrl) {
 		return cssText.replace(findUrlRx, function (all, url) {
@@ -32,65 +96,6 @@ define(['./jsEncode'], function (jsEncode) {
 			url = parentPath + url;
 		}
 		return url;
-	}
-
-	return {
-
-		// TODO: reuse this with run-time plugin
-		normalize: function (resourceId, normalize) {
-			var resources, normalized;
-
-			if (!resourceId) return resourceId;
-
-			resources = resourceId.split(",");
-			normalized = [];
-
-			for (var i = 0, len = resources.length; i < len; i++) {
-				normalized.push(normalize(resources[i]));
-			}
-
-			return normalized.join(',');
-		},
-
-		compile: function (pluginId, resId, req, io, config) {
-			var absId, /*sheets, resources,*/ cssWatchPeriod, cssNoWait, i;
-
-			absId = pluginId + '!' + resId;
-//			sheets = [];
-//			resources = (resId || '').split(/\s*,\s*/);
-			cssWatchPeriod = parseInt(config['cssWatchPeriod']) || 50;
-			cssNoWait = config['cssNoWait'];
-
-			io.read(resId, function (text) {
-				var moduleText;
-
-				// TODO: copy configuration options to run-time plugin
-				// Note: inline options and run-time options still need to have precedence somehow!
-
-				// TODO: translate urls
-				text = translateUrls(text, resId);
-
-				moduleText = replace(
-					template,
-					{
-						absId: absId,
-						runtimePlugin: 'curl/plugin/style',
-						resourceId: resId,
-						text: jsEncode(text)
-					}
-				);
-
-				io.write(moduleText);
-
-			}, io.error);
-		}
-
-	};
-
-	function replace (text, values) {
-		return text.replace(templateRx, function (m, id) {
-			return values[id];
-		});
 	}
 
 });

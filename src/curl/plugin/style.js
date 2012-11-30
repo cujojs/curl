@@ -133,15 +133,13 @@ define([], function () {
 		return !doc.readyState || doc.readyState == 'complete';
 	}
 
-	return {
-
-		load: function (absId, req, loaded, config) {
-			// get css text
-			req([absId], function (cssText) {
-				// TODO: translate urls?
-				createStyle(cssText, loaded, loaded.error);
-			});
-		}
-
+	createStyle.load = function (absId, req, loaded, config) {
+		// get css text
+		req([absId], function (cssText) {
+			// TODO: translate urls?
+			createStyle(cssText, loaded, loaded.error);
+		});
 	};
+
+	return createStyle;
 });
