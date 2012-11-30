@@ -34,24 +34,26 @@ define(['../plugin/i18n'], function (i18n) {
 				// wrap in define()
 				str = 'define("'
 					+ absId
-					+ '", function () { return '
+					+ '", function () {\n\treturn '
 					+ str
-					+ '; });';
+					+ ';\n});\n';
 				io.write(str);
 			};
 			loaded.error = io.error;
 			i18n.load(absId, req, loaded, config);
 
-			function replacer (key, value) { return asString(key, value, io.warn); }
+			function replacer (key, value) {
+				return asString(key, value, io.error);
+			}
 		}
 	};
 
-	function asString (key, thing, warn) {
+	function asString (key, thing, error) {
 		var t;
 		t = type(thing);
 		if (t in passThrus) return thing;
 		else if (t in converts) return '$' + thing.toString() + '$';
-		else warn('Property "' + key + '" of type, ' + t + ', not supported in i18n bundle.');
+		else error('Property "' + key + '" of type, ' + t + ', not supported in i18n bundle.');
 	}
 
 	function type (thing) {

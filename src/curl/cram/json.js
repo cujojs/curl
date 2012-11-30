@@ -7,11 +7,6 @@ define(['./jsEncode'], function (jsEncode) {
 
 	return {
 
-		normalize: function (resourceId, toAbsId) {
-			// passthru
-			return toAbsId(resourceId);
-		},
-
 		compile: function (pluginId, resId, req, io, config) {
 			var absId;
 
