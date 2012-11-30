@@ -11,7 +11,7 @@ define(['./jsEncode'], function (jsEncode) {
 	var template, templateRx, nonRelUrlRe, findUrlRx;
 
 	template = 'define("${resourceId}", function () { return "${text}"; });\n' +
-		'define("${absId}", ["${runtimePlugin}${resourceId}"], function (sheet) { return sheet; });\n';
+		'define("${absId}", ["${runtimePlugin}!${resourceId}", "${runtimePlugin}"], function (sheet) { return sheet; });\n';
 	templateRx = /\${([^}]+)}/g;
 
 	// tests for absolute urls and root-relative urls
@@ -74,7 +74,7 @@ define(['./jsEncode'], function (jsEncode) {
 					template,
 					{
 						absId: absId,
-						runtimePlugin: 'curl/plugin/style!',
+						runtimePlugin: 'curl/plugin/style',
 						resourceId: resId,
 						text: jsEncode(text)
 					}
@@ -100,7 +100,7 @@ define('some/id.css', function () {
 	return '.foo { display: none; }';
 });
 
-define('curl/plugin/css!some/id.css', ['curl/plugin/style!some/id.css'], function (sheet) {
+define('curl/plugin/css!some/id.css', ['curl/plugin/style!some/id.css', 'curl/plugin/style'], function (sheet) {
 	return sheet;
 });
 */
