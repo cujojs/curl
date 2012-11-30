@@ -2,6 +2,8 @@
 
 /**
  * curl js! cram plugin
+ *
+ * TODO: figure out when to return window.<exported-thing> vs. global.<exported-thing> vs just <exported-thing>
  */
 define(['./jsEncode'], function (jsEncode) {
 	var stripOrderOptionRx;
@@ -20,21 +22,23 @@ define(['./jsEncode'], function (jsEncode) {
 		},
 
 		compile: function (pluginId, resId, req, io /*, config*/) {
-			var absId, exportsPos, exports;
+			var absId, exportsPos, bangPos, exports;
 
 			absId = pluginId + '!' + resId;
 			exportsPos = resId.indexOf('!exports=');
 			exports = exportsPos > 0 && resId.substr(exportsPos + 9); // must be last option!
+			bangPos = resId.indexOf('!');
+			if (bangPos >= 0) resId = resId.slice(0, bangPos);
 
 			io.read(resId, function (text) {
-				var moduleText =
-					'define("' + absId + '", function () {\n' +
-						jsEncode(text) + ';\n' +
-						'\treturn ';
+				var moduleText;
+
+				moduleText = jsEncode(text) + ';\n'
+					+ 'define("' + absId + '", function () {\n';
 
 				moduleText += exports
-					? 'window.' + exports
-					: 'new Error()';
+					? '\treturn ' + exports
+					: '\treturn void 0';
 
 				moduleText += ';\n});\n';
 
