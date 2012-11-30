@@ -45,7 +45,9 @@ define(/*=='curl/plugin/json',==*/ ['./_fetchText'], function (fetchText) {
 				return JSON.parse(source);
 			}
 
-		}
+		},
+
+		'cramPlugin': '../cram/json'
 
 	};
 

@@ -191,7 +191,9 @@ define(/*=='curl/plugin/js',==*/ ['curl/_privileged'], function (priv) {
 				}
 			}
 
-		}
+		},
+
+		'cramPlugin': '../cram/js'
 
 	};
 });

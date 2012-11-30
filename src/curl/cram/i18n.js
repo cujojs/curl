@@ -1,9 +1,9 @@
 /** MIT License (c) copyright B Cavalier & J Hann */
 
 /**
- * curl i18n! builder plugin
+ * curl i18n! cram plugin
  */
-define(['../i18n'], function (i18n) {
+define(['../plugin/i18n'], function (i18n) {
 
 	var toString, passThrus, converts, remove$QuotesRx;
 
@@ -18,8 +18,10 @@ define(['../i18n'], function (i18n) {
 
 	return {
 
-		compile: function (absId, req, io, config) {
-			var loaded;
+		compile: function (pluginId, resId, req, io, config) {
+			var absId, loaded;
+
+			absId = pluginId + '!' + resId;
 
 			// use the load method of the run-time plugin, snooping in on
 			// requests.

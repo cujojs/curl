@@ -27,8 +27,7 @@ define(/*=='curl/plugin/text',==*/ ['./_fetchText'], function (fetchText) {
 			fetchText(req['toUrl'](resourceName), callback, callback['error'] || error);
 		},
 
-		'plugin-builder': './builder/text',
-		'pluginBuilder': './builder/text'
+		'cramPlugin': '../cram/text'
 
 	};
 

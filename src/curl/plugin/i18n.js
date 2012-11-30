@@ -96,6 +96,7 @@ define(/*=='curl/plugin/i18n',==*/ function () {
 	appendLocaleRx = /(\.js)?$/;
 
 	return {
+
 		load: function (absId, require, loaded, config) {
 			var eb, toFile, locale, bundles, fetched, id, ids, specifiers, i;
 
@@ -160,7 +161,10 @@ define(/*=='curl/plugin/i18n',==*/ function () {
 				}
 			}
 
-		}
+		},
+
+		'cramPlugin': '../cram/i18n'
+
 	};
 
 	function fetch (require, id, i, cb, eb) {

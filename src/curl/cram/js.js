@@ -1,7 +1,7 @@
 /** MIT License (c) copyright B Cavalier & J Hann */
 
 /**
- * curl js! builder plugin
+ * curl js! cram plugin
  */
 define(['./jsEncode'], function (jsEncode) {
 	var stripOrderOptionRx;
@@ -19,14 +19,14 @@ define(['./jsEncode'], function (jsEncode) {
 				: resourceId;
 		},
 
-		compile: function (absId, req, io /*, config*/) {
+		compile: function (pluginId, resId, req, io /*, config*/) {
+			var absId, exportsPos, exports;
 
-			var exportsPos, exports;
+			absId = pluginId + '!' + resId;
+			exportsPos = resId.indexOf('!exports=');
+			exports = exportsPos > 0 && resId.substr(exportsPos + 9); // must be last option!
 
-			exportsPos = absId.indexOf('!exports=');
-			exports = exportsPos > 0 && absId.substr(exportsPos + 9); // must be last option!
-
-			io.read(resourceId(absId), function (text) {
+			io.read(resId, function (text) {
 				var moduleText =
 					'define("' + absId + '", function () {\n' +
 						jsEncode(text) + ';\n' +
@@ -44,9 +44,5 @@ define(['./jsEncode'], function (jsEncode) {
 		}
 
 	};
-
-	function resourceId (absId) {
-		return absId && absId.split('!')[1] || '';
-	}
 
 });

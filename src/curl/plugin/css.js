@@ -573,8 +573,7 @@
 
 		},
 
-		'plugin-builder': './builder/css',
-		'pluginBuilder': './builder/css'
+		'cramPlugin': '../cram/css'
 
 	});
 

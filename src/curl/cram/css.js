@@ -2,6 +2,8 @@
 
 /**
  * curl css! plugin build-time module
+ *
+ * TODO: support comma-separated resource ids
  */
 define(['./jsEncode'], function (jsEncode) {
 	"use strict";
@@ -50,17 +52,16 @@ define(['./jsEncode'], function (jsEncode) {
 			return normalized.join(',');
 		},
 
-		compile: function (absId, req, io, config) {
-			var resId, /*sheets, resources,*/ cssWatchPeriod, cssNoWait, i;
+		compile: function (pluginId, resId, req, io, config) {
+			var absId, /*sheets, resources,*/ cssWatchPeriod, cssNoWait, i;
 
-			resId = resourceId(absId);
+			absId = pluginId + '!' + resId;
 //			sheets = [];
 //			resources = (resId || '').split(/\s*,\s*/);
 			cssWatchPeriod = parseInt(config['cssWatchPeriod']) || 50;
 			cssNoWait = config['cssNoWait'];
 
-			// TODO: support comma-sep list of sheets
-			io.read(resourceId(absId), function (text) {
+			io.read(resId, function (text) {
 				var moduleText;
 
 				// TODO: copy configuration options to run-time plugin
@@ -90,10 +91,6 @@ define(['./jsEncode'], function (jsEncode) {
 		return text.replace(templateRx, function (m, id) {
 			return values[id];
 		});
-	}
-
-	function resourceId (absId) {
-		return absId && absId.split('!')[1] || '';
 	}
 
 });
