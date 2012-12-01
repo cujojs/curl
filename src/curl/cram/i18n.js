@@ -5,59 +5,118 @@
  */
 define(['../plugin/i18n'], function (i18n) {
 
-	var toString, passThrus, converts, remove$QuotesRx;
+	var tos, stringifiers, beenThereFlag;
 
-	toString = Object.prototype.toString;
-	passThrus = {
-		Array: 1, Boolean: 1, Null: 1, Number: 1, Object: 1, String: 1, Undefined: 1
+	tos = Object.prototype.toString;
+	stringifiers = {
+		Array: arrayAsString,
+		Boolean: asString,
+		Date: dateAsString,
+		Function: asString,
+		Null: nullAsString,
+		Number: asString,
+		Object: objectAsString,
+		RegExp: asString,
+		String: stringAsString,
+		Undefined: undefinedAsString
 	};
-	converts = {
-		Date: 1, Function: 1, RegExp: 1
+	beenThereFlag = '__cram_i18n_flag__';
+
+	function bundleToString (thing) {
+		return thingToString(thing);
+	}
+
+	bundleToString.compile = function (pluginId, resId, req, io, config) {
+		var absId, loaded;
+
+		absId = pluginId + '!' + resId;
+
+		// use the load method of the run-time plugin, snooping in on
+		// requests.
+		loaded = function (bundle) {
+			var str;
+			// convert to JSON with most Javascript objects preserved
+			str = bundleToString(bundle);
+			// wrap in define()
+			str = 'define("'
+				+ absId
+				+ '", function () {\n\treturn '
+				+ str
+				+ ';\n});\n';
+			io.write(str);
+		};
+		loaded.error = io.error;
+		i18n.load(absId, req, loaded, config);
+
 	};
-	remove$QuotesRx = /"\$|\$"/g;
 
-	return {
+	return bundleToString;
 
-		compile: function (pluginId, resId, req, io, config) {
-			var absId, loaded;
+	function thingToString (thing) {
+		var t, stringifier;
 
-			absId = pluginId + '!' + resId;
+		t = type(thing);
+		stringifier = stringifiers[t];
 
-			// use the load method of the run-time plugin, snooping in on
-			// requests.
-			loaded = function (bundle) {
-				var str;
-				// convert to JSON with most Javascript objects preserved
-				str = JSON.stringify(bundle, replacer, ' ');
-				// remove specially-marked quotes
-				str = str.replace(remove$QuotesRx, '');
-				// wrap in define()
-				str = 'define("'
-					+ absId
-					+ '", function () {\n\treturn '
-					+ str
-					+ ';\n});\n';
-				io.write(str);
-			};
-			loaded.error = io.error;
-			i18n.load(absId, req, loaded, config);
+		if (!stringifier) throw new Error('Can\'t encode i18n item of type ' + t);
 
-			function replacer (key, value) {
-				return asString(key, value, io.error);
+		return stringifier(thing);
+	}
+
+	function asString (thing) {
+		return thing.toString();
+	}
+
+	function nullAsString () {
+		return 'null';
+	}
+
+	function stringAsString (s) {
+		return '"' + s + '"';
+	}
+
+	function undefinedAsString () {
+		return 'undefined';
+	}
+
+	function dateAsString (date) {
+		return 'new Date("' + date + '")';
+	}
+
+	function arrayAsString (arr) {
+		var i, len, items, item;
+		arr[beenThereFlag] = true;
+		items = [];
+		for (i = 0, len = arr.length; i < len; i++) {
+			item = arr[i];
+			if (typeof item == 'object' && beenThereFlag in item) {
+				throw new Error('Recursive object graphs not supported in i18n bundles.');
+			}
+			items.push(thingToString(item));
+		}
+		delete arr[beenThereFlag];
+		return '[' + items.join(',') + ']';
+	}
+
+	function objectAsString (obj) {
+		var p, items, item;
+		obj[beenThereFlag] = true;
+		items = [];
+		for (p in obj) {
+			if (p != beenThereFlag) {
+				item = obj[p];
+				if (typeof item == 'object' && beenThereFlag in item) {
+					throw new Error('Recursive object graphs not supported in i18n bundles.');
+				}
+				items.push('"' + p + '":' + thingToString(item));
 			}
 		}
-	};
-
-	function asString (key, thing, error) {
-		var t;
-		t = type(thing);
-		if (t in passThrus) return thing;
-		else if (t in converts) return '$' + thing.toString() + '$';
-		else error('Property "' + key + '" of type, ' + t + ', not supported in i18n bundle.');
+		delete obj[beenThereFlag];
+		return '{' + items.join(',') + '}';
 	}
 
 	function type (thing) {
-		return toString.call(thing).slice(8, -1);
+		return tos.call(thing).slice(8, -1);
 	}
 
 });
