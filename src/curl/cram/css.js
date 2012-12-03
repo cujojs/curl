@@ -47,7 +47,7 @@ define(['./jsEncode'], function (jsEncode) {
 				: templateWithRuntimePlugin;
 			resources = (resId || '').split(commaSepRx);
 
-			while ((eachId = resources.unshift())) templatize(eachId);
+			while ((eachId = resources.shift())) templatize(eachId);
 
 			function templatize (resId) {
 				var absId = pluginId + '!' + resId;
