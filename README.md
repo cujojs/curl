@@ -27,10 +27,11 @@ IE10 compatibility: the following commits are compatible with IE10 (and Safari 6
 * [0.6.2a](https://github.com/cujojs/curl/tree/2683057e4cdf45eec44dd69dfd814ece75b7ae70)
 
 * 0.7.3
-	* new curl.config() API method
+	* css! plugin no longer fails when sniffing for Opera (Fixes #147)
+	* new curl.config() API method (fixes #146)
 	* new "main" {String|Array} config option to init loading of main modules
 	  for an application
-	* new i18n plugin
+	* new i18n plugin (fixes #26)
 * 0.7.2
 	* css! plugin now works everywhere (closed an Opera-XDomain issue).
 	* css! plugin now returns the stylesheet created (as it used to, but for
