@@ -58,7 +58,6 @@ IE10 compatibility: the following commits are compatible with IE10 (and Safari 6
 
 TODO:
 
-* finish i18n plugin!
 * document plugin configuration options and how to use each plugin
 * notes about using JSONP (it works for objects, arrays, functions, numbers
   and strings! use ?callback=define)
