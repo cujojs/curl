@@ -15,7 +15,6 @@ define(/*=='img',==*/['domReady!'], function () {
 			img.onerror = error;
 			
 			function callback() {
-//console.log("img!callback.done:", done, ", readyState: ", img.readyState);
 				if (done === true)
 					return; // ignore dups
 
@@ -33,14 +32,14 @@ define(/*=='img',==*/['domReady!'], function () {
 			}
 
 			function success() {
-				img.style.display = "block"; // must show before calculating dimensions
-				var o = { dom: img, width: img.width, height: img.height }; // calc dimensions before removing from DOM (some browsers will calc improperly)
+				img.style.display = ""; // must show before calculating dimensions
+				img.originalWidth = img.width;
+				img.originalHeight = img.height;
 				document.body.removeChild(img); // remove from DOM before returning result
-				loaded(o);
+				loaded(img);
 			}
 			
 			function error() {
-//console.log("img!callback.ERR:", done, ", readyState: ", img.readyState);
 				loaded.error("IMG load error: " + absId);
 			}
 			

@@ -27,9 +27,9 @@
 		]
 	).then(
 		function (img1, img2) {
-			write('SUCCESS: images loaded, img1: ' + (img1.width + 'x' + img1.height) + ', img2: ' + (img2.width + 'x' + img2.height));
-			document.body.appendChild(img1.dom);
-			document.body.appendChild(img2.dom);
+			write('SUCCESS: images loaded, img1: ' + (img1.originalWidth + 'x' + img1.originalHeight) + ', img2: ' + (img2.originalWidth + 'x' + img2.originalHeight));
+			document.body.appendChild(img1);
+			document.body.appendChild(img2);
 		},
 		function (ex) {
 			write('FAILED: ' + ex.message)
