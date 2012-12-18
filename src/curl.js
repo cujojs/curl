@@ -49,8 +49,8 @@
 		dontAddExtRx = /\?|\.js\b/,
 		absUrlRx = /^\/|^[^:]+:\/\//,
 		findDotsRx = /(\.)(\.?)(?:$|\/([^\.\/]+.*)?)/g,
-		removeCommentsRx = /\/\*[\s\S]*?\*\/|(?:[^\\])\/\/.*?[\n\r]/g,
-		findRValueRequiresRx = /require\s*\(\s*["']([^"']+)["']\s*\)|(?:[^\\]?)(["'])/g,
+		removeCommentsRx = /\/\*[\s\S]*?\*\/|\/\/.*?[\n\r]/g,
+		findRValueRequiresRx = /require\s*\(\s*(["'])(.*?[^\\])\1\s*\)|[^\\]?(["'])/g,
 		cjsGetters,
 		core;
 
@@ -744,8 +744,8 @@
 					 defFunc :
 					 defFunc.toSource ? defFunc.toSource() : defFunc.toString();
 			// remove comments, then look for require() or quotes
-			source.replace(removeCommentsRx, '').replace(findRValueRequiresRx, function (m, id, qq) {
-				// if we encounter a quote
+			source.replace(removeCommentsRx, '').replace(findRValueRequiresRx, function (m, rq, id, qq) {
+				// if we encounter a string in the source, don't look for require()
 				if (qq) {
 					currQuote = currQuote == qq ? undef : currQuote;
 				}
