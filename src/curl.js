@@ -49,8 +49,8 @@
 		dontAddExtRx = /\?|\.js\b/,
 		absUrlRx = /^\/|^[^:]+:\/\//,
 		findDotsRx = /(\.)(\.?)(?:$|\/([^\.\/]+.*)?)/g,
-		removeCommentsRx = /\/\*[\s\S]*?\*\/|(?:[^\\])\/\/.*?[\n\r]/g,
-		findRValueRequiresRx = /require\s*\(\s*["']([^"']+)["']\s*\)|(?:[^\\]?)(["'])/g,
+		removeCommentsRx = /\/\*[\s\S]*?\*\/|\/\/.*?[\n\r]/g,
+		findRValueRequiresRx = /require\s*\(\s*(["'])(.*?[^\\])\1\s*\)|[^\\]?(["'])/g,
 		cjsGetters,
 		core;
 
@@ -744,8 +744,8 @@
 					 defFunc :
 					 defFunc.toSource ? defFunc.toSource() : defFunc.toString();
 			// remove comments, then look for require() or quotes
-			source.replace(removeCommentsRx, '').replace(findRValueRequiresRx, function (m, id, qq) {
-				// if we encounter a quote
+			source.replace(removeCommentsRx, '').replace(findRValueRequiresRx, function (m, rq, id, qq) {
+				// if we encounter a string in the source, don't look for require()
 				if (qq) {
 					currQuote = currQuote == qq ? undef : currQuote;
 				}
@@ -1139,12 +1139,7 @@
 			core.checkPreloads(cfg);
 			// check for main module(s)
 			if ('main' in cfg) {
-				// start in next turn to wait for other modules in current file
-				setTimeout(function () {
-					var ctx;
-					ctx = core.createContext(userCfg, undef, [].concat(cfg['main']));
-					core.getDeps(ctx);
-				}, 0);
+				new CurlApi(cfg['main'])
 			}
 		}
 	}
@@ -1172,7 +1167,10 @@
 		};
 		this['config'] = _config;
 		if (callback || errback) then(callback, errback);
-		when(waitFor, function () { core.getDeps(ctx); });
+		// ensure next-turn for builds
+		setTimeout(function () {
+			when(waitFor, function () { core.getDeps(ctx); });
+		}, 0);
 	}
 
 	_curl['version'] = version;
