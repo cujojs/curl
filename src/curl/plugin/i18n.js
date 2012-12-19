@@ -85,7 +85,7 @@
  *
  */
 
-(function (global) {
+(function (window) {
 
 define(/*=='curl/plugin/i18n',==*/ function () {
 
@@ -181,7 +181,9 @@ define(/*=='curl/plugin/i18n',==*/ function () {
 	}
 
 	function getLocale () {
-		var ci = global['clientInformation'] || global.navigator;
+		var ci;
+		if (!window) return false;
+		ci = window['clientInformation'] || window.navigator;
 		return ci.language || ci['userLanguage'];
 	}
 
@@ -191,4 +193,4 @@ define(/*=='curl/plugin/i18n',==*/ function () {
 
 });
 
-}(this));
+}(typeof window != 'undefined' && window));
