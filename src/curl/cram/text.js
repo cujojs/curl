@@ -10,7 +10,7 @@ define(['./jsEncode'], function (jsEncode) {
 		compile: function (pluginId, resId, req, io, config) {
 			var absId;
 
-			absId = pluginId + '!' + resId;
+			absId = pluginId + '/_/' + resId;
 
 			io.read(resId, function (text) {
 				io.write(

@@ -29,7 +29,7 @@ define(['../plugin/i18n'], function (i18n) {
 	bundleToString.compile = function (pluginId, resId, req, io, config) {
 		var absId, loaded;
 
-		absId = pluginId + '!' + resId;
+		absId = pluginId + '/_/' + resId;
 
 		// use the load method of the run-time plugin, snooping in on
 		// requests.

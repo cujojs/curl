@@ -50,7 +50,7 @@ define(['./jsEncode'], function (jsEncode) {
 			while ((eachId = resources.shift())) templatize(eachId);
 
 			function templatize (resId) {
-				var absId = pluginId + '!' + resId;
+				var absId = pluginId + '/_/' + resId;
 
 				io.read(resId, function (text) {
 					var moduleText;
