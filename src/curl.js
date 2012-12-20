@@ -202,7 +202,7 @@
 	}
 
 	function isPromise (o) {
-		return o instanceof Promise;
+		return o instanceof Promise || o instanceof CurlApi;
 	}
 
 	function when (promiseOrValue, callback, errback, progback) {
@@ -634,18 +634,6 @@
 			convertPathMatcher(newCfg);
 
 			return newCfg;
-
-		},
-
-		checkPreloads: function (cfg) {
-			var preloads;
-			preloads = cfg && cfg['preloads'];
-			if (preloads && preloads.length > 0) {
-				// chain from previous preload, if any.
-				when(preload, function () {
-					preload = core.getDeps(core.createContext(userCfg, undef, preloads, true));
-				});
-			}
 
 		},
 
@@ -1136,7 +1124,9 @@
 			core.setApi(cfg);
 			userCfg = core.config(cfg);
 			// check for preloads
-			core.checkPreloads(cfg);
+			if ('preloads' in cfg) {
+				preload = new CurlApi(cfg['preloads'], undef, undef, preload, true);
+			}
 			// check for main module(s)
 			if ('main' in cfg) {
 				new CurlApi(cfg['main'])
@@ -1145,9 +1135,9 @@
 	}
 
 	// thanks to Joop Ringelberg for helping troubleshoot the API
-	function CurlApi (ids, callback, errback, waitFor) {
+	function CurlApi (ids, callback, errback, waitFor, isPreload) {
 		var then, ctx;
-		ctx = core.createContext(userCfg, undef, [].concat(ids));
+		ctx = core.createContext(userCfg, undef, [].concat(ids), isPreload);
 		this['then'] = then = function (resolved, rejected) {
 			when(ctx,
 				// return the dependencies as arguments, not an array
@@ -1169,7 +1159,9 @@
 		if (callback || errback) then(callback, errback);
 		// ensure next-turn for builds
 		setTimeout(function () {
-			when(waitFor, function () { core.getDeps(ctx); });
+			when(isPreload || preload, function () {
+				when(waitFor, function () { core.getDeps(ctx); });
+			});
 		}, 0);
 	}
 
