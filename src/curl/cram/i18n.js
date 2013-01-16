@@ -46,7 +46,7 @@ define(['../plugin/i18n'], function (i18n) {
 			io.write(str);
 		};
 		loaded.error = io.error;
-		i18n.load(absId, req, loaded, config);
+		i18n.load(pluginId + '!' + resId, req, loaded, config);
 
 	};
 

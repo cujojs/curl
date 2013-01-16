@@ -11,7 +11,7 @@ define(['./jsEncode'], function (jsEncode) {
 
 	templateWithRuntimeModule = 'define("${absId}", ["${runtime}"], function (injector) { return injector("${text}"); });\n';
 	templateWithRuntimePlugin = 'define("${resourceId}", function () { return "${text}"; });\n' +
-		'define("${absId}", ["${runtime}!${resourceId}", "${runtime}"], function (sheet) { return sheet; });\n';
+		'define("${absId}", ["${runtime}!${resourceId}"], function (sheet) { return sheet; });\n';
 	templateRx = /\${([^}]+)}/g;
 	commaSepRx = /\s*,\s*/g;
 
