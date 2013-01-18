@@ -49,8 +49,8 @@
 		dontAddExtRx = /\?|\.js\b/,
 		absUrlRx = /^\/|^[^:]+:\/\//,
 		findDotsRx = /(\.)(\.?)(?:$|\/([^\.\/]+.*)?)/g,
-		removeCommentsRx = /\/\*[\s\S]*?\*\/|(?:[^\\])\/\/.*?[\n\r]/g,
-		findRValueRequiresRx = /require\s*\(\s*["']([^"']+)["']\s*\)|(?:[^\\]?)(["'])/g,
+		removeCommentsRx = /\/\*[\s\S]*?\*\/|\/\/.*?[\n\r]/g,
+		findRValueRequiresRx = /require\s*\(\s*(["'])(.*?[^\\])\1\s*\)|[^\\]?(["'])/g,
 		cjsGetters,
 		core;
 
@@ -202,7 +202,7 @@
 	}
 
 	function isPromise (o) {
-		return o instanceof Promise;
+		return o instanceof Promise || o instanceof CurlApi;
 	}
 
 	function when (promiseOrValue, callback, errback, progback) {
@@ -637,18 +637,6 @@
 
 		},
 
-		checkPreloads: function (cfg) {
-			var preloads;
-			preloads = cfg && cfg['preloads'];
-			if (preloads && preloads.length > 0) {
-				// chain from previous preload, if any.
-				when(preload, function () {
-					preload = core.getDeps(core.createContext(userCfg, undef, preloads, true));
-				});
-			}
-
-		},
-
 		resolvePathInfo: function (absId, cfg) {
 			// searches through the configured path mappings and packages
 			var pathMap, pathInfo, path, pkgCfg;
@@ -744,8 +732,8 @@
 					 defFunc :
 					 defFunc.toSource ? defFunc.toSource() : defFunc.toString();
 			// remove comments, then look for require() or quotes
-			source.replace(removeCommentsRx, '').replace(findRValueRequiresRx, function (m, id, qq) {
-				// if we encounter a quote
+			source.replace(removeCommentsRx, '').replace(findRValueRequiresRx, function (m, rq, id, qq) {
+				// if we encounter a string in the source, don't look for require()
 				if (qq) {
 					currQuote = currQuote == qq ? undef : currQuote;
 				}
@@ -1136,23 +1124,20 @@
 			core.setApi(cfg);
 			userCfg = core.config(cfg);
 			// check for preloads
-			core.checkPreloads(cfg);
+			if ('preloads' in cfg) {
+				preload = new CurlApi(cfg['preloads'], undef, undef, preload, true);
+			}
 			// check for main module(s)
 			if ('main' in cfg) {
-				// start in next turn to wait for other modules in current file
-				setTimeout(function () {
-					var ctx;
-					ctx = core.createContext(userCfg, undef, [].concat(cfg['main']));
-					core.getDeps(ctx);
-				}, 0);
+				new CurlApi(cfg['main'])
 			}
 		}
 	}
 
 	// thanks to Joop Ringelberg for helping troubleshoot the API
-	function CurlApi (ids, callback, errback, waitFor) {
+	function CurlApi (ids, callback, errback, waitFor, isPreload) {
 		var then, ctx;
-		ctx = core.createContext(userCfg, undef, [].concat(ids));
+		ctx = core.createContext(userCfg, undef, [].concat(ids), isPreload);
 		this['then'] = then = function (resolved, rejected) {
 			when(ctx,
 				// return the dependencies as arguments, not an array
@@ -1172,7 +1157,12 @@
 		};
 		this['config'] = _config;
 		if (callback || errback) then(callback, errback);
-		when(waitFor, function () { core.getDeps(ctx); });
+		// ensure next-turn for builds
+		setTimeout(function () {
+			when(isPreload || preload, function () {
+				when(waitFor, function () { core.getDeps(ctx); });
+			});
+		}, 0);
 	}
 
 	_curl['version'] = version;
@@ -1348,38 +1338,40 @@ define('curl/loader/cjsm11', function () {
 		head.insertBefore(el, insertBeforeEl);
 	}
 
-	return {
-		'load': function (resourceId, require, callback, config) {
-			// TODO: extract xhr from text! plugin and use that instead (after we upgrade to cram.js)
-			require(['text!' + resourceId + '.js', 'curl/_privileged'], function (source, priv) {
-				var moduleMap;
+	wrapSource['load'] = function (resourceId, require, callback, config) {
+		// TODO: extract xhr from text! plugin and use that instead (after we upgrade to cram.js)
+		require(['text!' + resourceId + '.js', 'curl/_privileged'], function (source, priv) {
+			var moduleMap;
 
-				// find (and replace?) dependencies
-				moduleMap = priv['core'].extractCjsDeps(source);
-				//source = parseDepModuleIds(source, moduleMap, config.replaceRequires);
+			// find (and replace?) dependencies
+			moduleMap = priv['core'].extractCjsDeps(source);
+			//source = parseDepModuleIds(source, moduleMap, config.replaceRequires);
 
-				// get deps
-				require(moduleMap, function () {
+			// get deps
+			require(moduleMap, function () {
 
-					// wrap source in a define
-					source = wrapSource(source, resourceId, config['injectSourceUrl'] !== false && require.toUrl(resourceId));
+				// wrap source in a define
+				source = wrapSource(source, resourceId, config['injectSourceUrl'] !== false && require.toUrl(resourceId));
 
-					if (config['injectScript']) {
-						injectScript(source);
-					}
-					else {
-						//eval(source);
-						globalEval(source);
-					}
+				if (config['injectScript']) {
+					injectScript(source);
+				}
+				else {
+					//eval(source);
+					globalEval(source);
+				}
 
-					// call callback now that the module is defined
-					callback(require(resourceId));
+				// call callback now that the module is defined
+				callback(require(resourceId));
 
-				}, callback['error'] || function (ex) { throw ex; });
+			}, callback['error'] || function (ex) { throw ex; });
 
-			});
-		}
+		});
 	};
+
+	wrapSource['cramPlugin'] = '../cram/i18n';
+
+	return wrapSource;
 
 });
 
