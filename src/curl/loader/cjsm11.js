@@ -61,7 +61,7 @@ define(/*=='curl/loader/cjsm11',==*/ function () {
 	insertBeforeEl = head && head.getElementsByTagName('base')[0] || null;
 
 	function wrapSource (source, resourceId, fullUrl) {
-		var sourceUrl = fullUrl ? '////@ sourceURL=' + fullUrl.replace(/\s/g, '%20') + '.js' : '';
+		var sourceUrl = fullUrl ? '/*\n////@ sourceURL=' + fullUrl.replace(/\s/g, '%20') + '.js\n*/' : '';
 		return "define('" + resourceId + "'," +
 			"['require','exports','module'],function(require,exports,module){" +
 			source + "\n});\n" + sourceUrl + "\n";
