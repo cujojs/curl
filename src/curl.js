@@ -16,6 +16,7 @@
 		version = '0.7.3',
 		curlName = 'curl',
 		defineName = 'define',
+		runModuleAttr = 'data-curl-run',
 		userCfg,
 		prevCurl,
 		prevDefine,
@@ -1058,8 +1059,8 @@
 						// but to be compatible with AMD spec, we have to
 						// piggy-back on the callback function parameter:
 						var loaded = function (res) {
-							normalizedDef.resolve(res);
 							if (!dynamic) cache[fullId] = res;
+							normalizedDef.resolve(res);
 						};
 						loaded['resolve'] = loaded;
 						loaded['reject'] = loaded['error'] = normalizedDef.reject;
@@ -1098,6 +1099,24 @@
 				}
 			}
 			return def;
+		},
+
+		findScript: function (predicate) {
+			var i = 0, script;
+			while ((script = doc.scripts[i++])) {
+				if (predicate(script)) return script;
+			}
+		},
+
+		extractDataAttrConfig: function (cfg) {
+			var script;
+			script = core.findScript(function (script) {
+				// TODO: extract baseUrl, too?
+				return (cfg.main = script.getAttribute(runModuleAttr));
+			});
+			// removeAttribute is wonky (in IE6?) but this works
+			if (script) script.setAttribute(runModuleAttr, '');
+			return cfg;
 		}
 
 	};
@@ -1222,18 +1241,19 @@
 		pathRx: /$^/
 	};
 
+	// look for "data-curl-run" directive, and override config
+	userCfg = core.extractDataAttrConfig(userCfg);
+
 	// handle pre-existing global
 	prevCurl = global[curlName];
 	prevDefine = global[defineName];
-	if (!prevCurl || isType(prevCurl, 'Function')) {
-		// set default api
-		core.setApi();
-	}
-	else {
+
+	// only run config if there is something to config (perf saver?)
+	if (isType(prevCurl, 'Object') || userCfg.main) {
 		// remove global curl object
 		global[curlName] = undef; // can't use delete in IE 6-8
 		// configure curl
-		_config(prevCurl);
+		_config(prevCurl || userCfg);
 	}
 
 	// allow curl to be a dependency
