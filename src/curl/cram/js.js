@@ -24,7 +24,7 @@ define(['./jsEncode'], function (jsEncode) {
 		compile: function (pluginId, resId, req, io /*, config*/) {
 			var absId, exportsPos, bangPos, exports;
 
-			absId = pluginId + '/_/' + resId;
+			absId = pluginId + '!' + resId;
 			exportsPos = resId.indexOf('!exports=');
 			exports = exportsPos > 0 && resId.substr(exportsPos + 9); // must be last option!
 			bangPos = resId.indexOf('!');
