@@ -1255,6 +1255,10 @@
 		// configure curl
 		_config(prevCurl || userCfg);
 	}
+	else {
+		// set default api
+		core.setApi();
+	}
 
 	// allow curl to be a dependency
 	cache[curlName] = _curl;
