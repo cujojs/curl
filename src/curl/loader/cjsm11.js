@@ -113,7 +113,7 @@ define(/*=='curl/loader/cjsm11',==*/ function () {
 		});
 	};
 
-	wrapSource['cramPlugin'] = '../cram/i18n';
+	wrapSource['cramPlugin'] = '../cram/cjsm11';
 
 	return wrapSource;
 
