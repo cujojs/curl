@@ -1290,223 +1290,82 @@
 /** MIT License (c) copyright B Cavalier & J Hann */
 
 /**
- * curl CommonJS Modules/1.1 loader
- *
- * Licensed under the MIT License at:
- * 		http://www.opensource.org/licenses/mit-license.php
- */
-
-/**
- * @experimental
- */
-(function (global, document, globalEval) {
-
-define('curl/loader/cjsm11', function () {
-
-	var head, insertBeforeEl /*, findRequiresRx, myId*/;
-
-	head = document && (document['head'] || document.getElementsByTagName('head')[0]);
-	// to keep IE from crying, we need to put scripts before any
-	// <base> elements, but after any <meta>. this should do it:
-	insertBeforeEl = head && head.getElementsByTagName('base')[0] || null;
-
-	function wrapSource (source, resourceId, fullUrl) {
-		var sourceUrl = fullUrl ? '/*\n////@ sourceURL=' + fullUrl.replace(/\s/g, '%20') + '.js\n*/' : '';
-		return "define('" + resourceId + "'," +
-			"['require','exports','module'],function(require,exports,module){" +
-			source + "\n});\n" + sourceUrl + "\n";
-	}
-
-	var injectSource = function (el, source) {
-		// got this from Stoyan Stefanov (http://www.phpied.com/dynamic-script-and-style-elements-in-ie/)
-		injectSource = ('text' in el) ?
-			function (el, source) { el.text = source; } :
-			function (el, source) { el.appendChild(document.createTextNode(source)); };
-		injectSource(el, source);
-	};
-
-	function injectScript (source) {
-		var el = document.createElement('script');
-		injectSource(el, source);
-		el.charset = 'utf-8';
-		head.insertBefore(el, insertBeforeEl);
-	}
-
-	wrapSource['load'] = function (resourceId, require, callback, config) {
-		// TODO: extract xhr from text! plugin and use that instead (after we upgrade to cram.js)
-		require(['text!' + resourceId + '.js', 'curl/_privileged'], function (source, priv) {
-			var moduleMap;
-
-			// find (and replace?) dependencies
-			moduleMap = priv['core'].extractCjsDeps(source);
-			//source = parseDepModuleIds(source, moduleMap, config.replaceRequires);
-
-			// get deps
-			require(moduleMap, function () {
-
-				// wrap source in a define
-				source = wrapSource(source, resourceId, config['injectSourceUrl'] !== false && require.toUrl(resourceId));
-
-				if (config['injectScript']) {
-					injectScript(source);
-				}
-				else {
-					//eval(source);
-					globalEval(source);
-				}
-
-				// call callback now that the module is defined
-				callback(require(resourceId));
-
-			}, callback['error'] || function (ex) { throw ex; });
-
-		});
-	};
-
-	wrapSource['cramPlugin'] = '../cram/cjsm11';
-
-	return wrapSource;
-
-});
-
-}(this, this.document, function () { /* FB needs direct eval here */ eval(arguments[0]); }));
-/** MIT License (c) copyright B Cavalier & J Hann */
-
-/**
- * curl ssjs shim
- * Modifies curl to work as an AMD loader function in server-side
- * environments such as RingoJS, Rhino, and NodeJS.
+ * curl debug plugin
  *
  * Licensed under the MIT License at:
  * 		http://www.opensource.org/licenses/mit-license.php
  *
- * TODO: support environments that implement XMLHttpRequest such as Wakanda
- *
- * @experimental
  */
-define['amd'].ssjs = true;
-var require, load;
-(function (freeRequire, globalLoad) {
-define('curl/shim/ssjs', function (require, exports) {
+
+/**
+ * usage:
+ *  curl({ preloads: ['curl/debug'] }, ['my/app'], function (myApp) {
+ * 		// do stuff while logging debug messages
+ * 	});
+ *
+ * TODO: warn when main module still has leading dots (normalizePackageDescriptor)
+ * TODO: warn when a module id still has leading dots (toAbsId)
+ * TODO: use curl/tdd/undefine module instead of quick-and-dirty method below
+ * TODO: only add logging to some of the useful core functions
+ *
+ */
+define(['require', 'curl/_privileged'], function (require, priv) {
 "use strict";
 
-	var priv, config, hasProtocolRx, extractProtocolRx, protocol,
-		http, localLoadFunc, remoteLoadFunc,
-		undef;
+	var cache, totalWaiting, prevTotal, origDefine;
 
-	// first, bail if we're in a browser!
-	if (typeof window == 'object' && (window.clientInformation || window.navigator)) {
-		return;
+	if (typeof console == 'undefined') {
+		throw new Error('`console` object must be defined to use debug module.');
 	}
 
-	priv = require('curl/_privileged');
-	config = priv.config();
-    hasProtocolRx = /^\w+:/;
-	extractProtocolRx = /(^\w+:)?.*$/;
+	priv._curl['undefine'] = function (moduleId) { delete cache[moduleId]; };
 
-    protocol = fixProtocol(config.defaultProtocol)
-		|| extractProtocol(config.baseUrl)
-		|| 'http:';
+	cache = priv['cache'];
 
-	// sniff for capabilities
+	// add logging to core functions
+	for (var p in priv['core']) (function (name, orig) {
+		priv['core'][name] = function () {
+			var result;
+			console.log('curl ' + name + ' arguments:', arguments);
+			result = orig.apply(this, arguments);
+			console.log('curl ' + name + ' return:', result);
+			return result;
+		};
+	}(p, priv['core'][p]));
 
-	if (globalLoad) {
-		// rhino & ringo make this so easy
-		localLoadFunc = remoteLoadFunc = loadScriptViaLoad;
-	}
-	else if (freeRequire) {
-		localLoadFunc = loadScriptViaRequire;
-		// try to find an http client
-		try {
-			// node
-			http = freeRequire('http');
-			remoteLoadFunc = loadScriptViaNodeHttp;
-		}
-		catch (ex) {
-			remoteLoadFunc = failIfInvoked;
-		}
-
-	}
-	else {
-		localLoadFunc = remoteLoadFunc = failIfInvoked;
-	}
-
-	function stripExtension (url) {
-		return url.replace(/\.js$/, '');
-	}
-
-	priv.core.loadScript = function (def, success, fail) {
-		var urlOrPath;
-		// figure out if this is local or remote and call appropriate function
-		// remote urls always have a protocol or a // at the beginning
-		urlOrPath = def.url;
-		if (/^\/\//.test(urlOrPath)) {
-			// if there's no protocol, use configured protocol
-			def.url = protocol + def.url;
-		}
-		if (hasProtocolRx.test(def.url)) {
-			return remoteLoadFunc(def, success, fail);
-		}
-		else {
-			return localLoadFunc(def, success, fail);
-		}
+	// add logging to define
+	origDefine = priv._define;
+	priv._define = function () {
+		console.log('curl define:', arguments);
+		return origDefine.apply(this, arguments);
 	};
 
-	function loadScriptViaLoad (def, success, fail) {
-		try {
-			globalLoad(def.url);
-			success();
-		}
-		catch (ex) {
-			fail(ex);
-		}
-	}
+	// log cache stats periodically
+	totalWaiting = 0;
 
-	function loadScriptViaRequire (def, success, fail) {
-		var modulePath;
-		try {
-			modulePath = stripExtension(def.url);
-			freeRequire(modulePath);
-			success();
-		}
-		catch (ex) {
-			fail(ex);
+	function count () {
+		totalWaiting = 0;
+		for (var p in cache) {
+			if (cache[p] instanceof priv['Promise']) totalWaiting++;
 		}
 	}
+	count();
 
-	function loadScriptViaNodeHttp (def, success, fail) {
-		var options, source;
-		options = freeRequire('url').parse(def.url, false, true);
-		source = '';
-		http.get(options, function (response) {
-			response
-				.on('data', function (chunk) { source += chunk; })
-				.on('end', function () { executeScript(source); success(); })
-				.on('error', fail);
-		}).on('error', fail);
+	function periodicLogger () {
+		count();
+		if (prevTotal != totalWaiting) {
+			console.log('curl: ********** modules waiting: ' + totalWaiting);
+			for (var p in cache) {
+				if (cache[p] instanceof priv['Promise']) {
+					console.log('curl: ********** module waiting: ' + p);
+				}
+			}
+		}
+		prevTotal = totalWaiting;
+		setTimeout(periodicLogger, 500);
 	}
+	periodicLogger();
 
-	function failIfInvoked (def) {
-		throw new Error('ssjs: unable to load module in current environment: ' + def.url);
-	}
-
-	function executeScript (source) {
-		eval(source);
-	}
-
-    function extractProtocol (url) {
-        var protocol;
-        protocol = url && url.replace(extractProtocolRx,
-			function (m, p) { return p; }
-		);
-        return protocol;
-    }
-
-	function fixProtocol (protocol) {
-		return protocol && protocol[protocol.length - 1] != ':'
-			? protocol += ':'
-			: protocol;
-	}
+	return true;
 
 });
-}(require, load));
