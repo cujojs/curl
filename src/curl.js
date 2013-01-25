@@ -967,28 +967,37 @@
 			isPreload = parentDef.isPreload;
 			cfg = parentDef.config || userCfg; // is this fallback necessary?
 
-			// check for plugin loaderId
-			// TODO: this runs pluginParts() twice. how to run it just once?
-			parts = pluginParts(toAbsId(depName));
-			resId = parts.resourceId;
-			// get id of first resource to load (which could be a plugin)
-			mainId = parts.pluginId || resId;
-			pathInfo = core.resolvePathInfo(mainId, cfg);
-
-			// get custom module loader from package config if not a plugin
-			if (parts.pluginId) {
-				loaderId = mainId;
+			if (depName in cache) {
+				// module already exists in cache
+				// TODO: isn't there a chance that a plugin will normalize an id to look like an un-normalized one?
+				mainId = depName;
 			}
 			else {
-				// TODO: move config.moduleLoader to config.transform
-				loaderId = pathInfo.config['moduleLoader'] || pathInfo.config.moduleLoader;
-				if (loaderId) {
-					// TODO: allow transforms to have relative module ids?
-					// (we could do this by returning package location from
-					// resolvePathInfo. why not return all package info?)
-					resId = mainId;
-					mainId = loaderId;
-					pathInfo = core.resolvePathInfo(loaderId, cfg);
+				// check for plugin loaderId
+				// TODO: this runs pluginParts() twice. how to run it just once?
+				parts = pluginParts(toAbsId(depName));
+				resId = parts.resourceId;
+				// get id of first resource to load (which could be a plugin)
+				mainId = parts.pluginId || resId;
+				pathInfo = core.resolvePathInfo(mainId, cfg);
+			}
+
+			// get custom module loader from package config if not a plugin
+			if (parts) {
+				if (parts.pluginId) {
+					loaderId = mainId;
+				}
+				else {
+					// TODO: move config.moduleLoader to config.transform
+					loaderId = pathInfo.config['moduleLoader'] || pathInfo.config.moduleLoader;
+					if (loaderId) {
+						// TODO: allow transforms to have relative module ids?
+						// (we could do this by returning package location from
+						// resolvePathInfo. why not return all package info?)
+						resId = mainId;
+						mainId = loaderId;
+						pathInfo = core.resolvePathInfo(loaderId, cfg);
+					}
 				}
 			}
 
