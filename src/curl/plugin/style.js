@@ -35,7 +35,7 @@ define([], function () {
 
 	/***** style element functions *****/
 
-	var currentStyle, callbacks;
+	var currentStyle, callbacks = [];
 
 	function createStyle (cssText, callback, errback) {
 
