@@ -960,22 +960,22 @@
 		},
 
 		fetchDep: function (depName, parentDef) {
-			var toAbsId, isPreload, cfg, parts, mainId, loaderId, pluginId,
+			var toAbsId, isPreload, cfg, parts, absId, mainId, loaderId, pluginId,
 				resId, pathInfo, def, tempDef, resCfg;
 
 			toAbsId = parentDef.toAbsId;
 			isPreload = parentDef.isPreload;
 			cfg = parentDef.config || userCfg; // is this fallback necessary?
 
-			if (depName in cache) {
+			absId = toAbsId(depName);
+
+			if (absId in cache) {
 				// module already exists in cache
-				// TODO: isn't there a chance that a plugin will normalize an id to look like an un-normalized one?
-				mainId = depName;
+				mainId = absId;
 			}
 			else {
 				// check for plugin loaderId
-				// TODO: this runs pluginParts() twice. how to run it just once?
-				parts = pluginParts(toAbsId(depName));
+				parts = pluginParts(absId);
 				resId = parts.resourceId;
 				// get id of first resource to load (which could be a plugin)
 				mainId = parts.pluginId || resId;
