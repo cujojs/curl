@@ -1134,30 +1134,30 @@
 	cjsGetters = {'require': core.getCjsRequire, 'exports': core.getCjsExports, 'module': core.getCjsModule};
 
 	function _curl (/* various */) {
+		var args, promise, cfg;
 
-		var args = [].slice.call(arguments), cfg;
+		args = [].slice.call(arguments);
 
 		// extract config, if it's specified
 		if (isType(args[0], 'Object')) {
 			cfg = args.shift();
-			_config(cfg);
+			promise = _config(cfg);
 		}
 
-		return new CurlApi(args[0], args[1], args[2]);
-
+		return new CurlApi(args[0], args[1], args[2], promise);
 	}
 
-	function _config (cfg) {
+	function _config (cfg, callback, errback) {
 		if (cfg) {
 			core.setApi(cfg);
 			userCfg = core.config(cfg);
 			// check for preloads
 			if ('preloads' in cfg) {
-				preload = new CurlApi(cfg['preloads'], undef, undef, preload, true);
+				preload = new CurlApi(cfg['preloads'], undef, errback, preload, true);
 			}
-			// check for main module(s)
+			// check for main module(s). this waits for preloads implicitly.
 			if ('main' in cfg) {
-				new CurlApi(cfg['main'])
+				return new CurlApi(cfg['main'], callback, errback)
 			}
 		}
 	}
@@ -1165,7 +1165,9 @@
 	// thanks to Joop Ringelberg for helping troubleshoot the API
 	function CurlApi (ids, callback, errback, waitFor, isPreload) {
 		var then, ctx;
+
 		ctx = core.createContext(userCfg, undef, [].concat(ids), isPreload);
+
 		this['then'] = then = function (resolved, rejected) {
 			when(ctx,
 				// return the dependencies as arguments, not an array
@@ -1179,16 +1181,20 @@
 			);
 			return this;
 		};
+
 		this['next'] = function (ids, cb, eb) {
 			// chain api
 			return new CurlApi(ids, cb, eb, ctx);
 		};
+
 		this['config'] = _config;
+
 		if (callback || errback) then(callback, errback);
-		// ensure next-turn for builds
+
+		// ensure next-turn so inline code can execute first
 		setTimeout(function () {
 			when(isPreload || preload, function () {
-				when(waitFor, function () { core.getDeps(ctx); });
+				when(waitFor, function () { core.getDeps(ctx); }, errback);
 			});
 		}, 0);
 	}
