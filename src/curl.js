@@ -1112,7 +1112,7 @@
 
 		findScript: function (predicate) {
 			var i = 0, script;
-			while ((script = doc.scripts[i++])) {
+			while (doc && (script = doc.scripts[i++])) {
 				if (predicate(script)) return script;
 			}
 		},

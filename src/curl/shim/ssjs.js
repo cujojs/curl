@@ -80,9 +80,6 @@ define(/*=='curl/shim/ssjs',==*/ function (require, exports) {
 		}
 	};
 	
-	// this is useless if we're not in a browser
-	priv.core.findScript = function () {};
-
 	function loadScriptViaLoad (def, success, fail) {
 		try {
 			globalLoad(def.url);

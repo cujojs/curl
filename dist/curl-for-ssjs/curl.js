@@ -1112,7 +1112,7 @@
 
 		findScript: function (predicate) {
 			var i = 0, script;
-			while ((script = doc.scripts[i++])) {
+			while (doc && (script = doc.scripts[i++])) {
 				if (predicate(script)) return script;
 			}
 		},
@@ -1464,9 +1464,6 @@ define('curl/shim/ssjs', function (require, exports) {
 		}
 	};
 	
-	// this is useless if we're not in a browser
-	priv.core.findScript = function () {};
-
 	function loadScriptViaLoad (def, success, fail) {
 		try {
 			globalLoad(def.url);
