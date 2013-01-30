@@ -1463,6 +1463,9 @@ define('curl/shim/ssjs', function (require, exports) {
 			return localLoadFunc(def, success, fail);
 		}
 	};
+	
+	// this is useless if we're not in a browser
+	priv.core.findScript = function () {};
 
 	function loadScriptViaLoad (def, success, fail) {
 		try {
