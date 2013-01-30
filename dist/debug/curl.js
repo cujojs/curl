@@ -960,22 +960,22 @@
 		},
 
 		fetchDep: function (depName, parentDef) {
-			var toAbsId, isPreload, cfg, parts, mainId, loaderId, pluginId,
+			var toAbsId, isPreload, cfg, parts, absId, mainId, loaderId, pluginId,
 				resId, pathInfo, def, tempDef, resCfg;
 
 			toAbsId = parentDef.toAbsId;
 			isPreload = parentDef.isPreload;
 			cfg = parentDef.config || userCfg; // is this fallback necessary?
 
-			if (depName in cache) {
+			absId = toAbsId(depName);
+
+			if (absId in cache) {
 				// module already exists in cache
-				// TODO: isn't there a chance that a plugin will normalize an id to look like an un-normalized one?
-				mainId = depName;
+				mainId = absId;
 			}
 			else {
 				// check for plugin loaderId
-				// TODO: this runs pluginParts() twice. how to run it just once?
-				parts = pluginParts(toAbsId(depName));
+				parts = pluginParts(absId);
 				resId = parts.resourceId;
 				// get id of first resource to load (which could be a plugin)
 				mainId = parts.pluginId || resId;
@@ -1134,30 +1134,36 @@
 	cjsGetters = {'require': core.getCjsRequire, 'exports': core.getCjsExports, 'module': core.getCjsModule};
 
 	function _curl (/* various */) {
+		var args, promise, cfg;
 
-		var args = [].slice.call(arguments), cfg;
+		args = [].slice.call(arguments);
 
 		// extract config, if it's specified
 		if (isType(args[0], 'Object')) {
 			cfg = args.shift();
-			_config(cfg);
+			promise = _config(cfg);
 		}
 
-		return new CurlApi(args[0], args[1], args[2]);
-
+		return new CurlApi(args[0], args[1], args[2], promise);
 	}
 
-	function _config (cfg) {
+	function _config (cfg, callback, errback) {
+		var promise;
 		if (cfg) {
 			core.setApi(cfg);
 			userCfg = core.config(cfg);
 			// check for preloads
 			if ('preloads' in cfg) {
-				preload = new CurlApi(cfg['preloads'], undef, undef, preload, true);
+				promise = new CurlApi(cfg['preloads'], undef, errback, preload, true);
+				// yes, this is hacky and embarrassing. now that we've got that
+				// settled... until curl has deferred factory execution, this
+				// is the only way to stop preloads from dead-locking when
+				// they have dependencies inside a bundle.
+				setTimeout(function () { preload = promise; }, 0);
 			}
-			// check for main module(s)
+			// check for main module(s). this waits for preloads implicitly.
 			if ('main' in cfg) {
-				new CurlApi(cfg['main'])
+				return new CurlApi(cfg['main'], callback, errback)
 			}
 		}
 	}
@@ -1165,7 +1171,9 @@
 	// thanks to Joop Ringelberg for helping troubleshoot the API
 	function CurlApi (ids, callback, errback, waitFor, isPreload) {
 		var then, ctx;
+
 		ctx = core.createContext(userCfg, undef, [].concat(ids), isPreload);
+
 		this['then'] = then = function (resolved, rejected) {
 			when(ctx,
 				// return the dependencies as arguments, not an array
@@ -1179,16 +1187,20 @@
 			);
 			return this;
 		};
+
 		this['next'] = function (ids, cb, eb) {
 			// chain api
 			return new CurlApi(ids, cb, eb, ctx);
 		};
+
 		this['config'] = _config;
+
 		if (callback || errback) then(callback, errback);
-		// ensure next-turn for builds
+
+		// ensure next-turn so inline code can execute first
 		setTimeout(function () {
 			when(isPreload || preload, function () {
-				when(waitFor, function () { core.getDeps(ctx); });
+				when(waitFor, function () { core.getDeps(ctx); }, errback);
 			});
 		}, 0);
 	}
