@@ -1148,12 +1148,18 @@
 	}
 
 	function _config (cfg, callback, errback) {
+		var promise;
 		if (cfg) {
 			core.setApi(cfg);
 			userCfg = core.config(cfg);
 			// check for preloads
 			if ('preloads' in cfg) {
-				preload = new CurlApi(cfg['preloads'], undef, errback, preload, true);
+				promise = new CurlApi(cfg['preloads'], undef, errback, preload, true);
+				// yes, this is hacky and embarrassing. now that we've got that
+				// settled... until curl has deferred factory execution, this
+				// is the only way to stop preloads from dead-locking when
+				// they have dependencies inside a bundle.
+				setTimeout(function () { preload = promise; }, 0);
 			}
 			// check for main module(s). this waits for preloads implicitly.
 			if ('main' in cfg) {
