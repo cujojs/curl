@@ -951,8 +951,25 @@
 					// Note: if it did have an id, it will be resolved in the define()
 					if (def.useNet !== false) {
 
-						// if !args, nothing was added to the argsNet
-						if (!args || args.ex) {
+						// If we are here and args is undefined it means no
+						// define was found / ran in the file.
+						// No define is same as a define that has no dependencies
+						// and with a factory that returns undefined.
+						// There is no point complaining about this being plain JS file.
+						// let's be nice to the user and just pretend that this
+						// is an AMD module with this inside:
+						//   define(function(){return undefined})
+						if (!args) {
+							args = {
+								id: undef,
+								deps: [],
+								res: function() { return undef; },
+								cjs: undef
+							};
+						}
+						// we need the above code to be above below code for args.ex not to blow up.
+
+						if (args.ex) {
 							def.reject(new Error(((args && args.ex) || 'define() missing or duplicated: ' + def.url)));
 						}
 						else {

@@ -1,0 +1,44 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title></title>
+</head>
+<body>
+<p>Test results:</p>
+<p><span id="test1" style="font-width:bold;">Failed</span>: Should load two plain JS files 'module style' and expose some globals we look for</p>
+
+<script>
+
+	curl = {
+		paths: {
+			curl: '../src/curl/'
+		}
+	};
+
+</script>
+<script src="../src/curl.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+
+	function alter (id, msg) {
+		document.getElementById(id).innerHTML = msg;
+	}
+
+	curl(['stuff/plain_old'])
+	.then(function(){
+		curl(['stuff/plain_old_2'])
+		.then(function(){
+			if (
+				typeof testDomain !== 'undefined' &&
+				testDomain.foo && testDomain.awesome &&
+				testDomain.awesome.sauce
+			) {
+				alter('test1', 'SUCCESS')
+			}
+		})
+	})
+
+</script>
+
+</body>
+</html>
