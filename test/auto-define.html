@@ -29,6 +29,9 @@
 			curl(['pkg/plain_old.js'])
 				.then(check, cb.failure)
 				.then(done, done);
+		},
+		'curl should error when a module has a .js extension': function (cb, assert, require, done) {
+			curl(['pkg/one.js']).then(cb.failure, cb.success).then(done, done);
 		}
 	};
 

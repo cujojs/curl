@@ -938,12 +938,20 @@
 					args = argsNet;
 					argsNet = undef; // reset it before we get deps
 					
+					// if the resource is a plain js file, auto-define it here
+					if (/\.js$/.test(def.id)) {
+						if (def.useNet == false || args) {
+							def.reject(new Error('define() found in plain js file.'));
+						}
+						else {
+							define(def.id, undef);
+						}
+					}
+					
 					// if our resource was not explicitly defined with an id (anonymous)
 					// Note: if it did have an id, it will be resolved in the define()
 					if (def.useNet !== false) {
 
-						// if the resource is a plain js file, auto-define it here
-						if (/\.js$/.test(def.id)) define(def.id, undef);
 						
 						// if !args, nothing was added to the argsNet
 						if (!args || args.ex) {
