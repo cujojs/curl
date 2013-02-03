@@ -1,0 +1,80 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>auto-define plain js test</title>
+
+<script src="../src/curl.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+
+(function () {
+"use strict";
+
+	var cfg, tests, domReady;
+
+	cfg = {
+		baseUrl: '',
+		packages: [
+			{ name: 'curl', location: '../src/curl', main: '../curl' },
+			{ name: 'pkg', location: 'stuff' }
+		]
+	};
+
+	tests = {
+		'curl should auto-define a plain js file when .js extension is present': function (cb, assert, require, done) {
+			function check (value) {
+				assert(true, 'success callback fired');
+				assert.equal(value, undefined, 'module returned from plain js file is undefined');
+			}
+			curl(['pkg/plain_old.js'])
+				.then(check, cb.failure)
+				.then(done, done);
+		}
+	};
+
+	curl(
+		cfg,
+		['curl/tdd/runner', 'curl/domReady', 'tdd/configureAsserts']
+	).then(
+		function (runner, ready, asserts) {
+			var testRunner, assertions;
+
+			testRunner = runner;
+			assertions = asserts;
+			domReady = ready;
+
+			for (var name in tests) (function (name) {
+				var cb, assert;
+				cb = configureCallbacks(success, failure, name);
+				assert = assertions(success, failure, name);
+				testRunner().run(function (require, done) {
+					tests[name](cb, assert, require, done);
+				});
+			}(name));
+		}
+	);
+
+	function configureCallbacks (success, failure, msg) {
+		return {
+			success: function () { success(msg); },
+			failure: function (ex) { failure(msg + (ex ? ' - ' + ex.message : '')); }
+		};
+	}
+
+	function write (msg) {
+		domReady(function () {
+			document.body.appendChild(document.createElement('div')).innerHTML = msg;
+		})
+	}
+
+	function failure (msg) { write('FAILED: ' + msg); }
+	function success (msg) { write('SUCCESS: ' + msg); }
+
+}());
+</script>
+
+</head>
+<body>
+
+</body>
+</html>
