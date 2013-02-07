@@ -52,6 +52,7 @@
 		findDotsRx = /(\.)(\.?)(?:$|\/([^\.\/]+.*)?)/g,
 		removeCommentsRx = /\/\*[\s\S]*?\*\/|\/\/.*?[\n\r]/g,
 		findRValueRequiresRx = /require\s*\(\s*(["'])(.*?[^\\])\1\s*\)|[^\\]?(["'])/g,
+		splitMainDirectives = /\s*\|\|\s*/,
 		cjsGetters,
 		core;
 
@@ -1148,22 +1149,37 @@
 	}
 
 	function _config (cfg, callback, errback) {
-		var promise;
+		var pPromise, mPromise, main;
 		if (cfg) {
 			core.setApi(cfg);
 			userCfg = core.config(cfg);
 			// check for preloads
 			if ('preloads' in cfg) {
-				promise = new CurlApi(cfg['preloads'], undef, errback, preload, true);
+				pPromise = new CurlApi(cfg['preloads'], undef, errback, preload, true);
 				// yes, this is hacky and embarrassing. now that we've got that
 				// settled... until curl has deferred factory execution, this
 				// is the only way to stop preloads from dead-locking when
 				// they have dependencies inside a bundle.
-				setTimeout(function () { preload = promise; }, 0);
+				setTimeout(function () { preload = pPromise; }, 0);
 			}
 			// check for main module(s). this waits for preloads implicitly.
 			if ('main' in cfg) {
-				return new CurlApi(cfg['main'], callback, errback)
+				main = cfg['main'];
+				if (isType(main, 'String')) {
+					// process data-curl-run="prod || dev" syntax
+					main = main.split(splitMainDirectives);
+					mPromise = new Promise();
+					new CurlApi(main[0].split(','), mPromise.resolve, main[1] 
+						? function (ex) { 
+							new CurlApi(main[1].split(','), mPromise.resolve, mPromise.reject);
+						} 
+						: mPromise.reject
+					);
+				}
+				else {
+					mPromise = new CurlApi(main, callback, errback);
+				}
+				return mPromise;
 			}
 		}
 	}
