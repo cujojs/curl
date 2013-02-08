@@ -241,7 +241,7 @@
 			return result;
 		}
 	}
-
+	
 	core = {
 
 		/**
@@ -1133,6 +1133,10 @@
 				script.setAttribute(runModuleAttr, '');
 			}
 			return cfg;
+		},
+		
+		nextTurn: function (task) {
+			setTimeout(task, 0);
 		}
 
 	};
@@ -1167,7 +1171,7 @@
 				// settled... until curl has deferred factory execution, this
 				// is the only way to stop preloads from dead-locking when
 				// they have dependencies inside a bundle.
-				setTimeout(function () { preload = pPromise; }, 0);
+				core.nextTurn(function () { preload = pPromise; });
 			}
 			// check for main module(s). all modules wait for preloads implicitly.
 			main = cfg['main'];
@@ -1215,11 +1219,11 @@
 		if (callback || errback) then(callback, errback);
 
 		// ensure next-turn so inline code can execute first
-		setTimeout(function () {
+		core.nextTurn(function () {
 			when(isPreload || preload, function () {
 				when(waitFor, function () { core.getDeps(ctx); }, errback);
 			});
-		}, 0);
+		});
 	}
 
 	_curl['version'] = version;

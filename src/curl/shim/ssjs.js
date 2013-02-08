@@ -58,6 +58,10 @@ define(/*=='curl/shim/ssjs',==*/ function (require, exports) {
 	else {
 		localLoadFunc = remoteLoadFunc = failIfInvoked;
 	}
+	
+	if (typeof process === 'object' && process.nextTick) {
+		priv.core.nextTurn = process.nextTick;
+	}
 
 	function stripExtension (url) {
 		return url.replace(/\.js$/, '');
@@ -134,6 +138,10 @@ define(/*=='curl/shim/ssjs',==*/ function (require, exports) {
 		return protocol && protocol[protocol.length - 1] != ':'
 			? protocol += ':'
 			: protocol;
+	}
+	
+	function _nextTick (func) {
+		nextTick(func);
 	}
 
 });
