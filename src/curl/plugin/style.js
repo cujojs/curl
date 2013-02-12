@@ -140,6 +140,8 @@ define([], function () {
 			createStyle(cssText, loaded, loaded.error);
 		});
 	};
+	
+	createStyle.translateUrls = translateUrls;
 
 	return createStyle;
 });
