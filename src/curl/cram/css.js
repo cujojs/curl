@@ -46,23 +46,23 @@ define(['./jsEncode'], function (jsEncode) {
 				? templateWithRuntimeModule
 				: templateWithRuntimePlugin;
 			resources = (resId || '').split(commaSepRx);
-			
+
 			baseUrl = req.toUrl('');
 
 			while ((eachId = resources.shift())) templatize(eachId);
 
 			function templatize (resId) {
 				var absId, idPath;
-				
+
 				absId = pluginId + '!' + resId;
-				
+
 				idPath = path(resId); //), baseUrl);
 
 				io.read(resId, function (text) {
 					var changed, moduleText;
 
 					text = text.replace(findUrlRx, function (all, url) {
-						// adjust any relative url to an id, translate it to a url 
+						// adjust any relative url to an id, translate it to a url
 						// via require.toUrl, then make it relative to baseUrl.
 						var translated = makeRelative(req.toUrl(translateId(url, idPath)), baseUrl);
 						changed |= translated != url;
@@ -103,18 +103,20 @@ define(['./jsEncode'], function (jsEncode) {
 		}
 		return url;
 	}
-	
+
 	function path (id) {
+		var pos;
 		// extracts the path bits from an id
-		return id.substr(0, id.lastIndexOf('/')) + '/';
+		pos = id.lastIndexOf('/');
+		return pos >= 0 ? id.substr(0, pos) + '/' : id;
 	}
-	
+
 	function reduceDots (id) {
 		// remove any dots from the inside of an id
 		// remove path-segment/../ or /./
 		return id.replace(/(^|\/)[^\/\.]+\/\.\.\/|\/\.\//, '/');
 	}
-	
+
 	function makeRelative (url, parentUrl) {
 		// make this url relative to a parent url
 		return url.replace(new RegExp('^' + parentUrl), '');
