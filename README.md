@@ -20,12 +20,9 @@ Helpful link for updating submodules:
 What's New?
 =======
 
-IE10 compatibility: the following commits are compatible with IE10 (and Safari 6):
-
-* [anything 0.7.x or higher](https://github.com/cujojs/curl)
-* [0.6.8](https://github.com/cujojs/curl/tree/3568bea941a6a6068995bfbeb56fa72c65835056)
-* [0.6.2a](https://github.com/cujojs/curl/tree/2683057e4cdf45eec44dd69dfd814ece75b7ae70)
-
+* 0.7.4
+	* curl.js is now available on CDN: http://cdnjs.com/#curl and 
+	http://jsdelivr.com/#!curl.js
 * 0.7.3
 	* css! plugin no longer fails when sniffing for Opera (Fixes #147)
 	* new curl.config() API method
@@ -584,9 +581,7 @@ What are AMD plugins?
 AMD supports the notion of plugins. Plugins are AMD modules that can be used to
 load javascript modules -- or other types of resources. curl comes with several
 plugins already, including a text plugin (for templates or other text
-resources), two different css plugins, a dojo 1.6 compatibility plugin,
-a dom-ready plugin and a debug plugin (for collecting and logging details of the
-inner workings of curl).
+resources), two different css plugins, a dom-ready plugin, and several others.
 
 Plugins are designated by a prefix on the name of the module or resource to be
 loaded. They are delineated by a ! symbol. The following example shows the use
