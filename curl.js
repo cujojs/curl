@@ -26,16 +26,158 @@
 //		findDotsRx = /(\.)(\.?)(?:$|\/([^\.\/]+.*)?)/g,
 //		splitMainDirectives = /\s*,\s*/,
 
-	var version, doc, head, core, globalRealm, argsNet, undef;
+	var version = '0.8.0';
 
-	version = '0.8.0';
+	/***** public API *****/
+
+	/**
+	 * @param {String} [id]
+	 * @param {Array} [dependencyIds]
+	 * @param {*} factoryOrExports
+	 */
+	function define (factoryOrExports) {
+		var args = core.fixDefineArgs(arguments);
+		core.defineAmdModule.apply(this, args);
+	}
+
+	/**
+	 * @param {Object} [cfg]
+	 * @param {Array|String} [ids]
+	 * @param {Function} [callback]
+	 * @param {Function} [errback]
+	 * @return {CurlApi}
+	 */
+	function curl (/* various */) {
+		var args, promise, cfg;
+
+		args = [].slice.call(arguments);
+
+		// sync curl(id)
+		if (core.isType(args[0], 'String')) {
+			var ctx = globalRealm.cache[args[0]];
+			return core.isModuleContext(ctx)
+				? core.importModuleSync(ctx)
+				: ctx;
+		}
+
+		// extract config, if it's specified
+		if (core.isType(args[0], 'Object')) {
+			cfg = args.shift();
+			promise = core.config(cfg);
+		}
+
+		return new CurlApi(args[0], args[1], args[2], promise);
+	}
+
+	/**
+	 * Current version of curl.js.
+	 * @type {String}
+	 */
+	curl['version'] = version;
+
+	/**
+	 *
+	 * @param {Object} cfg
+	 * @param {Function} [cb]
+	 * @param {Function} [eb]
+	 * @return {CurlApi}
+	 */
+	curl['config'] = function (cfg, cb, eb) {
+		new CurlApi().config(cfg, cb, eb);
+	};
+
+	/**
+	 *
+	 * @param {Array} ids
+	 * @param {Function} [callback]
+	 * @param {Function} [errback]
+	 * @constructor
+	 */
+	function CurlApi (ids, callback, errback, waitFor) {
+		var ctx, dfd, promise;
+
+		// TODO: ensure next-turn so inline code can execute first
+
+		// defaults
+		if (!callback) callback = noop;
+		if (!errback) errback = function (ex) {
+			throw ex;
+		};
+
+		dfd = new Deferred();
+
+		if (ids) {
+			// create a phony module context
+			ctx = core.createModuleContext('', globalRealm);
+			ctx.deps = ids || []; // prevents cjs-wrapped functionality
+			ctx.factory = callback; // callback mimics a module factory
+		}
+
+		promise = when(waitFor, function () {
+			var deps;
+			// get the dependencies, if any
+			deps = ctx && core.resolveDeps(ctx).then(
+				function () {
+					core.createFactoryExporter(ctx);
+					ctx.runFactory();
+					return ctx;
+				},
+				errback
+			);
+			// resolve
+			return when(deps, dfd.fulfill, dfd.reject);
+		});
+
+		/**
+		 *
+		 * @param {Function} [callback]
+		 * @param {Function} [errback]
+		 * @return {CurlApi}
+		 * @memberOf CurlApi
+		 */
+		this['then'] = function (callback, errback) {
+			ctx && promise.then(function () {
+				// set the new "factory" and re-run it
+				ctx.factory = callback;
+				ctx.runFactory();
+			}, errback);
+			return this;
+		};
+
+		/**
+		 * @param {Array} ids
+		 * @param {Function} [callback]
+		 * @param {Function} [errback]
+		 * @return {CurlApi}
+		 * @memberOf CurlApi
+		 */
+		this['next'] = function (ids, callback, errback) {
+			return new CurlApi(ids, callback, errback, promise);
+		};
+
+		/**
+		 * @param {Object} cfg
+		 * @param {Function} [callback]
+		 * @param {Function} [errback]
+		 * @return {CurlApi}
+		 * @memberOf CurlApi
+		 */
+		this['config'] = function (cfg, callback, errback) {
+			// don't wait for previous promise to start config
+			promise = all([promise, core.config(cfg)]);
+			if (callback || errback) promise = promise.then(callback, errback);
+			return this;
+		};
+	}
+
+	var doc, head, core, globalRealm, argsNet;
+
 	doc = global.document;
 	head = doc && (doc['head'] || doc.getElementsByTagName('head')[0]);
 
 	/**
 	 *
 	 * @type {Object}
-	 * @private
 	 * @module 'curl/core'
 	 */
 	core = {
@@ -155,12 +297,12 @@
 
 		fetchAmdModule: function (mctx) {
 			var dfd = new Deferred();
-			core.loadScript(mctx, resolve, dfd.reject);
+			loadScript(mctx, resolve, dfd.reject);
 			return dfd.promise;
 
 			function resolve () {
 				var args = argsNet;
-				argsNet = undef;
+				argsNet = undefined;
 				// TODO: determine if we can process all define()s here rather than processing some in defineAmdModule
 				if (!args) {
 					args = mctx.useNet === false
@@ -180,17 +322,17 @@
 		defineAmdModule: function (id, deps, factory, isCjsWrapped) {
 			var mctx;
 
-			if (undef == id) {
-				if (undef != argsNet) {
+			if (id == undefined) {
+				if (argsNet != undefined) {
 					argsNet = { ex: 'Multiple anonymous defines in url or AMD module loaded via <script/> or js! plugin' };
 				}
 				// check if we can find id in activeScripts
-				else if (!(id = core.getCurrentModuleId())) {
+				else if (!(id = loadScript.getCurrentModuleId())) {
 					argsNet = arguments;
 				}
 			}
 
-			if (undef != id) {
+			if (id != undefined) {
 				// create or lookup mctx in cache
 				// TODO: how do we support multiple realms when resolving here?
 				// TODO: can we resolve in fetchAmdModule's callback instead?
@@ -266,90 +408,6 @@
 				mctx.deps = (mctx.deps || []).concat(rvals);
 			}
 			return mctx;
-		},
-
-		/***** script loading *****/
-
-		/**
-		 * @type {Object}
-		 * @private
-		 * this is the collection of scripts that IE is loading. one of these
-		 * will be the "interactive" script. too bad IE doesn't send a
-		 * readystatechange event to tell us exactly which one.
-		 */
-		activeScripts: {},
-
-		/** readyStates for IE6-9 */
-		readyStates: 'addEventListener' in global
-			? {}
-			: { 'loaded': 1, 'complete': 1 },
-
-		loadScript: (function (insertBeforeEl) {
-			return function (mctx, cb, eb) {
-				var el;
-				// script processing rules learned from RequireJS
-
-				el = doc.createElement('script');
-
-				// js! plugin uses alternate mimetypes and such
-				el.type = mctx.mimetype || 'text/javascript';
-				el.charset = mctx.charset || 'utf-8';
-				el.async = !mctx.order;
-				el.src = mctx.url;
-
-				// using dom0 event handlers instead of wordy w3c/ms
-				el.onload = el.onreadystatechange = process;
-				el.onerror = fail;
-
-				// loading will start when the script is inserted into the dom.
-				// IE will load the script sync if it's in the cache, so
-				// indicate the current resource definition first.
-				core.activeScripts[mctx.id] = el;
-
-				// to keep IE from crying, we need to put scripts before any
-				// <base> elements, but after any <meta>.
-				head.insertBefore(el, insertBeforeEl);
-
-				// the js! plugin uses this
-				return el;
-
-				// initial script processing
-				function process (ev) {
-					ev = ev || global.event;
-					// detect when it's done loading
-					// ev.type == 'load' is for all browsers except IE6-9
-					// IE6-9 need to use onreadystatechange and look for
-					// el.readyState in {loaded, complete} (yes, we need both)
-					if (ev.type == 'load' || core.readyStates[el.readyState]) {
-						delete core.activeScripts[mctx.id];
-						// release event listeners
-						el.onload = el.onreadystatechange = el.onerror = ''; // ie cries if we use undefined
-						cb();
-					}
-				}
-
-				function fail (e) {
-					// some browsers send an event, others send a string,
-					// but none of them send anything useful, so just say we failed:
-					eb(new Error('Syntax or http error: ' + mctx.url));
-				}
-			}
-		}(head && head.getElementsByTagName('base')[0] || null)),
-
-		getCurrentModuleId: function () {
-			// IE6-9 mark the currently executing thread as "interactive"
-			// Note: Opera lies about which scripts are "interactive", so we
-			// just have to test for it. Opera provides a true browser test, not
-			// a UA sniff, thankfully.
-			// learned this trick from James Burke's RequireJS
-			var id;
-			if (!core.isType(global['opera'], 'Opera')) {
-				for (id in core.activeScripts) {
-					if (core.activeScripts[id].readyState == 'interactive') {
-						return id;
-					}
-				}
-			}
 		},
 
 		/***** config *****/
@@ -431,7 +489,7 @@
 			}
 			// if main (string or array), fetch it/them
 			if (cfg.main && cfg.main.length) {
-				promise = new CurlApi([].concat(cfg.main), undef, undef, promise);
+				promise = new CurlApi([].concat(cfg.main), undefined, undefined, promise);
 			}
 
 			// when all is done, set global config and return it
@@ -547,14 +605,14 @@
 				// Note: ignores require() inside strings and comments
 				var source, ids = [], currQuote;
 				// prefer toSource (FF) since it strips comments
-				source = typeof factory == 'string' ?
-						 factory :
-						 factory.toString();
+				source = typeof factory == 'string'
+					? factory
+					: factory.toString();
 				// remove comments, then look for require() or quotes
 				source.replace(removeCommentsRx, '').replace(findRValueRequiresRx, function (m, rq, id, qq) {
 					// if we encounter a string in the source, don't look for require()
 					if (qq) {
-						currQuote = currQuote == qq ? undef : currQuote;
+						currQuote = currQuote == qq ? undefined : currQuote;
 					}
 					// if we're not inside a quoted string
 					else if (!currQuote) {
@@ -664,6 +722,104 @@
 
 	};
 
+	/***** script loading *****/
+
+	var insertBeforeEl;
+
+	insertBeforeEl = head && head.getElementsByTagName('base')[0] || null;
+
+	/**
+	 *
+	 * @param {Object} options
+	 * @param {String} options.id
+	 * @param {String} options.url
+	 * @param {String} [options.mimetype]
+	 * @param {String} [options.charset]
+	 * @param {Boolean} [options.order]
+	 * @param {Function} cb
+	 * @param {Function} eb
+	 * @return {HTMLScriptElement}
+	 */
+	function loadScript (options, cb, eb) {
+		var el;
+		// script processing rules learned from RequireJS
+
+		el = doc.createElement('script');
+
+		// js! plugin uses alternate mimetypes and such
+		el.type = options.mimetype || 'text/javascript';
+		el.charset = options.charset || 'utf-8';
+		el.async = !options.order;
+		el.src = options.url;
+
+		// using dom0 event handlers instead of wordy w3c/ms
+		el.onload = el.onreadystatechange = process;
+		el.onerror = fail;
+
+		// loading will start when the script is inserted into the dom.
+		// IE will load the script sync if it's in the cache, so
+		// indicate the current resource definition first.
+		loadScript.activeScripts[options.id] = el;
+
+		// to keep IE from crying, we need to put scripts before any
+		// <base> elements, but after any <meta>.
+		head.insertBefore(el, insertBeforeEl);
+
+		// the js! plugin uses this
+		return el;
+
+		// initial script processing
+		function process (ev) {
+			ev = ev || global.event;
+			// detect when it's done loading
+			// ev.type == 'load' is for all browsers except IE6-9
+			// IE6-9 need to use onreadystatechange and look for
+			// el.readyState in {loaded, complete} (yes, we need both)
+			if (ev.type == 'load' || loadScript.readyStates[el.readyState]) {
+				delete loadScript.activeScripts[options.id];
+				// release event listeners
+				el.onload = el.onreadystatechange = el.onerror = ''; // ie cries if we use undefined
+				cb();
+			}
+		}
+
+		function fail (e) {
+			// some browsers send an event, others send a string, but none
+			// of them send anything informative, so just say we failed:
+			eb(new Error('Syntax or http error: ' + options.url));
+		}
+	}
+
+	loadScript.getCurrentModuleId = function () {
+		// IE6-9 mark the currently executing thread as "interactive"
+		// Note: Opera lies about which scripts are "interactive", so we
+		// just have to test for it. Opera provides a true browser test, not
+		// a UA sniff, thankfully.
+		// learned this trick from James Burke's RequireJS
+		var id;
+		if (!core.isType(global['opera'], 'Opera')) {
+			for (id in loadScript.activeScripts) {
+				if (loadScript.activeScripts[id].readyState == 'interactive') {
+					return id;
+				}
+			}
+		}
+	};
+
+	/**
+	 * @type {Object}
+	 * @private
+	 * this is the collection of scripts that IE is loading. one of these
+	 * will be the "interactive" script. too bad IE doesn't send a
+	 * readystatechange event to tell us exactly which one.
+	 */
+	loadScript.activeScripts = {};
+
+	/** readyStates for IE6-9 */
+	loadScript.readyStates = 'addEventListener' in global
+		? {}
+		: { 'loaded': 1, 'complete': 1 };
+
 	/***** startup *****/
 
 	// default configs. some properties are quoted to assist GCC
@@ -676,8 +832,8 @@
 			'paths': {},
 			'packages': {},
 			'plugins': {},
-			'preloads': undef,
-			'main': undef,
+			'preloads': undefined,
+			'main': undefined,
 			'type': 'amd',
 			'types': {
 				'amd': {
@@ -695,10 +851,11 @@
 		},
 		idToUrl: function (id) { return id; },
 		cache: {
-			'curl': curl,
-//			'curl/define': _define,
 //			'curl/config': function () { return globalRealm.cfg; },
+			'curl': curl,
+			'curl/define': define,
 			'curl/core': core,
+			'curl/loadScript': loadScript,
 			'curl/Deferred': Deferred
 		}
 	};
@@ -756,7 +913,7 @@
 			if (!pendingHandlers)  return;
 
 			bindings = pendingHandlers;
-			pendingHandlers = undef;
+			pendingHandlers = undefined;
 
 			// The promise is no longer pending, so we can swap bindHandlers
 			// to something more direct
@@ -798,14 +955,17 @@
 
 				if (result && typeof result.then === 'function') {
 					result.then(fulfillNext, rejectNext);
-				} else {
+				}
+				else {
 					fulfillNext(result);
 				}
 
-			} else {
+			}
+			else {
 				fallback(val);
 			}
-		} catch (e) {
+		}
+		catch (e) {
 			rejectNext(e);
 		}
 	}
@@ -815,7 +975,7 @@
 	}
 	Deferred.isDeferred = isDeferred;
 
-	 function isPromise (it) {
+	function isPromise (it) {
 		return it && it.then == 'function';
 	}
 	Deferred.isPromise = isPromise;
@@ -857,156 +1017,18 @@
 		return function () { return task1.apply(this, arguments).then(task2); };
 	}
 
-	/***** public curl API *****/
-
-	/**
-	 *
-	 * @param {Array} ids
-	 * @param {Function} [callback]
-	 * @param {Function} [errback]
-	 * @constructor
-	 */
-	function CurlApi (ids, callback, errback, waitFor) {
-		var ctx, dfd, promise;
-
-		// TODO: ensure next-turn so inline code can execute first
-
-		// defaults
-		if (!callback) callback = noop;
-		if (!errback) errback = function (ex) { throw ex; };
-
-		dfd = new Deferred();
-
-		if (ids) {
-			// create a phony module context
-			ctx = core.createModuleContext('', globalRealm);
-			ctx.deps = ids || []; // prevents cjs-wrapped functionality
-			ctx.factory = callback; // callback mimics a module factory
-		}
-
-		promise = when(waitFor, function () {
-			var deps;
-			// get the dependencies, if any
-			deps = ctx && core.resolveDeps(ctx).then(
-				function () {
-					core.createFactoryExporter(ctx);
-					ctx.runFactory();
-					return ctx;
-				},
-				errback
-			);
-			// resolve
-			return when(deps, dfd.fulfill, dfd.reject);
-		});
-
-		/**
-		 *
-		 * @param {Function} [callback]
-		 * @param {Function} [errback]
-		 * @return {CurlApi}
-		 * @memberOf CurlApi
-		 */
-		this['then'] = function (callback, errback) {
-			ctx && promise.then(function () {
-				// set the new "factory" and re-run it
-				ctx.factory = callback;
-				ctx.runFactory();
-			}, errback);
-			return this;
-		};
-
-		/**
-		 * @param {Array} ids
-		 * @param {Function} [callback]
-		 * @param {Function} [errback]
-		 * @return {CurlApi}
-		 * @memberOf CurlApi
-		 */
-		this['next'] = function (ids, callback, errback) {
-			return new CurlApi(ids, callback, errback, promise);
-		};
-
-		/**
-		 * @param {Object} cfg
-		 * @param {Function} [callback]
-		 * @param {Function} [errback]
-		 * @return {CurlApi}
-		 * @memberOf CurlApi
-		 */
-		this['config'] = function (cfg, callback, errback) {
-			// don't wait for previous promise to start config
-			promise = all([promise, core.config(cfg)]);
-			if (callback || errback) promise = promise.then(callback, errback);
-			return this;
-		};
-	}
-
-	/**
-	 * @param {Object} [cfg]
-	 * @param {Array|String} [ids]
-	 * @param {Function} [callback]
-	 * @param {Function} [errback]
-	 * @return {CurlApi}
-	 */
-	function curl (/* various */) {
-		var args, promise, cfg;
-
-		args = [].slice.call(arguments);
-
-		// sync curl(id)
-		if (core.isType(args[0], 'String')) {
-			var ctx = globalRealm.cache[args[0]];
-			return core.isModuleContext(ctx)
-				? core.importModuleSync(ctx)
-				: ctx;
-		}
-
-		// extract config, if it's specified
-		if (core.isType(args[0], 'Object')) {
-			cfg = args.shift();
-			promise = core.config(cfg);
-		}
-
-		return new CurlApi(args[0], args[1], args[2], promise);
-	}
-
-	/**
-	 *
-	 * @type {String}
-	 */
-	curl['version'] = version;
-
-	/**
-	 *
-	 * @param {Object} cfg
-	 * @param {Function} [cb]
-	 * @param {Function} [eb]
-	 * @return {CurlApi}
-	 */
-	curl['config'] = function (cfg, cb, eb) {
-		new CurlApi().config(cfg, cb, eb);
-	};
+	/***** exports *****/
 
 	// TODO: make this moveable / renamable
 	global.curl = curl;
 	if (cjsModule) cjsModule.exports = curl;
 
-	/***** define *****/
-
 	// TODO: make this namespaceable / renameable
 	global.define = define;
 
-	/**
-	 * @param {String} [id]
-	 * @param {Array} [dependencyIds]
-	 * @param {*} factoryOrExports
-	 */
-	function define () {
-		var args = core.fixDefineArgs(arguments);
-		core.defineAmdModule.apply(this, args);
-	}
-
 	/***** utilities *****/
+
+	var undefined; // this ensures `typeof undefined == 'undefined';`
 
 	function ModuleContext () {}
 
