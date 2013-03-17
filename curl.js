@@ -88,44 +88,47 @@
 
 	/**
 	 *
-	 * @param {Array} ids
+	 * @param {Array} [ids]
 	 * @param {Function} [callback]
 	 * @param {Function} [errback]
 	 * @constructor
 	 */
 	function CurlApi (ids, callback, errback, waitFor) {
-		var ctx, dfd, promise;
+		var ctx, dfd, promise, args;
 
 		// TODO: ensure next-turn so inline code can execute first
 
 		// defaults
 		if (!callback) callback = noop;
-		if (!errback) errback = function (ex) {
-			throw ex;
-		};
+		if (!errback) errback = function (ex) { throw ex; };
 
 		dfd = new Deferred();
+		promise = dfd.promise;
+		args = [];
 
 		if (ids) {
 			// create a phony module context
 			ctx = core.createModuleContext('', globalRealm);
-			ctx.deps = ids || []; // prevents cjs-wrapped functionality
-			ctx.factory = callback; // callback mimics a module factory
+			// `|| []` prevents accidental cjs-wrapped functionality
+			ctx.deps = ids || [];
+			// create a "factory" that captures its arguments (dependencies)
+			ctx.factory = function () { args = arguments; };
+			// exporter will create ctx.funFactory()
+			core.createFactoryExporter(ctx);
 		}
 
-		promise = when(waitFor, function () {
-			var deps;
-			// get the dependencies, if any
-			deps = ctx && core.resolveDeps(ctx).then(
-				function () {
-					core.createFactoryExporter(ctx);
-					ctx.runFactory();
-					return ctx;
-				},
-				errback
+		// when ready, call the callback or errback
+		promise.then(function () {
+			callback.apply(undefined, args);
+		}, errback);
+
+		// wait for previous promise. then get deps. then resolve deps
+		// by running the factory. then resolve the deferred.
+		when(waitFor, function () {
+			when(ctx && core.resolveDeps(ctx).then(ctx.runFactory, errback),
+				dfd.fulfill,
+				dfd.reject
 			);
-			// resolve
-			return when(deps, dfd.fulfill, dfd.reject);
 		});
 
 		/**
@@ -136,10 +139,8 @@
 		 * @memberOf CurlApi
 		 */
 		this['then'] = function (callback, errback) {
-			ctx && promise.then(function () {
-				// set the new "factory" and re-run it
-				ctx.factory = callback;
-				ctx.runFactory();
+			promise = promise.then(function () {
+				callback.apply(undefined, args);
 			}, errback);
 			return this;
 		};
@@ -157,15 +158,12 @@
 
 		/**
 		 * @param {Object} cfg
-		 * @param {Function} [callback]
-		 * @param {Function} [errback]
 		 * @return {CurlApi}
 		 * @memberOf CurlApi
 		 */
-		this['config'] = function (cfg, callback, errback) {
+		this['config'] = function (cfg) {
 			// don't wait for previous promise to start config
 			promise = all([promise, core.config(cfg)]);
-			if (callback || errback) promise = promise.then(callback, errback);
 			return this;
 		};
 	}
@@ -196,12 +194,14 @@
 			var promises, i;
 			promises = [];
 			i = 0;
-			while (i < mctx.deps.length) promises.push(resolveAndCache(mctx.deps[i++]));
+			while (i < mctx.deps.length) {
+				promises.push(resolveAndCache(mctx.deps[i++]));
+			}
 			return all(promises).yield(mctx);
 
 			function resolveAndCache (id) {
 				return core.requireModule(mctx.realm, id).then(function (ctx) {
-					return mctx.realm.cache[id] = mctx;
+					return mctx.realm.cache[id] = ctx;
 				});
 			}
 		},
@@ -239,6 +239,8 @@
 						: dctx;
 					params.push(param);
 				}
+				// don't grab a reference to mctx.factory in advance since
+				// it could be replaced or created just-in-time.
 				return mctx.factory.apply(null, params);
 			};
 			return mctx;
@@ -602,15 +604,21 @@
 
 		extractCjsDeps: (function (removeCommentsRx, findRValueRequiresRx) {
 			return function (factory) {
-				// Note: ignores require() inside strings and comments
 				var source, ids = [], currQuote;
-				// prefer toSource (FF) since it strips comments
+
 				source = typeof factory == 'string'
 					? factory
 					: factory.toString();
+
 				// remove comments, then look for require() or quotes
-				source.replace(removeCommentsRx, '').replace(findRValueRequiresRx, function (m, rq, id, qq) {
-					// if we encounter a string in the source, don't look for require()
+				source.replace(removeCommentsRx, '')
+					.replace(findRValueRequiresRx, findRequires);
+
+				return ids;
+
+				function findRequires (m, rq, id, qq) {
+					// if we encounter a string in the source, don't look
+					// for require()
 					if (qq) {
 						currQuote = currQuote == qq ? undefined : currQuote;
 					}
@@ -619,8 +627,7 @@
 						ids.push(id);
 					}
 					return ''; // uses least RAM/CPU
-				});
-				return ids;
+				}
 			}
 		}(
 			/\/\*[\s\S]*?\*\/|\/\/.*?[\n\r]/g,
@@ -661,10 +668,8 @@
 				// remove leading dots and count levels
 				if (core.isRelPath(normId)) {
 					isRelative = true;
-					normId = normId.replace(findDotsRx, function (m, dot, doubleDot, remainder) {
-						if (doubleDot) removeLevels++;
-						return remainder || '';
-					});
+					// replaceDots also counts levels
+					normId = normId.replace(findDotsRx, replaceDots);
 				}
 
 				if (isRelative) {
@@ -682,6 +687,11 @@
 				}
 				else {
 					return normId;
+				}
+
+				function replaceDots (m, dot, dblDot, remainder) {
+					if (dblDot) removeLevels++;
+					return remainder || '';
 				}
 			}
 		}(/(\.)(\.?)(?:$|\/([^\.\/]+.*)?)/g)),
