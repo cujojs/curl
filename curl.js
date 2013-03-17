@@ -374,39 +374,49 @@
 		 * @memberOf core
 		 */
 		config: function (cfg) {
-			var prevCfg, newCfg, pathlist,
-				pathMaps, name, i, desc, promise;
+			var prevCfg, newCfg, desclist,
+				pathMaps, map, name, i, desc, promise;
 
 			// TODO: do we have to convert all config props from quoted props (GCC AO)?
 
 			// override and replace globalRealm.cfg and its maps
 			prevCfg = globalRealm.cfg;
-			newCfg = beget(prevCfg);
+			newCfg = core.beget(prevCfg);
 
 			// pathMap should not inherit for better performance.
 			// it and _pathRx are regenerated each time.
 			newCfg._pathMap = {};
 
 			// create a list of paths from all of the configured path maps
-			pathlist = [];
+			desclist = [];
 			pathMaps = { 'paths': 0, /*'plugins': 0,*/ 'packages': 1 }; // TODO: hoist?
 			for (name in pathMaps) {
-				newCfg[name] = beget(newCfg[name], cfg[name] || {});
-				pathlist = pathlist.concat(
+				map = newCfg[name];
+				if (core.isType(map, 'Array')) {
+					map = core.arrayToPkgMap(map);
+				}
+				newCfg[name] = core.beget(map, cfg[name] || {});
+				desclist = desclist.concat(
 					core.normalizePkgDescriptors(newCfg[name], pathMaps[name])
 				);
 			}
 
-			// process pathMaps (process the most important, last)
+			// process desclist
 			i = -1;
-			while (++i < pathlist.length) {
-				desc = pathlist[i];
+			while (++i < desclist.length) {
+				desc = desclist[i];
+				// prepare for pathMatcher
+				desc.specificity = desc.name.split('/').length;
+				desc.toString = function () { return this.name };
+				// add to path map
 				newCfg._pathMap[desc.name] = desc;
 				// if this desc has a custom config, extend main config
 				// TODO: figure out if this is a GCC AO problem:
-				if (own(pathlist[i], 'config')) desc.config = beget(cfg, desc.config);
+				if (own(desclist[i], 'config')) {
+					desc.config = core.beget(cfg, desc.config);
+				}
 			}
-			newCfg._pathRx = core.generatePathMatcher(pathlist);
+			newCfg._pathRx = core.generatePathMatcher(desclist);
 
 			globalRealm.cfg = newCfg;
 
@@ -425,16 +435,15 @@
 		},
 
 		normalizePkgDescriptors: function (map, isPackage) {
-			var list, p, desc;
+			var list, name, desc;
 			list = [];
-			// map could be array or object
-			for (p in map) {
-				desc = map[p];
+			for (name in map) {
+				desc = map[name];
 				// don't process items in prototype chain again
-				if (own(map, p)) {
+				if (own(map, name)) {
 					// TODO: plugin logic (but hopefully not here, before and/or after this loop?)
 					// normalize and add to path list
-					desc = core.normalizePkgDescriptor(desc, p, isPackage);
+					desc = core.normalizePkgDescriptor(desc, name, isPackage);
 					// TODO: baseUrl shenanigans with naked plugin name
 				}
 				list.push(desc);
@@ -457,12 +466,11 @@
 				orig = { name: name, path: orig };
 			}
 
-			desc = beget(orig);
+			desc = core.beget(orig);
 
 			// for object maps, name is probably not specified
 			if (!desc.name) desc.name = name;
 			desc.path = core.removeEndSlash(desc.path || desc.location || '');
-			desc.specificity = desc.name.split('/').length;
 
 			if (isPackage) {
 				main = desc['main'] || './main';
@@ -476,27 +484,30 @@
 
 		/**
 		 * @type {Function}
-		 * @param {Array} desclist
+		 * @param {Array} pathlist
 		 * @return {RegExp}
 		 * @memberOf core
 		 */
-		generatePathMatcher: (function (escapeRx) {
-			return function (descList) {
+		generatePathMatcher: (function (escapeRx, escapeReplace) {
+			return function (pathlist) {
 				var pathExpressions;
 
-				pathExpressions = descList
-					.sort(sortBySpecificity)// detect more specific paths, first
+				pathExpressions = pathlist
+					.sort(sortBySpecificity)// put more specific paths, first
 					.join('|')
-					.replace(escapeRx, '\\$&') // escape slash and dot
+					// escape slash and dot
+					.replace(escapeRx, escapeReplace)
 				;
 
 				return new RegExp('^(' + pathExpressions + ')(?=\\/|$)');
-
-				function sortBySpecificity (a, b) {
-					return b.specificity - a.specificity;
-				}
 			}
-		}(/\/|\./g)),
+		}(/\/|\./g, '\\$&')),
+
+		arrayToPkgMap: function (array) {
+			var map = {}, i = -1;
+			while (++i < array.length) map[array[i].name] = array[i];
+			return map;
+		},
 
 		// TODO: should this be a separate API call (noConflict(cfg)) from config()?
 		// if so, is it still on the config object so cram can see it?
@@ -513,17 +524,17 @@
 				return this.exports || (this.exports = {});
 			},
 			'module': function () {
-				var module = this.module;
+				var module = this.module, mctx = this;
 				if (!module) {
-					module = this.module = {
-						'id': this.id,
-						'uri': this.url,
-						'exports': core.cjsFreeVars.exports.call(this),
-						'config': function () { return this.realm.cfg; }
+					module = mctx.module = {
+						'id': mctx.id,
+						'uri': mctx.url,
+						'exports': core.cjsFreeVars.exports.call(mctx),
+						'config': function () { return mctx.realm.cfg; }
 					};
 					module.exports = module['exports']; // GCC AO issue?
 				}
-				return this.module;
+				return mctx.module;
 			}
 		},
 
@@ -614,7 +625,9 @@
 		}(/(\.)(\.?)(?:$|\/([^\.\/]+.*)?)/g)),
 
 		/**
-		 * Returns true if the thing to test has the constructor named.
+		 * Returns true if the thing to test has the constructor named,
+		 * but only for built-in types, such as Array, Object, String,
+		 * RegExp, Date.
 		 * @param {*} it - the thing to test
 		 * @param {String} type - the name of the constructor for the type
 		 * @return {Boolean}
@@ -624,6 +637,15 @@
 				return toString.call(it).indexOf('[object ' + type) == 0;
 			}
 		}(Object.prototype.toString)),
+
+		beget: function (parent, mixin) {
+			var child, p;
+			Begetter.prototype = parent || {};
+			child = new Begetter();
+			Begetter.prototype = {};
+			for (p in mixin) child[p] = mixin[p];
+			return child;
+		},
 
 		/**
 		 * Executes a task in the "next turn". Prefers process.nextTick or
@@ -670,7 +692,7 @@
 			_pathRx: /$^/
 		},
 		cache: {
-//			'curl': curl,
+			'curl': curl,
 //			'curl/define': _define,
 //			'curl/config': function () { return globalRealm.cfg; },
 			'curl/core': core,
@@ -996,17 +1018,12 @@
 
 	function Begetter () {}
 
-	function beget (parent, mixin) {
-		var child, p;
-		Begetter.prototype = parent || {};
-		child = new Begetter();
-		Begetter.prototype = {};
-		for (p in mixin) child[p] = mixin[p];
-		return child;
-	}
-
 	function own (obj, prop) {
 		return obj && obj.hasOwnProperty(prop);
+	}
+
+	function sortBySpecificity (a, b) {
+		return b.specificity - a.specificity;
 	}
 
 	function noop () {}
