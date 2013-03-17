@@ -126,34 +126,21 @@
 		},
 
 		createModuleContext: function (id, parentRealm) {
-			return new ModuleContext(id, parentRealm);
+			var mctx;
+			mctx = new ModuleContext();
+			mctx.id = id;
+			mctx.parentRealm = parentRealm;
+			mctx.realm = parentRealm; // could be replaced later
+			return mctx;
 		},
 
 		initModuleContext: function (mctx) {
-			var realm, pathMap, id, pathInfo, url;
+			// TODO: figure out how to deal with different realms
+			mctx.realm = mctx.parentRealm;
+			mctx.url = mctx.realm.idToUrl(mctx.id);
 
-			// TODO: generate _pathMap and _pathRx
-			// TODO: _pathMap should prefix baseUrl in advance
-
-			realm = mctx.parentRealm;
-			pathMap = realm.cfg._pathMap;
-			id = mctx.id;
-
-			if (!core.isAbsUrl(id)) {
-				url = id.replace(realm.cfg._pathRx, function (match) {
-					pathInfo = pathMap[match] || {};
-					mctx.realm = pathInfo.realm;
-					return pathInfo.path || '';
-				});
-			}
-			else {
-				url = id;
-			}
 			// NOTE: if url == id, then the id *is* a url, not an id!
 			// should we do anything with this knowledge?
-
-			mctx.url = url;
-
 			return mctx;
 		},
 
@@ -375,7 +362,8 @@
 		 */
 		config: function (cfg) {
 			var prevCfg, newCfg, desclist,
-				pathMaps, map, name, i, desc, promise;
+				pathMaps, map, name, i, desc, promise,
+				pathMap, pathRx;
 
 			// TODO: do we have to convert all config props from quoted props (GCC AO)?
 
@@ -383,9 +371,8 @@
 			prevCfg = globalRealm.cfg;
 			newCfg = core.beget(prevCfg);
 
-			// pathMap should not inherit for better performance.
-			// it and _pathRx are regenerated each time.
-			newCfg._pathMap = {};
+			// TODO: should pathMap prefix baseUrl in advance?
+			pathMap = {};
 
 			// create a list of paths from all of the configured path maps
 			desclist = [];
@@ -409,14 +396,31 @@
 				desc.specificity = desc.name.split('/').length;
 				desc.toString = function () { return this.name };
 				// add to path map
-				newCfg._pathMap[desc.name] = desc;
+				pathMap[desc.name] = desc;
 				// if this desc has a custom config, extend main config
 				// TODO: figure out if this is a GCC AO problem:
 				if (own(desclist[i], 'config')) {
 					desc.config = core.beget(cfg, desc.config);
 				}
 			}
-			newCfg._pathRx = core.generatePathMatcher(desclist);
+			pathRx = core.generatePathMatcher(desclist);
+
+			// TODO: how to deal with different realms
+			globalRealm.idToUrl = function (id) {
+				var url, pkgDesc;
+				if (!core.isAbsUrl(id)) {
+					url = id.replace(pathRx, function (match) {
+						pkgDesc = pathMap[match] || {};
+						return pkgDesc.path || '';
+					});
+				}
+				else {
+					url = id;
+				}
+				// NOTE: if url == id, then the id *is* a url, not an id!
+				// should we do anything with this knowledge?
+				return url;
+			};
 
 			globalRealm.cfg = newCfg;
 
@@ -524,7 +528,7 @@
 				return this.exports || (this.exports = {});
 			},
 			'module': function () {
-				var module = this.module, mctx = this;
+				var mctx = this, module = mctx.module;
 				if (!module) {
 					module = mctx.module = {
 						'id': mctx.id,
@@ -687,10 +691,9 @@
 						core.fetchAmdModule
 					]
 				}
-			},
-			_pathMap: {},
-			_pathRx: /$^/
+			}
 		},
+		idToUrl: function (id) { return id; },
 		cache: {
 			'curl': curl,
 //			'curl/define': _define,
@@ -1005,11 +1008,7 @@
 
 	/***** utilities *****/
 
-	function ModuleContext (id, parentRealm) {
-		this.id = id;
-		this.parentRealm = parentRealm;
-		this.realm = parentRealm; // could be replaced later
-	}
+	function ModuleContext () {}
 
 	function importErrorMessage (mctx) {
 		// TODO: figure out how to display calling module's id
