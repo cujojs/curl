@@ -132,6 +132,36 @@ define(function (require) {
 		}
 	});
 
+	buster.testCase('core.extractDataAttrConfig', {
+		'should get the data-curl-run attribute': function () {
+			var input, output, getAttr, setAttr;
+
+			// set up stubs
+			getAttr = this.stub().returns('bundle,main');
+			setAttr = this.stub();
+			this.stub(core, 'findScript', function (predicate) {
+					var script = {
+						getAttribute: getAttr,
+						setAttribute: setAttr
+					};
+					predicate(script);
+					return script;
+				}
+			);
+
+			input = {};
+			output = core.extractDataAttrConfig(input);
+			assert.equals('bundle,main', output.main, 'main was set');
+			assert.calledOnce(getAttr);
+			assert.alwaysCalledWith(getAttr, 'data-curl-run');
+			assert.alwaysCalledWith(setAttr, 'data-curl-run', '');
+		}
+	});
+
+	buster.testCase('core.findScript', {
+		'// should test this somehow (uses document)': function () {}
+	});
+
 	buster.testCase('core.config', {
 		'// should test this': function () {}
 	});

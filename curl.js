@@ -16,7 +16,6 @@
 //	var
 //		curlName = 'curl',
 //		defineName = 'define',
-//		runModuleAttr = 'data-curl-run',
 //		prevCurl,
 //		prevDefine,
 //		msgUsingExports = {},
@@ -596,6 +595,30 @@
 
 		},
 
+		findScript: function (predicate) {
+			var i = 0, script;
+			while (doc && (script = doc.scripts[i++])) {
+				if (predicate(script)) return script;
+			}
+		},
+
+		extractDataAttrConfig: (function (runModuleAttr) {
+			return function (cfg) {
+				var script;
+				script = core.findScript(function (script) {
+					var main;
+					// find main module(s) in data-curl-run attr on script el
+					// TODO: extract baseUrl, too?
+					main = script.getAttribute(runModuleAttr);
+					if (main) cfg.main = main;
+					return main;
+				});
+				// removeAttribute is wonky (in IE6?) but this works
+				if (script) script.setAttribute(runModuleAttr, '');
+				return cfg;
+			}
+		}('data-curl-run')),
+
 		/***** utilities *****/
 
 		cjsFreeVars: {
@@ -918,10 +941,6 @@
 		}
 	};
 
-	// TODO: look for global config, `global.curl`
-	// look for "data-curl-run" directive, and override config
-//	globalRealm.cfg = core.extractDataAttrConfig(globalRealm.cfg);
-
 	/***** promises / deferreds *****/
 
 	// promise implementation adapted from https://github.com/briancavalier/avow
@@ -1073,6 +1092,10 @@
 
 	// TODO: make this namespaceable / renameable
 	global.define = define;
+
+	// TODO: look for global config, `global.curl`
+	// look for "data-curl-run" directive, and override config
+	globalRealm.cfg = core.extractDataAttrConfig(globalRealm.cfg);
 
 	/***** utilities *****/
 

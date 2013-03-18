@@ -9,6 +9,8 @@ define(function (require) {
 
 	var curl, core, define, Deferred;
 
+	// TODO: start using sinon stubs instead of mockCoreFunctions
+
 	curl = require('curl');
 	core = curl('curl/core');
 	define = curl('curl/define');
