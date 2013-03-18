@@ -39,6 +39,8 @@
 		var args = core.fixDefineArgs(arguments);
 		core.defineAmdModule.apply(undefined, args);
 	}
+	// TODO: uncomment this line when setApi works so tests can run:
+//	define['amd'] = { 'plugins': true, 'jQuery': true, 'curl': version };
 
 	/**
 	 * @param {Object} [cfg]
@@ -436,6 +438,10 @@
 			prevCfg = globalRealm.cfg;
 			newCfg = core.beget(prevCfg, cfg, core.toObfuscatedName);
 
+			if (typeof newCfg.dontAddFileExt == 'string') {
+				newCfg.dontAddFileExt = new RegExp(newCfg.dontAddFileExt);
+			}
+
 			// TODO: should pathMap prefix baseUrl in advance?
 			pathMap = {};
 
@@ -485,7 +491,8 @@
 				}
 				// NOTE: if url == id, then the id *is* a url, not an id!
 				// should we do anything with this knowledge?
-				return url;
+				url = url + (newCfg.dontAddFileExt.test(url) ? '' : '.js');
+				return core.joinPaths(newCfg.baseUrl, url);
 			};
 
 			globalRealm.cfg = newCfg;
@@ -652,6 +659,10 @@
 
 		isRelPath: function (url) {
 			return url.charAt(0) == '.';
+		},
+
+		joinPaths: function (base, path) {
+			return core.removeEndSlash(base) + '/' + path;
 		},
 
 		removeEndSlash: function (path) {

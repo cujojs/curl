@@ -95,12 +95,6 @@ define(function (require) {
 		}
 	});
 
-	buster.testCase('blah', {
-		'// should do something': function () {
-			assert(false);
-		}
-	});
-
 	function noop (val) { return val; }
 
 	function isThenable (it) {

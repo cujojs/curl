@@ -102,6 +102,15 @@ define(function (require) {
 		}
 	});
 
+	buster.testCase('core.joinPaths', {
+		'should join paths': function () {
+			assert('foo/bar', core.joinPaths('foo', 'bar'), 'simple join');
+			assert('foo/bar', core.joinPaths('foo/', 'bar'), 'trailing slash');
+			assert('foo/bar.js', core.joinPaths('foo/', 'bar.js'), 'with extension');
+			assert('gak/foo/bar/baz', core.joinPaths('gak/foo/', 'bar/baz'), 'with many slashes');
+		}
+	});
+
 	buster.testCase('core.removeEndSlash', {
 		'should remove a slash': function () {
 			assert.equals('foo/bar', core.removeEndSlash('foo/bar/'), 'remove ending slash');
