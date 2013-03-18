@@ -27,16 +27,16 @@ define(function (require) {
 	};
 
 	buster.testCase('core.cjsFreeVars', {
-		'cjsFreeVars.require should return this.require function': function () {
+		'core.cjsFreeVars.require should return this.require function': function () {
 			assert.same(core.cjsFreeVars.require.call(stubContext1), stubContext1.require);
 		},
-		'cjsFreeVars.exports should return this.exports object': function () {
+		'core.cjsFreeVars.exports should return this.exports object': function () {
 			assert.same(core.cjsFreeVars.exports.call(stubContext1), stubContext1.exports);
 		},
-		'cjsFreeVars.exports should auto-create this.exports object': function () {
+		'core.cjsFreeVars.exports should auto-create this.exports object': function () {
 			assert.equals(core.cjsFreeVars.exports.call(stubContext2), {});
 		},
-		'cjsFreeVars.module should auto-create this.module object': function () {
+		'core.cjsFreeVars.module should auto-create this.module object': function () {
 			var module = core.cjsFreeVars.module.call(stubContext1);
 			assert.equals(module.id, stubContext1.id);
 			assert.equals(module.uri, stubContext1.url);
@@ -46,8 +46,36 @@ define(function (require) {
 	});
 
 	buster.testCase('core.extractCjsDeps', {
-		// TODO:
+		'should find valid r-val require() calls': function () {
+			var ids = core.extractCjsDeps(testFactory1);
+			assert.contains(ids, 'one');
+			assert.contains(ids, 'two');
+			assert.contains(ids, 'three');
+			assert.contains(ids, 'four');
+			refute.contains(ids, 'foo1');
+			refute.contains(ids, 'foo2');
+			refute.contains(ids, 'foo3');
+			refute.contains(ids, 'foo4');
+			refute.contains(ids, 'foo6');
+		}
 	});
+
+	function testFactory1 () {
+		// require('foo1'); inside a line comment
+		/*
+		 require('foo2'); inside a block comment
+		*/
+		var foolMeOnce = ' require("foo3"); in a string';
+		var foolMeTwice = " require('foo4'); in a string";
+		var foolMeThrice = " // require(\"foo5\"); in a comment in a string";
+		var ohYoureKidding = " /* require(\"foo6\"); in a b0rked comment in a string";
+
+		var findMePlz = require('one');
+
+		require('two');
+
+		return '//' + require('three') + '/*' + require('four');
+	}
 
 	buster.testCase('core.isAbsUrl', {
 		'should return true for absolute urls': function () {
@@ -128,7 +156,7 @@ define(function (require) {
 			child = core.beget(obj, mixin);
 			assert.match({ foo: 27, bar: 'bar' }, child, 'mixins override');
 			delete child.foo;
-			assert.match({ foo: 42, bar: 'bar' }, child, 'inherited still exist');
+			assert.match({ foo: 42, bar: 'bar' }, child, 'inherited still exists');
 		}
 	});
 
