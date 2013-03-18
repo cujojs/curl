@@ -37,7 +37,7 @@
 	 */
 	function define (factoryOrExports) {
 		var args = core.fixDefineArgs(arguments);
-		core.defineAmdModule.apply(this, args);
+		core.defineAmdModule.apply(undefined, args);
 	}
 
 	/**
@@ -54,7 +54,10 @@
 
 		// sync curl(id)
 		if (core.isType(args[0], 'String')) {
-			var ctx = globalRealm.cache[args[0]];
+			var id = args[0], ctx = globalRealm.cache[id];
+			if (!(id in globalRealm.cache)) {
+				throw new Error(importErrorMessage(id));
+			}
 			return core.isModuleContext(ctx)
 				? core.importModuleSync(ctx)
 				: ctx;
@@ -229,19 +232,19 @@
 			// hmm... is this the general pattern or is this too specific to
 			// CJS/AMD?
 			mctx.runFactory = function () {
-				var i, params, dctx, param;
+				var i, imports, dctx, imp;
 				i = 0;
-				params = [];
+				imports = [];
 				while (i++ < mctx.deps.length) {
 					dctx = mctx.realm.cache[mctx.deps[i]];
-					param = core.isModuleContext(dctx)
+					imp = core.isModuleContext(dctx)
 						? core.importModuleSync(dctx)
 						: dctx;
-					params.push(param);
+					imports.push(imp);
 				}
 				// don't grab a reference to mctx.factory in advance since
 				// it could be replaced or created just-in-time.
-				return mctx.factory.apply(null, params);
+				return mctx.factory.apply(null, imports.slice(0, mctx.arity));
 			};
 			return mctx;
 		},
@@ -258,7 +261,7 @@
 		importModuleSync: function (mctx) {
 			var realm = mctx.realm, id = mctx.id, notReady;
 			notReady = isDeferred(mctx);
-			if (notReady) throw new Error(importErrorMessage(mctx));
+			if (notReady) throw new Error(importErrorMessage(mctx.id));
 			if (core.isModuleContext(mctx)) realm.cache[id] = mctx.runFactory();
 			return realm.cache[id];
 		},
@@ -321,7 +324,7 @@
 			}
 		},
 
-		defineAmdModule: function (id, deps, factory, isCjsWrapped) {
+		defineAmdModule: function (id, deps, factory, options) {
 			var mctx;
 
 			if (id == undefined) {
@@ -352,22 +355,26 @@
 			}
 		},
 
-		assignAmdProperties: function (id, deps, factory, isCjsWrapped) {
+		assignAmdProperties: function (id, deps, factory, options) {
 			this.id = id;
 			this.deps = deps;
 			this.factory = factory;
-			this.isCjsWrapped = isCjsWrapped;
+			this.isCjsWrapped = options.isCjsWrapped;
+			this.arity = options.arity;
 			return this;
 		},
 
 		fixDefineArgs: function (args) {
 			var id, deps, factory, arity, len, cjs;
 			// valid combinations for define:
-			// define(string, array, <anything>)
-			// define(array, <anything>)
-			// define(string, <anything>)
+			// define(string, array, function)
+			// define(string, array, <non-function>)
+			// define(array, function)
+			// define(array, <non-function>)
+			// define(string, function)
+			// define(string, <non-function>)
 			// define(function)
-			// define(object) // anything but a string or array
+			// define(<non-function>)
 
 			len = args.length;
 
@@ -391,14 +398,14 @@
 			// dependencies and non-zero arity is a wrapped CommonJS module
 			if (!deps && arity > 0) {
 				cjs = true;
-				deps = ['require', 'exports', 'module'].slice(0, arity).concat(core.extractCjsDeps(factory));
+				deps = ['require', 'exports', 'module'].slice(0, arity);
 			}
 
 			return [
 				id,
 				deps,
 				arity >= 0 ? factory : function () { return factory; },
-				cjs
+				{ isCjsWrapped: cjs, arity: arity }
 			];
 		},
 
@@ -422,29 +429,29 @@
 		 */
 		config: function (cfg) {
 			var prevCfg, newCfg, desclist,
-				pathMaps, map, name, i, desc, promise,
+				cfgMaps, map, name, i, desc, promise,
 				pathMap, pathRx;
 
-			// TODO: do we have to convert all config props from quoted props (GCC AO)?
-
-			// override and replace globalRealm.cfg and its maps
+			// convert all new cfg props from quoted props (GCC AO)
 			prevCfg = globalRealm.cfg;
-			newCfg = core.beget(prevCfg);
+			newCfg = core.beget(prevCfg, cfg, core.toObfuscatedName);
 
 			// TODO: should pathMap prefix baseUrl in advance?
 			pathMap = {};
 
 			// create a list of paths from all of the configured path maps
 			desclist = [];
-			pathMaps = { 'paths': 0, /*'plugins': 0,*/ 'packages': 1 }; // TODO: hoist?
-			for (name in pathMaps) {
+			cfgMaps = { paths: 0, /*plugins: 0,*/ packages: 1 }; // TODO: hoist?
+			for (name in cfgMaps) {
+				// only process owned props
+				if (!own(newCfg, name)) continue;
 				map = newCfg[name];
 				if (core.isType(map, 'Array')) {
 					map = core.arrayToPkgMap(map);
 				}
 				newCfg[name] = core.beget(map, cfg[name] || {});
 				desclist = desclist.concat(
-					core.normalizePkgDescriptors(newCfg[name], pathMaps[name])
+					core.normalizePkgDescriptors(newCfg[name], cfgMaps[name])
 				);
 			}
 
@@ -458,9 +465,8 @@
 				// add to path map
 				pathMap[desc.name] = desc;
 				// if this desc has a custom config, extend main config
-				// TODO: figure out if this is a GCC AO problem:
-				if (own(desclist[i], 'config')) {
-					desc.config = core.beget(cfg, desc.config);
+				if (own(desclist[i], core.toObfuscatedName('config'))) {
+					desc.config = core.beget(newCfg, desc.config);
 				}
 			}
 			pathRx = core.generatePathMatcher(desclist);
@@ -602,36 +608,37 @@
 			}
 		},
 
-		extractCjsDeps: (function (removeCommentsRx, findRValueRequiresRx) {
+		extractCjsDeps: (function (findRValueRequiresRx, commentPair) {
 			return function (factory) {
-				var source, ids = [], currQuote;
+				var source, ids = [], inQuote, inComment;
 
 				source = typeof factory == 'string'
 					? factory
 					: factory.toString();
 
-				// remove comments, then look for require() or quotes
-				source.replace(removeCommentsRx, '')
-					.replace(findRValueRequiresRx, findRequires);
+				source.replace(findRValueRequiresRx, findRequires);
 
 				return ids;
 
-				function findRequires (m, rq, id, qq) {
-					// if we encounter a string in the source, don't look
-					// for require()
-					if (qq) {
-						currQuote = currQuote == qq ? undefined : currQuote;
+				function findRequires (m, rq, id, cm, qq) {
+					// don't look for require() in comments or strings
+					if (inComment) {
+						if (cm == inComment) inComment = undefined;
 					}
-					// if we're not inside a quoted string
-					else if (!currQuote) {
-						ids.push(id);
+					else if (inQuote) {
+						if (qq == inQuote) inQuote = undefined;
 					}
-					return ''; // uses least RAM/CPU
+					else {
+						if (cm) inComment = commentPair[cm];
+						else if (qq) inQuote = qq;
+						else ids.push(id);
+					}
+					return '';
 				}
 			}
 		}(
-			/\/\*[\s\S]*?\*\/|\/\/.*?[\n\r]/g,
-			/require\s*\(\s*(["'])(.*?[^\\])\1\s*\)|[^\\]?(["'])/g
+			/require\s*\(\s*(["'])(.*?[^\\])\1\s*\)|(\/\/|\/\*|\n|\*\/)|[^\\]?(["'])/g,
+			{ '//': '\n', '/*': '*/' }
 		)),
 
 		/**
@@ -710,14 +717,40 @@
 			}
 		}(Object.prototype.toString)),
 
-		beget: function (parent, mixin) {
+		beget: function (parent, mixin, transform) {
 			var child, p;
+			if (!transform) transform = noop;
 			Begetter.prototype = parent || {};
 			child = new Begetter();
 			Begetter.prototype = {};
 			for (p in mixin) child[p] = mixin[p];
 			return child;
 		},
+
+		toObfuscatedName: (function (map) {
+			var test, invert, p;
+			// test if we've been obfuscated
+			test = { prop: version };
+			if (test.prop == test['prop']) return noop;
+			// create a converter
+			invert = {};
+			for (p in map) invert[map[p]] = p;
+			return function (p) { return p in invert ? invert[p] : p; }
+		}({
+			baseUrl: 'baseUrl',
+			pluginPath: 'pluginPath',
+			dontAddFileExt: 'dontAddFileExt',
+			paths: 'paths',
+			packages: 'packages',
+			plugins: 'plugins',
+			preloads: 'preloads',
+			main: 'main',
+			type: 'type',
+			types: 'types',
+			amd: 'amd',
+			declare: 'declare',
+			locate: 'locate'
+		})),
 
 		/**
 		 * Executes a task in the "next turn". Prefers process.nextTick or
@@ -836,17 +869,17 @@
 	// Advanced Optimization.
 	globalRealm = {
 		cfg: {
-			'baseUrl': '',
-			'pluginPath': 'curl/plugin',
-			'dontAddFileExt': /\?|\.js\b/,
-			'paths': {},
-			'packages': {},
-			'plugins': {},
-			'preloads': undefined,
-			'main': undefined,
-			'type': 'amd',
-			'types': {
-				'amd': {
+			baseUrl: '',
+			pluginPath: 'curl/plugin',
+			dontAddFileExt: /\?|\.js\b/,
+			paths: {},
+			packages: {},
+			plugins: {},
+			preloads: undefined,
+			main: undefined,
+			type: 'amd',
+			types: {
+				amd: {
 					declare: [
 						core.parseAmdFactory,
 						core.resolveDeps,
@@ -947,12 +980,12 @@
 
 	// Call fulfilled handler and forward to the next promise in the queue
 	function applyFulfill (val, onFulfilled, _, fulfillNext, rejectNext) {
-		return apply(val, onFulfilled, fulfillNext, fulfillNext, rejectNext);
+		apply(val, onFulfilled, fulfillNext, fulfillNext, rejectNext);
 	}
 
 	// Call rejected handler and forward to the next promise in the queue
 	function applyReject (val, _, onRejected, fulfillNext, rejectNext) {
-		return apply(val, onRejected, rejectNext, fulfillNext, rejectNext);
+		apply(val, onRejected, rejectNext, fulfillNext, rejectNext);
 	}
 
 	// Call a handler with value, and take the appropriate action
@@ -960,20 +993,10 @@
 	function apply (val, handler, fallback, fulfillNext, rejectNext) {
 		var result;
 		try {
-			if (typeof handler === 'function') {
-				result = handler(val);
-
-				if (result && typeof result.then === 'function') {
-					result.then(fulfillNext, rejectNext);
-				}
-				else {
-					fulfillNext(result);
-				}
-
-			}
-			else {
-				fallback(val);
-			}
+			if (typeof handler != 'function') return fallback(val);
+			result = handler(val);
+			if (isPromise(result)) result.then(fulfillNext, rejectNext);
+			else fulfillNext(result);
 		}
 		catch (e) {
 			rejectNext(e);
@@ -1042,9 +1065,9 @@
 
 	function ModuleContext () {}
 
-	function importErrorMessage (mctx) {
+	function importErrorMessage (id) {
 		// TODO: figure out how to display calling module's id
-		return 'attempt to sync import ' + mctx.id + ' before it is resolved';
+		return 'attempt to sync import ' + id + ' before it is resolved';
 	}
 
 	function Begetter () {}
@@ -1057,7 +1080,7 @@
 		return b.specificity - a.specificity;
 	}
 
-	function noop () {}
+	function noop (val) { return val; }
 
 }(
 	// find global object (browser || commonjs)
