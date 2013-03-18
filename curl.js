@@ -22,9 +22,6 @@
 //		msgUsingExports = {},
 //		msgFactoryExecuted = {},
 //		urlCache = {},
-//		// RegExp's used later, pre-compiled here
-//		findDotsRx = /(\.)(\.?)(?:$|\/([^\.\/]+.*)?)/g,
-//		splitMainDirectives = /\s*,\s*/,
 
 	var version = '0.8.0';
 
@@ -503,8 +500,15 @@
 				promise = new CurlApi(cfg.preloads);
 			}
 			// if main (string or array), fetch it/them
-			if (cfg.main && cfg.main.length) {
-				promise = new CurlApi([].concat(cfg.main), undefined, undefined, promise);
+			var main, fallback;
+			main = cfg.main;
+			if (main && main.length) {
+				// TODO: figure out if it may be better to have an explicit config option for the fallback instead of this:
+				if (core.isType(main, 'String')) main = main.split(',');
+				if (main[1]) fallback = function () {
+					promise = new CurlApi([main[1]], undefined, undefined, promise);
+				};
+				promise = new CurlApi([main[0]], undefined, fallback, promise);
 			}
 
 			// when all is done, set global config and return it
