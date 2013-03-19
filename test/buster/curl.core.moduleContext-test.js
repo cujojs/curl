@@ -11,6 +11,7 @@ define(function (require) {
 
 	curl = require('curl');
 	core = curl('curl/core');
+	curl.restore();
 
 	buster.testCase('core.createModuleContext', {
 		'should create a module context': function () {

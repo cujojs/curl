@@ -14,10 +14,6 @@
 "use strict";
 
 //	var
-//		curlName = 'curl',
-//		defineName = 'define',
-//		prevCurl,
-//		prevDefine,
 //		msgUsingExports = {},
 //		msgFactoryExecuted = {},
 //		urlCache = {},
@@ -37,7 +33,7 @@
 		core.defineAmdModule.apply(undefined, args);
 	}
 	// TODO: uncomment this line when setApi works so tests can run:
-//	define['amd'] = { 'plugins': true, 'jQuery': true, 'curl': version };
+	define['amd'] = { 'plugins': true, 'jQuery': true, 'curl': version };
 
 	/**
 	 * @global
@@ -67,7 +63,7 @@
 		// extract config, if it's specified
 		if (core.isType(args[0], 'Object')) {
 			cfg = args.shift();
-			promise = core.config(cfg);
+			promise = when(config(cfg));
 		}
 
 		return new CurlApi(args[0], args[1], args[2], promise);
@@ -88,6 +84,20 @@
 	 */
 	curl['config'] = function (cfg, cb, eb) {
 		new CurlApi().config(cfg, cb, eb);
+	};
+
+	/**
+	 * Restores the global API variables to their previous values before
+	 * curl.js executed.  Call this function after capturing the new/current
+	 * APIs like this:
+	 *   var define = curl('curl/define');
+	 *   my.curl = curl;
+	 *   my.define = define;
+	 *   curl.restore();
+	 */
+	curl['restore'] = function () {
+		global['curl'] = prevCurl;
+		global['define'] = prevDefine;
 	};
 
 	/**
@@ -167,7 +177,7 @@
 		 */
 		this['config'] = function (cfg) {
 			// don't wait for previous promise to start config
-			promise = all([promise, core.config(cfg)]);
+			promise = all([promise, config(cfg)]);
 			return this;
 		};
 	}
@@ -533,8 +543,8 @@
 		 * setImmediate, but will fallback to setTimeout.
 		 * @param {Function} task
 		 */
-		nextTurn: typeof global.setImmediate == 'function'
-			? global.setImmediate.bind(global)
+		nextTurn: typeof setImmediate == 'function'
+			? setImmediate.bind(global)
 			: typeof process === 'object' && process.nextTick
 				? process.nextTick
 				: function (task) { setTimeout(task, 0); }
@@ -544,10 +554,12 @@
 
 	/***** config *****/
 
-	var escapeRx, escapeReplace;
+	var escapeRx, escapeReplace, prevCurl, prevDefine;
 
 	escapeRx = /\/|\./g;
 	escapeReplace = '\\$&';
+	prevCurl = global['curl'];
+	prevDefine = global['define'];
 
 	/**
 	 *
@@ -641,7 +653,7 @@
 		}
 
 		// when all is done, set global config and return it
-		return promise.yield(newCfg);
+		return promise? promise.yield(newCfg) : newCfg;
 	}
 
 	config.normalizePkgDescriptors = function (map, isPackage) {
@@ -717,10 +729,22 @@
 		return map;
 	};
 
-	// TODO: should this be a separate API call (noConflict(cfg)) from config()?
-	// if so, is it still on the config object so cram can see it?
-	config.setApi = function (cfg) {
+	/**
+	 *
+	 * @param {Object} defaultConfig
+	 * @return {Object}
+	 */
+	config.init = function (defaultConfig) {
+		var firstCfg;
 
+		// bail if there's a global curl that's not an object literal
+		if (prevCurl && !core.isType(prevCurl, 'Object')) return defaultConfig;
+
+		// merge any attributes off the data-curl-run script element
+		firstCfg = core.beget(prevCurl || {}, loadScript.extractDataAttrConfig());
+
+		// return the default config overridden with the global config(s)
+		return core.beget(defaultConfig, firstCfg);
 	};
 
 
@@ -885,14 +909,16 @@
 
 	/**
 	 * @type {Object}
-	 * @private
 	 * this is the collection of scripts that IE is loading. one of these
 	 * will be the "interactive" script. too bad IE doesn't send a
 	 * readystatechange event to tell us exactly which one.
 	 */
 	loadScript.activeScripts = {};
 
-	/** readyStates for IE6-9 */
+	/**
+	 * readyStates for IE6-8
+	 * @type {Object}
+	 */
 	loadScript.readyStates = 'addEventListener' in global
 		? {}
 		: { 'loaded': 1, 'complete': 1 };
@@ -904,14 +930,18 @@
 		}
 	};
 
-	loadScript.extractDataAttrConfig = function (cfg) {
-		var script;
+	/**
+	 *
+	 * @return {Object|Undefined}
+	 */
+	loadScript.extractDataAttrConfig = function () {
+		var script, cfg;
 		script = loadScript.findScript(function (script) {
 			var main;
 			// find main module(s) in data-curl-run attr on script el
 			// TODO: extract baseUrl, too?
 			main = script.getAttribute(runModuleAttr);
-			if (main) cfg.main = main;
+			if (main) cfg = { main: main };
 			return main;
 		});
 		// removeAttribute is wonky (in IE6?) but this works
@@ -1121,19 +1151,17 @@
 		}
 	};
 
+	// look for global configs and initialize the configs
+	globalRealm.cfg = config.init(globalRealm.cfg);
+	// TODO: how to wait for main and preloads in initial config?
+	config(globalRealm.cfg);
+
 
 	/***** exports *****/
 
-	// TODO: make this moveable / renamable
-	global.curl = curl;
+	global['curl'] = curl;
+	global['define'] = define;
 	if (cjsModule) cjsModule.exports = curl;
-
-	// TODO: make this namespaceable / renameable
-	global.define = define;
-
-	// TODO: look for global config, `global.curl`
-	// look for "data-curl-run" directive, and override config
-	globalRealm.cfg = loadScript.extractDataAttrConfig(globalRealm.cfg);
 
 
 	/***** utilities *****/

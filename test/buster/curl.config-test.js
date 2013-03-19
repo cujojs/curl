@@ -14,6 +14,7 @@ define(function (require) {
 
 	curl = require('curl');
 	config = curl('curl/config');
+	curl.restore();
 
 	pkgDescriptor1 = {
 		name: 'name',

@@ -11,6 +11,7 @@ define(function (require) {
 
 	curl = require('curl');
 	loadScript = curl('curl/loadScript');
+	curl.restore();
 
 	buster.testCase('loadScript.extractDataAttrConfig', {
 		'should get the data-curl-run attribute': function () {
@@ -39,6 +40,14 @@ define(function (require) {
 	});
 
 	buster.testCase('loadScript.findScript', {
+		'// should should be tested somehow (uses document)': function () {}
+	});
+
+	buster.testCase('loadScript.getCurrentModuleId', {
+		'// should should be tested somehow (uses document)': function () {}
+	});
+
+	buster.testCase('loadScript', {
 		'// should should be tested somehow (uses document)': function () {}
 	});
 

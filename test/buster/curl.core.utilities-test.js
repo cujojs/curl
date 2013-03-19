@@ -13,6 +13,7 @@ define(function (require) {
 
 	curl = require('curl');
 	core = curl('curl/core');
+	curl.restore();
 
 	stubContext1 = {
 		require: function () {},

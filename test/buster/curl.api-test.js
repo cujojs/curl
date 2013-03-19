@@ -15,6 +15,7 @@ define(function (require) {
 	core = curl('curl/core');
 	define = curl('curl/define');
 	Deferred = curl('curl/Deferred');
+	curl.restore();
 
 	buster.testCase('define', {
 		'should call defineAmdModule with the results of fixDefineArgs': function () {
