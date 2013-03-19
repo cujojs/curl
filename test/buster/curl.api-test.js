@@ -104,6 +104,7 @@ define(function (require) {
 		return it && typeof it.then == 'function';
 	}
 
+	// TODO: replace this with sinon's stub()
 	function mockCoreFunctions (map) {
 		var restore = {};
 		for (var p in map) {

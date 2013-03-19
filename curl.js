@@ -32,7 +32,6 @@
 		var args = core.fixDefineArgs(arguments);
 		core.defineAmdModule.apply(undefined, args);
 	}
-	// TODO: uncomment this line when setApi works so tests can run:
 	define['amd'] = { 'plugins': true, 'jQuery': true, 'curl': version };
 
 	/**
@@ -66,7 +65,7 @@
 			promise = when(config(cfg));
 		}
 
-		return new CurlApi(args[0], args[1], args[2], promise);
+		return new CurlApi(args[0], args[1], args[2], all([firstConfig, promise]));
 	}
 
 	/**
@@ -644,7 +643,6 @@
 		var main, fallback;
 		main = cfg.main;
 		if (main && main.length) {
-			// TODO: figure out if it may be better to have an explicit config option for the fallback instead of this:
 			if (core.isType(main, 'String')) main = main.split(',');
 			if (main[1]) fallback = function () {
 				promise = new CurlApi([main[1]], undefined, undefined, promise);
@@ -1112,6 +1110,8 @@
 
 	/***** startup *****/
 
+	var firstConfig;
+
 	// default configs. some properties are quoted to assist GCC
 	// Advanced Optimization.
 	globalRealm = {
@@ -1153,8 +1153,7 @@
 
 	// look for global configs and initialize the configs
 	globalRealm.cfg = config.init(globalRealm.cfg);
-	// TODO: how to wait for main and preloads in initial config?
-	config(globalRealm.cfg);
+	firstConfig = config(globalRealm.cfg);
 
 
 	/***** exports *****/
