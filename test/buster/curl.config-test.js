@@ -8,12 +8,12 @@ refute = buster.refute;
 
 define(function (require) {
 
-	var curl, core,
+	var curl, config,
 		pkgDescriptor1, pkgDescriptor2, pkgDescriptor3, pkgDescriptor4,
 		normalized1, normalized2, normalized3, normalized4;
 
 	curl = require('curl');
-	core = curl('curl/core');
+	config = curl('curl/config');
 
 	pkgDescriptor1 = {
 		name: 'name',
@@ -36,15 +36,15 @@ define(function (require) {
 	// string descriptor (like paths config)
 	pkgDescriptor4 = 'lib/jquery/jquery1.8.min';
 
-	normalized1 = core.normalizePkgDescriptor(pkgDescriptor1, null, true);
-	normalized2 = core.normalizePkgDescriptor(pkgDescriptor2, null, true);
-	normalized3 = core.normalizePkgDescriptor(pkgDescriptor3, null, true);
-	normalized4 = core.normalizePkgDescriptor(pkgDescriptor4, 'jquery', false);
+	normalized1 = config.normalizePkgDescriptor(pkgDescriptor1, null, true);
+	normalized2 = config.normalizePkgDescriptor(pkgDescriptor2, null, true);
+	normalized3 = config.normalizePkgDescriptor(pkgDescriptor3, null, true);
+	normalized4 = config.normalizePkgDescriptor(pkgDescriptor4, 'jquery', false);
 
-	buster.testCase('core.normalizePkgDescriptor', {
+	buster.testCase('config.normalizePkgDescriptor', {
 		'should beget original descriptor': function () {
 			var orig = { name: 'foo', other: 42 }, desc;
-			desc = core.normalizePkgDescriptor(orig);
+			desc = config.normalizePkgDescriptor(orig);
 			refute.same(orig, desc, 'beget');
 			assert.equals(orig.name, desc.name, 'inherited standard props');
 			assert.equals(orig.other, desc.other, 'inherited other props');
@@ -63,7 +63,7 @@ define(function (require) {
 		'should not allow name override': function () {
 			var orig, desc;
 			orig = { name: 'orig' };
-			desc = core.normalizePkgDescriptor(orig, 'overridden');
+			desc = config.normalizePkgDescriptor(orig, 'overridden');
 			assert.equals(orig.name, desc.name);
 		},
 		'should not turn paths descriptors into packages': function () {
@@ -71,9 +71,9 @@ define(function (require) {
 		}
 	});
 
-	buster.testCase('core.normalizePkgDescriptors', {
+	buster.testCase('config.normalizePkgDescriptors', {
 		'should return an array of normalized descriptors': function () {
-			var list = core.normalizePkgDescriptors([
+			var list = config.normalizePkgDescriptors([
 				pkgDescriptor1,
 				pkgDescriptor3
 			], true);
@@ -87,12 +87,12 @@ define(function (require) {
 			inherited = beget({
 				name: normalized1
 			});
-			list = core.normalizePkgDescriptors(inherited, true);
+			list = config.normalizePkgDescriptors(inherited, true);
 			assert.same(normalized1, list[0]);
 		}
 	});
 
-	buster.testCase('core.arrayToPkgMap', {
+	buster.testCase('config.arrayToPkgMap', {
 		'should convert an array of package descriptors to a map': function () {
 			var array, map;
 			array = [
@@ -100,7 +100,7 @@ define(function (require) {
 				pkgDescriptor2,
 				pkgDescriptor3
 			];
-			map = core.arrayToPkgMap(array);
+			map = config.arrayToPkgMap(array);
 			assert.isObject(map);
 			assert.equals(array.length, propertyCount(map), 'same number of descriptors');
 			assert.same(array[0], map[pkgDescriptor1.name]);
@@ -109,7 +109,7 @@ define(function (require) {
 		}
 	});
 
-	buster.testCase('core.generatePathMatcher', {
+	buster.testCase('config.generatePathMatcher', {
 		'should generate an ordered regexp from a list of prepared descriptors': function () {
 			// the "prepared descriptors" need to have a specificity and a toString()
 			var list, i, rx;
@@ -123,7 +123,7 @@ define(function (require) {
 			for (i = 0; i < list.length; i++) {
 				list[i].toString = function () { return this.name; };
 			}
-			rx = core.generatePathMatcher(list);
+			rx = config.generatePathMatcher(list);
 			assert(rx instanceof RegExp, 'generates a RegExp');
 			for (i = 0; i < list.length; i++) {
 				assert.less(-1, rx.toString().indexOf(rxEscape(list[i].name)), 'includes (escaped) ' + list[i]);
@@ -132,42 +132,12 @@ define(function (require) {
 		}
 	});
 
-	buster.testCase('core.extractDataAttrConfig', {
-		'should get the data-curl-run attribute': function () {
-			var input, output, getAttr, setAttr;
-
-			// set up stubs
-			getAttr = this.stub().returns('bundle,main');
-			setAttr = this.stub();
-			this.stub(core, 'findScript', function (predicate) {
-					var script = {
-						getAttribute: getAttr,
-						setAttribute: setAttr
-					};
-					predicate(script);
-					return script;
-				}
-			);
-
-			input = {};
-			output = core.extractDataAttrConfig(input);
-			assert.equals('bundle,main', output.main, 'main was set');
-			assert.calledOnce(getAttr);
-			assert.alwaysCalledWith(getAttr, 'data-curl-run');
-			assert.alwaysCalledWith(setAttr, 'data-curl-run', '');
-		}
+	buster.testCase('config.config', {
+		'// should be tested': function () {}
 	});
 
-	buster.testCase('core.findScript', {
-		'// should test this somehow (uses document)': function () {}
-	});
-
-	buster.testCase('core.config', {
-		'// should test this': function () {}
-	});
-
-	buster.testCase('core.setApi', {
-		'// should test this': function () {}
+	buster.testCase('config.setApi', {
+		'// should be tested': function () {}
 	});
 
 	function beget (obj) {

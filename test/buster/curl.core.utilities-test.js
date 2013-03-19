@@ -77,63 +77,6 @@ define(function (require) {
 		return '//' + require('three') + '/*' + require('four');
 	}
 
-	buster.testCase('core.isAbsUrl', {
-		'should return true for absolute urls': function () {
-			assert(core.isAbsUrl('/foo/bar'), 'starts with a slash');
-			assert(core.isAbsUrl('foo://foo/bar'), 'starts with a protocol');
-			assert(core.isAbsUrl('//foo/bar'), 'starts with a double slash');
-		},
-		'should return false for relative urls': function () {
-			refute(core.isAbsUrl('./foo/bar'), 'starts with a dot');
-			refute(core.isAbsUrl('../foo/bar'), 'starts with a double-dot');
-			refute(core.isAbsUrl('foo/bar'), 'starts with a letter');
-		}
-	});
-
-	buster.testCase('core.isRelPath', {
-		'should return true for relative ids': function () {
-			assert(core.isRelPath('./foo/bar'), 'starts with a dot');
-			assert(core.isRelPath('../foo/bar'), 'starts with a double-dot');
-		},
-		'should return false for absolute ids': function () {
-			refute(core.isRelPath('/foo/bar'), 'starts with a slash (is actually a url)');
-			refute(core.isRelPath('foo/bar'), 'starts with a dot');
-			refute(core.isRelPath('bar'), 'starts with a double-dot');
-		}
-	});
-
-	buster.testCase('core.joinPaths', {
-		'should join paths': function () {
-			assert('foo/bar', core.joinPaths('foo', 'bar'), 'simple join');
-			assert('foo/bar', core.joinPaths('foo/', 'bar'), 'trailing slash');
-			assert('foo/bar.js', core.joinPaths('foo/', 'bar.js'), 'with extension');
-			assert('gak/foo/bar/baz', core.joinPaths('gak/foo/', 'bar/baz'), 'with many slashes');
-		}
-	});
-
-	buster.testCase('core.removeEndSlash', {
-		'should remove a slash': function () {
-			assert.equals('foo/bar', core.removeEndSlash('foo/bar/'), 'remove ending slash');
-			assert.equals('baz', core.removeEndSlash('baz/'), 'remove ending slash 2');
-			assert.equals('/foo/bar/baz', core.removeEndSlash('/foo/bar/baz/'), 'remove ending slash 3');
-			assert.equals('foo/bar', core.removeEndSlash('foo/bar'), 'remove nothing if no slash at end');
-		}
-	});
-
-	buster.testCase('core.reduceLeadingDots', {
-		'should remove leading dots': function () {
-			assert.equals('foo/bar', core.reduceLeadingDots('foo/bar', 'gak'), 'no leading dots');
-			assert.equals('foo/bar', core.reduceLeadingDots('./bar', 'foo/gak'), 'peer');
-			assert.equals('bar', core.reduceLeadingDots('./bar', 'foo'), 'peer 2');
-			assert.equals('foo/bar', core.reduceLeadingDots('../bar', 'foo/gak/goo'), 'up one level');
-		},
-		'should fail to navigate above or to a peer of a package': function () {
-			refute.equals('bar', core.reduceLeadingDots('../bar', 'foo'), 'up to root');
-			refute.equals('foo/bar', core.reduceLeadingDots('../foo/bar', 'gak'), 'up to root 2');
-			refute.equals('foo/bar', core.reduceLeadingDots('../../foo/bar', 'gak'), 'above root');
-		}
-	});
-
 	buster.testCase('core.isType', {
 		'should detect built-in types': function () {
 			assert(core.isType('', 'String'));

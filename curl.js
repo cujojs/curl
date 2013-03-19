@@ -22,11 +22,12 @@
 //		msgFactoryExecuted = {},
 //		urlCache = {},
 
-	var version = '0.8.0';
-
 	/***** public API *****/
 
+	var version = '0.8.0';
+
 	/**
+	 * @global
 	 * @param {String} [id]
 	 * @param {Array} [dependencyIds]
 	 * @param {*} factoryOrExports
@@ -39,6 +40,8 @@
 //	define['amd'] = { 'plugins': true, 'jQuery': true, 'curl': version };
 
 	/**
+	 * @global
+	 * @exports
 	 * @param {Object} [cfg]
 	 * @param {Array|String} [ids]
 	 * @param {Function} [callback]
@@ -168,6 +171,9 @@
 			return this;
 		};
 	}
+
+
+	/***** core *****/
 
 	var doc, head, core, globalRealm, argsNet;
 
@@ -417,208 +423,6 @@
 			return mctx;
 		},
 
-		/***** config *****/
-
-		/**
-		 *
-		 * @param {Object} cfg
-		 * @return {promise}
-		 * @memberOf core
-		 */
-		config: function (cfg) {
-			var prevCfg, newCfg, desclist,
-				cfgMaps, map, name, i, desc, promise,
-				pathMap, pathRx;
-
-			// convert all new cfg props from quoted props (GCC AO)
-			prevCfg = globalRealm.cfg;
-			newCfg = core.beget(prevCfg, cfg, core.toObfuscatedName);
-
-			if (typeof newCfg.dontAddFileExt == 'string') {
-				newCfg.dontAddFileExt = new RegExp(newCfg.dontAddFileExt);
-			}
-
-			// TODO: should pathMap prefix baseUrl in advance?
-			pathMap = {};
-
-			// create a list of paths from all of the configured path maps
-			desclist = [];
-			cfgMaps = { paths: 0, /*plugins: 0,*/ packages: 1 }; // TODO: hoist?
-			for (name in cfgMaps) {
-				// only process owned props
-				if (!own(newCfg, name)) continue;
-				map = newCfg[name];
-				if (core.isType(map, 'Array')) {
-					map = core.arrayToPkgMap(map);
-				}
-				newCfg[name] = core.beget(map, cfg[name] || {});
-				desclist = desclist.concat(
-					core.normalizePkgDescriptors(newCfg[name], cfgMaps[name])
-				);
-			}
-
-			// process desclist
-			i = -1;
-			while (++i < desclist.length) {
-				desc = desclist[i];
-				// prepare for pathMatcher
-				desc.specificity = desc.name.split('/').length;
-				desc.toString = function () { return this.name };
-				// add to path map
-				pathMap[desc.name] = desc;
-				// if this desc has a custom config, extend main config
-				if (own(desclist[i], core.toObfuscatedName('config'))) {
-					desc.config = core.beget(newCfg, desc.config);
-				}
-			}
-			pathRx = core.generatePathMatcher(desclist);
-
-			// TODO: how to deal with different realms
-			globalRealm.idToUrl = function (id) {
-				var url, pkgDesc;
-				if (!core.isAbsUrl(id)) {
-					url = id.replace(pathRx, function (match) {
-						pkgDesc = pathMap[match] || {};
-						return pkgDesc.path || '';
-					});
-				}
-				else {
-					url = id;
-				}
-				// NOTE: if url == id, then the id *is* a url, not an id!
-				// should we do anything with this knowledge?
-				url = url + (newCfg.dontAddFileExt.test(url) ? '' : '.js');
-				return core.joinPaths(newCfg.baseUrl, url);
-			};
-
-			globalRealm.cfg = newCfg;
-
-			// TODO: create a config pipeline and put these in the pipeline:
-			// if preloads, fetch them
-			if (cfg.preloads && cfg.preloads.length) {
-				promise = new CurlApi(cfg.preloads);
-			}
-			// if main (string or array), fetch it/them
-			var main, fallback;
-			main = cfg.main;
-			if (main && main.length) {
-				// TODO: figure out if it may be better to have an explicit config option for the fallback instead of this:
-				if (core.isType(main, 'String')) main = main.split(',');
-				if (main[1]) fallback = function () {
-					promise = new CurlApi([main[1]], undefined, undefined, promise);
-				};
-				promise = new CurlApi([main[0]], undefined, fallback, promise);
-			}
-
-			// when all is done, set global config and return it
-			return promise.yield(newCfg);
-		},
-
-		normalizePkgDescriptors: function (map, isPackage) {
-			var list, name, desc;
-			list = [];
-			for (name in map) {
-				desc = map[name];
-				// don't process items in prototype chain again
-				if (own(map, name)) {
-					// TODO: plugin logic (but hopefully not here, before and/or after this loop?)
-					// normalize and add to path list
-					desc = core.normalizePkgDescriptor(desc, name, isPackage);
-					// TODO: baseUrl shenanigans with naked plugin name
-				}
-				list.push(desc);
-			}
-			return list;
-		},
-
-		/**
-		 * Normalizes a package (or path) descriptor.
-		 * @param {Object|String} orig - package/path descriptor.
-		 * @param {String} [name] - required if typeof orig == 'string'
-		 * @param {Boolean} isPackage - required if this is a package descriptor
-		 * @return {Object} descriptor that inherits from orig
-		 */
-		normalizePkgDescriptor: function (orig, name, isPackage) {
-			var desc, main;
-
-			// convert from string shortcut (such as paths config)
-			if (core.isType(orig, 'String')) {
-				orig = { name: name, path: orig };
-			}
-
-			desc = core.beget(orig);
-
-			// for object maps, name is probably not specified
-			if (!desc.name) desc.name = name;
-			desc.path = core.removeEndSlash(desc.path || desc.location || '');
-
-			if (isPackage) {
-				main = desc['main'] || './main';
-				if (!core.isRelPath(main)) main = './' + main;
-				// trailing slashes trick reduceLeadingDots to see them as base ids
-				desc.main = core.reduceLeadingDots(main, desc.name + '/');
-			}
-
-			return desc;
-		},
-
-		/**
-		 * @type {Function}
-		 * @param {Array} pathlist
-		 * @return {RegExp}
-		 * @memberOf core
-		 */
-		generatePathMatcher: (function (escapeRx, escapeReplace) {
-			return function (pathlist) {
-				var pathExpressions;
-
-				pathExpressions = pathlist
-					.sort(sortBySpecificity)// put more specific paths, first
-					.join('|')
-					// escape slash and dot
-					.replace(escapeRx, escapeReplace)
-				;
-
-				return new RegExp('^(' + pathExpressions + ')(?=\\/|$)');
-			}
-		}(/\/|\./g, '\\$&')),
-
-		arrayToPkgMap: function (array) {
-			var map = {}, i = -1;
-			while (++i < array.length) map[array[i].name] = array[i];
-			return map;
-		},
-
-		// TODO: should this be a separate API call (noConflict(cfg)) from config()?
-		// if so, is it still on the config object so cram can see it?
-		setApi: function (cfg) {
-
-		},
-
-		findScript: function (predicate) {
-			var i = 0, script;
-			while (doc && (script = doc.scripts[i++])) {
-				if (predicate(script)) return script;
-			}
-		},
-
-		extractDataAttrConfig: (function (runModuleAttr) {
-			return function (cfg) {
-				var script;
-				script = core.findScript(function (script) {
-					var main;
-					// find main module(s) in data-curl-run attr on script el
-					// TODO: extract baseUrl, too?
-					main = script.getAttribute(runModuleAttr);
-					if (main) cfg.main = main;
-					return main;
-				});
-				// removeAttribute is wonky (in IE6?) but this works
-				if (script) script.setAttribute(runModuleAttr, '');
-				return cfg;
-			}
-		}('data-curl-run')),
-
 		/***** utilities *****/
 
 		cjsFreeVars: {
@@ -674,72 +478,6 @@
 			/require\s*\(\s*(["'])(.*?[^\\])\1\s*\)|(\/\/|\/\*|\n|\*\/)|[^\\]?(["'])/g,
 			{ '//': '\n', '/*': '*/' }
 		)),
-
-		/**
-		 * Returns true if the url is absolute (not relative to the document)
-		 * @param {String} url
-		 * @return {Boolean}
-		 */
-		isAbsUrl: (function (absUrlRx) {
-			return function (url) { return absUrlRx.test(url); };
-		}(/^\/|^[^:]+:\/\//)),
-
-		isRelPath: function (url) {
-			return url.charAt(0) == '.';
-		},
-
-		joinPaths: function (base, path) {
-			return core.removeEndSlash(base) + '/' + path;
-		},
-
-		removeEndSlash: function (path) {
-			return path && path.charAt(path.length - 1) == '/'
-				? path.substr(0, path.length - 1)
-				: path;
-		},
-
-		reduceLeadingDots: (function (findDotsRx) {
-			return function (childId, baseId) {
-				var removeLevels, normId, levels, isRelative, diff;
-				// this algorithm is similar to dojo's compactPath, which
-				// interprets module ids of "." and ".." as meaning "grab the
-				// module whose name is the same as my folder or parent folder".
-				// These special module ids are not included in the AMD spec
-				// but seem to work in node.js, too.
-
-				removeLevels = 1;
-				normId = childId;
-
-				// remove leading dots and count levels
-				if (core.isRelPath(normId)) {
-					isRelative = true;
-					// replaceDots also counts levels
-					normId = normId.replace(findDotsRx, replaceDots);
-				}
-
-				if (isRelative) {
-					levels = baseId.split('/');
-					diff = levels.length - removeLevels;
-					if (diff < 0) {
-						// this is an attempt to navigate above parent module.
-						// maybe dev wants a url or something. punt and return url;
-						return childId;
-					}
-					levels.splice(diff, removeLevels);
-					// normId || [] prevents concat from adding extra "/" when
-					// normId is reduced to a blank string
-					return levels.concat(normId || []).join('/');
-				}
-				else {
-					return normId;
-				}
-
-				function replaceDots (m, dot, dblDot, remainder) {
-					if (dblDot) removeLevels++;
-					return remainder || '';
-				}
-			}
-		}(/(\.)(\.?)(?:$|\/([^\.\/]+.*)?)/g)),
 
 		/**
 		 * Returns true if the thing to test has the constructor named,
@@ -803,14 +541,272 @@
 
 	};
 
-	/***** script loading *****/
 
-	var insertBeforeEl;
+	/***** config *****/
 
-	insertBeforeEl = head && head.getElementsByTagName('base')[0] || null;
+	var escapeRx, escapeReplace;
+
+	escapeRx = /\/|\./g;
+	escapeReplace = '\\$&';
 
 	/**
 	 *
+	 * @param {Object} cfg
+	 * @return {promise}
+	 * @memberOf core
+	 */
+	function config (cfg) {
+		var prevCfg, newCfg, desclist,
+			cfgMaps, map, name, i, desc, promise,
+			pathMap, pathRx;
+
+		// convert all new cfg props from quoted props (GCC AO)
+		prevCfg = globalRealm.cfg;
+		newCfg = core.beget(prevCfg, cfg, core.toObfuscatedName);
+
+		if (typeof newCfg.dontAddFileExt == 'string') {
+			newCfg.dontAddFileExt = new RegExp(newCfg.dontAddFileExt);
+		}
+
+		// TODO: should pathMap prefix baseUrl in advance?
+		pathMap = {};
+
+		// create a list of paths from all of the configured path maps
+		desclist = [];
+		cfgMaps = { paths: 0, /*plugins: 0,*/ packages: 1 }; // TODO: hoist?
+		for (name in cfgMaps) {
+			// only process owned props
+			if (!own(newCfg, name)) continue;
+			map = newCfg[name];
+			if (core.isType(map, 'Array')) {
+				map = config.arrayToPkgMap(map);
+			}
+			newCfg[name] = core.beget(map, cfg[name] || {});
+			desclist = desclist.concat(
+				config.normalizePkgDescriptors(newCfg[name], cfgMaps[name])
+			);
+		}
+
+		// process desclist
+		i = -1;
+		while (++i < desclist.length) {
+			desc = desclist[i];
+			// prepare for pathMatcher
+			desc.specificity = desc.name.split('/').length;
+			desc.toString = function () { return this.name };
+			// add to path map
+			pathMap[desc.name] = desc;
+			// if this desc has a custom config, extend main config
+			if (own(desclist[i], core.toObfuscatedName('config'))) {
+				desc.config = core.beget(newCfg, desc.config);
+			}
+		}
+		pathRx = config.generatePathMatcher(desclist);
+
+		// TODO: how to deal with different realms
+		globalRealm.idToUrl = function (id) {
+			var url, pkgDesc;
+			if (!path.isAbsUrl(id)) {
+				url = id.replace(pathRx, function (match) {
+					pkgDesc = pathMap[match] || {};
+					return pkgDesc.path || '';
+				});
+			}
+			else {
+				url = id;
+			}
+			// NOTE: if url == id, then the id *is* a url, not an id!
+			// should we do anything with this knowledge?
+			url = url + (newCfg.dontAddFileExt.test(url) ? '' : '.js');
+			return path.joinPaths(newCfg.baseUrl, url);
+		};
+
+		globalRealm.cfg = newCfg;
+
+		// TODO: create a config pipeline and put these in the pipeline:
+		// if preloads, fetch them
+		if (cfg.preloads && cfg.preloads.length) {
+			promise = new CurlApi(cfg.preloads);
+		}
+		// if main (string or array), fetch it/them
+		var main, fallback;
+		main = cfg.main;
+		if (main && main.length) {
+			// TODO: figure out if it may be better to have an explicit config option for the fallback instead of this:
+			if (core.isType(main, 'String')) main = main.split(',');
+			if (main[1]) fallback = function () {
+				promise = new CurlApi([main[1]], undefined, undefined, promise);
+			};
+			promise = new CurlApi([main[0]], undefined, fallback, promise);
+		}
+
+		// when all is done, set global config and return it
+		return promise.yield(newCfg);
+	}
+
+	config.normalizePkgDescriptors = function (map, isPackage) {
+		var list, name, desc;
+		list = [];
+		for (name in map) {
+			desc = map[name];
+			// don't process items in prototype chain again
+			if (own(map, name)) {
+				// TODO: plugin logic (but hopefully not here, before and/or after this loop?)
+				// normalize and add to path list
+				desc = config.normalizePkgDescriptor(desc, name, isPackage);
+				// TODO: baseUrl shenanigans with naked plugin name
+			}
+			list.push(desc);
+		}
+		return list;
+	};
+
+	/**
+	 * Normalizes a package (or path) descriptor.
+	 * @param {Object|String} orig - package/path descriptor.
+	 * @param {String} [name] - required if typeof orig == 'string'
+	 * @param {Boolean} isPackage - required if this is a package descriptor
+	 * @return {Object} descriptor that inherits from orig
+	 */
+	config.normalizePkgDescriptor = function (orig, name, isPackage) {
+		var desc, main;
+
+		// convert from string shortcut (such as paths config)
+		if (core.isType(orig, 'String')) {
+			orig = { name: name, path: orig };
+		}
+
+		desc = core.beget(orig);
+
+		// for object maps, name is probably not specified
+		if (!desc.name) desc.name = name;
+		desc.path = path.removeEndSlash(desc.path || desc.location || '');
+
+		if (isPackage) {
+			main = desc['main'] || './main';
+			if (!path.isRelPath(main)) main = './' + main;
+			// trailing slashes trick reduceLeadingDots to see them as base ids
+			desc.main = path.reduceLeadingDots(main, desc.name + '/');
+		}
+
+		return desc;
+	};
+
+	/**
+	 * @type {Function}
+	 * @param {Array} pathlist
+	 * @return {RegExp}
+	 * @memberOf core
+	 */
+	config.generatePathMatcher = function (pathlist) {
+		var pathExpressions;
+
+		pathExpressions = pathlist
+			.sort(sortBySpecificity)// put more specific paths, first
+			.join('|')
+			// escape slash and dot
+			.replace(escapeRx, escapeReplace)
+		;
+
+		return new RegExp('^(' + pathExpressions + ')(?=\\/|$)');
+	};
+
+	config.arrayToPkgMap = function (array) {
+		var map = {}, i = -1;
+		while (++i < array.length) map[array[i].name] = array[i];
+		return map;
+	};
+
+	// TODO: should this be a separate API call (noConflict(cfg)) from config()?
+	// if so, is it still on the config object so cram can see it?
+	config.setApi = function (cfg) {
+
+	};
+
+
+	/***** path *****/
+
+	var path, absUrlRx, findDotsRx;
+
+	absUrlRx = /^\/|^[^:]+:\/\//;
+	findDotsRx = /(\.)(\.?)(?:$|\/([^\.\/]+.*)?)/g;
+
+	/**
+	 * @type {Object}
+	 * @module 'curl/path'
+	 */
+	path = {
+		/**
+		 * Returns true if the url is absolute (not relative to the document)
+		 * @param {String} url
+		 * @return {Boolean}
+		 */
+		isAbsUrl: function (url) { return absUrlRx.test(url); },
+
+		isRelPath: function (url) { return url.charAt(0) == '.'; },
+
+		joinPaths: function (base, sub) {
+			return path.removeEndSlash(base) + '/' + sub;
+		},
+
+		removeEndSlash: function (path) {
+			return path && path.charAt(path.length - 1) == '/'
+				? path.substr(0, path.length - 1)
+				: path;
+		},
+
+		reduceLeadingDots: function (childId, baseId) {
+			var removeLevels, normId, levels, isRelative, diff;
+			// this algorithm is similar to dojo's compactPath, which
+			// interprets module ids of "." and ".." as meaning "grab the
+			// module whose name is the same as my folder or parent folder".
+			// These special module ids are not included in the AMD spec
+			// but seem to work in node.js, too.
+
+			removeLevels = 1;
+			normId = childId;
+
+			// remove leading dots and count levels
+			if (path.isRelPath(normId)) {
+				isRelative = true;
+				// replaceDots also counts levels
+				normId = normId.replace(findDotsRx, replaceDots);
+			}
+
+			if (isRelative) {
+				levels = baseId.split('/');
+				diff = levels.length - removeLevels;
+				if (diff < 0) {
+					// this is an attempt to navigate above parent module.
+					// maybe dev wants a url or something. punt and return url;
+					return childId;
+				}
+				levels.splice(diff, removeLevels);
+				// normId || [] prevents concat from adding extra "/" when
+				// normId is reduced to a blank string
+				return levels.concat(normId || []).join('/');
+			}
+			else {
+				return normId;
+			}
+
+			function replaceDots (m, dot, dblDot, remainder) {
+				if (dblDot) removeLevels++;
+				return remainder || '';
+			}
+		}
+	};
+
+
+	/***** script loading *****/
+
+	var insertBeforeEl, runModuleAttr;
+
+	insertBeforeEl = head && head.getElementsByTagName('base')[0] || null;
+	runModuleAttr = 'data-curl-run';
+
+	/**
+	 * @module 'curl/loadScript'
 	 * @param {Object} options
 	 * @param {String} options.id
 	 * @param {String} options.url
@@ -901,49 +897,35 @@
 		? {}
 		: { 'loaded': 1, 'complete': 1 };
 
-	/***** startup *****/
-
-	// default configs. some properties are quoted to assist GCC
-	// Advanced Optimization.
-	globalRealm = {
-		cfg: {
-			baseUrl: '',
-			pluginPath: 'curl/plugin',
-			dontAddFileExt: /\?|\.js\b/,
-			paths: {},
-			packages: {},
-			plugins: {},
-			preloads: undefined,
-			main: undefined,
-			type: 'amd',
-			types: {
-				amd: {
-					declare: [
-						core.parseAmdFactory,
-						core.resolveDeps,
-						core.createFactoryExporter
-					],
-					locate: [
-						core.resolveAmdCtx,
-						core.fetchAmdModule
-					]
-				}
-			}
-		},
-		idToUrl: function (id) { return id; },
-		cache: {
-//			'curl/config': function () { return globalRealm.cfg; },
-			'curl': curl,
-			'curl/define': define,
-			'curl/core': core,
-			'curl/loadScript': loadScript,
-			'curl/Deferred': Deferred
+	loadScript.findScript = function (predicate) {
+		var i = 0, script;
+		while (doc && (script = doc.scripts[i++])) {
+			if (predicate(script)) return script;
 		}
 	};
 
-	/***** promises / deferreds *****/
+	loadScript.extractDataAttrConfig = function (cfg) {
+		var script;
+		script = loadScript.findScript(function (script) {
+			var main;
+			// find main module(s) in data-curl-run attr on script el
+			// TODO: extract baseUrl, too?
+			main = script.getAttribute(runModuleAttr);
+			if (main) cfg.main = main;
+			return main;
+		});
+		// removeAttribute is wonky (in IE6?) but this works
+		if (script) script.setAttribute(runModuleAttr, '');
+		return cfg;
+	};
 
-	// promise implementation adapted from https://github.com/briancavalier/avow
+	/***** deferred *****/
+
+	/**
+	 * promise implementation adapted from https://github.com/briancavalier/avow
+	 * @return {Deferred}
+	 * @constructor
+	 */
 	function Deferred () {
 		var dfd, promise, pendingHandlers, bindHandlers;
 
@@ -953,12 +935,24 @@
 		// for fulfilling and rejecting the promise
 		dfd = this;
 
+		/**
+		 * Provides access to the deferred's promise, which has .then() and
+		 * .yield() methods.
+		 * @type {Object}
+		 */
 		this.promise = promise;
 
+		/**
+		 * Fulfills a deferred, resolving its promise.
+		 * @param value
+		 */
 		this.fulfill = function (value) {
 			applyAllPending(applyFulfill, value);
 		};
-
+		/**
+		 * Rejects a deferred, rejecting its promise.
+		 * @param reason
+		 */
 		this.reject = function (reason) {
 			applyAllPending(applyReject, reason);
 		};
@@ -1058,6 +1052,7 @@
 	}
 	Deferred.when = when;
 
+	// TODO: take the all function out and save about 70 bytes
 	function all (things) {
 		var howMany, dfd, results, thing;
 
@@ -1084,6 +1079,49 @@
 		return function () { return task1.apply(this, arguments).then(task2); };
 	}
 
+
+	/***** startup *****/
+
+	// default configs. some properties are quoted to assist GCC
+	// Advanced Optimization.
+	globalRealm = {
+		cfg: {
+			baseUrl: '',
+			pluginPath: 'curl/plugin',
+			dontAddFileExt: /\?|\.js\b/,
+			paths: {},
+			packages: {},
+			plugins: {},
+			preloads: undefined,
+			main: undefined,
+			type: 'amd',
+			types: {
+				amd: {
+					declare: [
+						core.parseAmdFactory,
+						core.resolveDeps,
+						core.createFactoryExporter
+					],
+					locate: [
+						core.resolveAmdCtx,
+						core.fetchAmdModule
+					]
+				}
+			}
+		},
+		idToUrl: function (id) { return id; },
+		cache: {
+			'curl': curl,
+			'curl/define': define,
+			'curl/core': core,
+			'curl/path': path,
+			'curl/config': config,
+			'curl/loadScript': loadScript,
+			'curl/Deferred': Deferred
+		}
+	};
+
+
 	/***** exports *****/
 
 	// TODO: make this moveable / renamable
@@ -1095,7 +1133,8 @@
 
 	// TODO: look for global config, `global.curl`
 	// look for "data-curl-run" directive, and override config
-	globalRealm.cfg = core.extractDataAttrConfig(globalRealm.cfg);
+	globalRealm.cfg = loadScript.extractDataAttrConfig(globalRealm.cfg);
+
 
 	/***** utilities *****/
 
