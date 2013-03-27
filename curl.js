@@ -43,7 +43,7 @@
 	 * @param {Function} [errback]
 	 * @return {CurlApi}
 	 */
-	function curl (/* various */) {
+	function curl () {
 		var args, promise, cfg;
 
 		args = [].slice.call(arguments);
@@ -63,6 +63,12 @@
 	 */
 	curl['version'] = version;
 
+	/**
+	 * Obtains an already-cached module.  If the module is not already cached,
+	 * an exception is thrown.
+	 * @param {String} id
+	 * @return {*} module
+	 */
 	curl['get'] = function (id) {
 		var ctx;
 		if (!(id in globalRealm.cache)) {
@@ -89,7 +95,7 @@
 	 * Restores the global API variables to their previous values before
 	 * curl.js executed.  Call this function after capturing the new/current
 	 * APIs like this:
-	 *   var define = curl('curl/define');
+	 *   var define = curl.get('curl/define');
 	 *   my.curl = curl;
 	 *   my.define = define;
 	 *   curl.restore();
