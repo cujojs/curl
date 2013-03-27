@@ -13,7 +13,7 @@ define(function (require) {
 		normalized1, normalized2, normalized3, normalized4;
 
 	curl = require('curl');
-	config = curl('curl/config');
+	config = curl.get('curl/config');
 	curl.restore();
 
 	pkgDescriptor1 = {

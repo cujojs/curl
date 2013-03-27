@@ -10,7 +10,7 @@ define(function (require) {
 	var curl, loadScript;
 
 	curl = require('curl');
-	loadScript = curl('curl/loadScript');
+	loadScript = curl.get('curl/loadScript');
 	curl.restore();
 
 	buster.testCase('loadScript.extractDataAttrConfig', {

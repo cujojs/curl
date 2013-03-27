@@ -10,7 +10,7 @@ define(function (require) {
 	var curl, path;
 
 	curl = require('curl');
-	path = curl('curl/path');
+	path = curl.get('curl/path');
 	curl.restore();
 
 	buster.testCase('path.isAbsUrl', {

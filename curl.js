@@ -38,7 +38,7 @@
 	 * @global
 	 * @exports
 	 * @param {Object} [cfg]
-	 * @param {Array|String} [ids]
+	 * @param {Array} [ids]
 	 * @param {Function} [callback]
 	 * @param {Function} [errback]
 	 * @return {CurlApi}
@@ -48,21 +48,10 @@
 
 		args = [].slice.call(arguments);
 
-		// sync curl(id)
-		if (core.isType(args[0], 'String')) {
-			var id = args[0], ctx = globalRealm.cache[id];
-			if (!(id in globalRealm.cache)) {
-				throw new Error(importErrorMessage(id));
-			}
-			return core.isModuleContext(ctx)
-				? core.importModuleSync(ctx)
-				: ctx;
-		}
-
 		// extract config, if it's specified
 		if (core.isType(args[0], 'Object')) {
 			cfg = args.shift();
-			promise = when(config(cfg));
+			promise = when(config.set(cfg));
 		}
 
 		return new CurlApi(args[0], args[1], args[2], all([firstConfig, promise]));
@@ -73,6 +62,17 @@
 	 * @type {String}
 	 */
 	curl['version'] = version;
+
+	curl['get'] = function (id) {
+		var ctx;
+		if (!(id in globalRealm.cache)) {
+			throw new Error(importErrorMessage(id));
+		}
+		ctx = globalRealm.cache[id];
+		return core.isModuleContext(ctx)
+			? core.importModuleSync(ctx)
+			: ctx;
+	};
 
 	/**
 	 *
@@ -112,7 +112,7 @@
 		// TODO: ensure next-turn so inline code can execute first
 
 		// defaults
-		if (!callback) callback = noop;
+		if (!callback) callback = identity;
 		if (!errback) errback = function (ex) { throw ex; };
 
 		dfd = new Deferred();
@@ -176,7 +176,7 @@
 		 */
 		this['config'] = function (cfg) {
 			// don't wait for previous promise to start config
-			promise = all([promise, config(cfg)]);
+			promise = all([promise, config.set(cfg)]);
 			return this;
 		};
 	}
@@ -184,10 +184,11 @@
 
 	/***** core *****/
 
-	var doc, head, core, globalRealm, argsNet;
+	var doc, head, core, defineCache, argsNet;
 
 	doc = global.document;
 	head = doc && (doc['head'] || doc.getElementsByTagName('head')[0]);
+	defineCache = {};
 
 	/**
 	 *
@@ -198,16 +199,26 @@
 
 		/***** module pipelines *****/
 
-		createPipeline: function (tasks) {
+		requirePipeline: [
+			'normalize', 'locate', 'fetch', 'translate', 'resolve', 'link'
+		],
+
+		providePipeline: [
+			'define'
+		],
+
+		createPipeline: function (order, map) {
+			// TODO: account for async construction of pipelines
 			var head, i;
-			head = tasks[0];
+			head = map[order[0]];
 			i = 0;
-			while (++i < tasks.length) head = queue(head, tasks[i]);
+			while (++i < order.length) head = queue(head, map[order[i]]);
 			return head;
 		},
 
 		resolveDeps: function (mctx) {
-			var promises, i;
+			var realm, promises, i;
+			realm = mctx.realm;
 			promises = [];
 			i = 0;
 			while (i < mctx.deps.length) {
@@ -216,29 +227,43 @@
 			return all(promises).yield(mctx);
 
 			function resolveAndCache (id) {
-				return core.requireModule(mctx.realm, id).then(function (ctx) {
-					return mctx.realm.cache[id] = ctx;
-				});
+				var result;
+				// check for pseudo-modules
+				if (id in core.cjsFreeVars) {
+					result = core.cjsFreeVars[id].call(mctx);
+				}
+				// check in cache
+				else if (id in realm.cache) {
+					result =realm.cache[id];
+				}
+				// go get it
+				else {
+					result = core.requireModule(mctx.realm, id).then(function (ctx) {
+						// store a context in the cache
+						return mctx.realm.cache[id] = ctx;
+					});
+				}
+				return result;
 			}
 		},
 
 		requireModule: function (pctx, id) {
 			var realm = pctx.realm, mctx;
-			// check for pseudo-modules
-			if (id in core.cjsFreeVars) return core.cjsFreeVars[id].call(mctx);
-			// check in cache
-			if (id in realm.cache) return realm.cache[id];
-			if (!realm.locate) realm.locate = core.createPipeline(realm.cfg.locate);
-			// TODO: should the context be created here or by the first step in the pipeline?
+			if (!realm.require) {
+				realm.require = core.createPipeline(core.requirePipeline, realm.cfg.require);
+			}
 			mctx = core.createModuleContext(realm, id);
-			return realm.cache[id] = realm.locate(mctx);
+			// store a promise in the cache
+			return realm.cache[id] = realm.require(mctx);
 		},
 
 		defineModule: function (mctx) {
 			var realm = mctx.realm, id = mctx.id;
 			if (realm.cache[id]) throw new Error(id + ' already defined.');
-			if (!realm.declare) realm.declare = core.createPipeline(realm.cfg.declare);
-			return realm.cache[id] = realm.declare(mctx);
+			if (!realm.provide) {
+				realm.provide = core.createPipeline(core.providePipeline, realm.cfg.provide);
+			}
+			return realm.cache[id] = realm.provide(mctx);
 		},
 
 		createFactoryExporter: function (mctx) {
@@ -275,7 +300,7 @@
 			var realm = mctx.realm, id = mctx.id, notReady;
 			notReady = isDeferred(mctx);
 			if (notReady) throw new Error(importErrorMessage(mctx.id));
-			if (core.isModuleContext(mctx)) realm.cache[id] = mctx.runFactory();
+			realm.cache[id] = mctx.runFactory();
 			return realm.cache[id];
 		},
 
@@ -285,33 +310,41 @@
 			return it instanceof ModuleContext;
 		},
 
-		createModuleContext: function (id, parentRealm) {
+		createModuleContext: function (id, parentCtx) {
 			var mctx;
 			mctx = new ModuleContext();
 			mctx.id = id;
-			mctx.parentRealm = parentRealm;
-			mctx.realm = parentRealm; // could be replaced later
+			mctx.parentCtx = parentCtx;
+			mctx.realm = parentCtx.realm; // could be replaced later
 			return mctx;
 		},
 
 		initModuleContext: function (mctx) {
 			// TODO: figure out how to deal with different realms
-			mctx.realm = mctx.parentRealm;
-			mctx.url = mctx.realm.idToUrl(mctx.id);
-
-			// NOTE: if url == id, then the id *is* a url, not an id!
-			// should we do anything with this knowledge?
+			mctx.realm = mctx.parentCtx.realm;
 			return mctx;
 		},
 
 		/***** amd-specific functions *****/
 
-		resolveAmdCtx: function (mctx) {
-			// TODO: if module has no id, see if it's a newly-loaded anonymous module
-			// TODO: where does the id transformation go? should it happen in an import pipeline?
-			// resolve url, etc
-			return when(core.initModuleContext(mctx));
+		normalizeId: function (mctx) {
+			mctx.id = path.reduceLeadingDots(mctx.id, mctx.parentCtx.id);
+			return mctx;
 		},
+
+		resolveUrl: function (mctx) {
+			// NOTE: if url == id, then the id *is* a url, not an id!
+			// should we do anything with this knowledge?
+			mctx.url = mctx.realm.idToUrl(mctx.id);
+			return mctx;
+		},
+
+//		resolveAmdCtx: function (mctx) {
+//			// TODO: if module has no id, see if it's a newly-loaded anonymous module
+//			// TODO: where does the id transformation go? should it happen in an import pipeline?
+//			// resolve url, etc
+//			return when(core.initModuleContext(mctx));
+//		},
 
 		fetchAmdModule: function (mctx) {
 			var dfd = new Deferred();
@@ -319,20 +352,35 @@
 			return dfd.promise;
 
 			function resolve () {
-				var args = argsNet;
-				argsNet = undefined;
-				// TODO: determine if we can process all define()s here rather than processing some in defineAmdModule
-				if (!args) {
-					args = mctx.useNet === false
-						? {}
-						: { ex: 'define() not found:' + mctx.url };
+				var id, args, found, error;
+
+				if (!defineCache['curl$error']) {
+					for (id in defineCache) {
+						if ('curl$anon' == id) {
+							// these are the args for the requested module
+							args = defineCache['curl$anon'];
+							core.assignAmdProperties.apply(mctx, args);
+						}
+						else {
+							// this is a named module in a bundle.
+							// move it to this realm.
+							delete globalRealm.cache[mctx.id];
+							mctx.realm.cache[mctx.id] = mctx;
+							if (mctx.id == id) found = true;
+						}
+					}
 				}
-				if (args.ex) {
-					dfd.reject(new Error(args.ex));
+				// clear define cache
+				defineCache = {};
+				// resolve
+				if (found) {
+					dfd.fulfill(mctx);
 				}
 				else {
-					core.assignAmdProperties.apply(mctx, args);
-					dfd.fulfill(mctx);
+					error =
+						(defineCache['curl$error'] || 'module '+ mctx.id + ' not found in ')
+						+ mctx.url;
+					dfd.reject(new Error(error));
 				}
 			}
 		},
@@ -341,30 +389,25 @@
 			var mctx;
 
 			if (id == undefined) {
-				if (argsNet != undefined) {
-					argsNet = { ex: 'Multiple anonymous defines in url or AMD module loaded via <script/> or js! plugin' };
+				if ('curl$anon' in defineCache) {
+					defineCache['curl$error']
+						= 'previous anonymous module loaded as plain javascript, or'
+						+ 'multiple anonymous defines in ';
 				}
 				// check if we can find id in activeScripts
 				else if (!(id = loadScript.getCurrentModuleId())) {
-					argsNet = arguments;
+					defineCache['curl$anon'] = arguments;
 				}
 			}
 
 			if (id != undefined) {
-				// create or lookup mctx in cache
-				// TODO: how do we support multiple realms when resolving here?
-				// TODO: can we resolve in fetchAmdModule's callback instead?
-				if ((id in globalRealm.cache)) {
-					mctx = globalRealm.cache[id];
-				}
-				else {
-					mctx = core.createModuleContext(id, globalRealm);
-				}
+				// create a module context and put it in the define cache
+				mctx = core.createModuleContext(id, globalRealm);
+				defineCache[id] = mctx;
 				// append amd-specific stuff
 				core.assignAmdProperties.apply(mctx, arguments);
-				mctx.useNet = false;
-				// initiate pipeline
-				core.defineModule(mctx);
+//				// initiate pipeline
+//				core.defineModule(mctx);
 			}
 		},
 
@@ -443,15 +486,14 @@
 			'module': function () {
 				var mctx = this, module = mctx.module;
 				if (!module) {
-					module = mctx.module = {
-						'id': mctx.id,
-						'uri': mctx.url,
-						'exports': core.cjsFreeVars.exports.call(mctx),
-						'config': function () { return mctx.realm.cfg; }
-					};
-					module.exports = module['exports']; // GCC AO issue?
+					module = mctx.module = core.toObfuscatedName({
+						id: mctx.id,
+						uri: mctx.url,
+						exports: core.cjsFreeVars['exports'].call(mctx),
+						config: function () { return mctx.realm.cfg; }
+					});
 				}
-				return mctx.module;
+				return module;
 			}
 		},
 
@@ -504,7 +546,7 @@
 
 		beget: function (parent, mixin, transform) {
 			var child, p;
-			if (!transform) transform = noop;
+			if (!transform) transform = identity;
 			Begetter.prototype = parent || {};
 			child = new Begetter();
 			Begetter.prototype = {};
@@ -512,15 +554,23 @@
 			return child;
 		},
 
+		// this is gross. can we move this to an external module that is
+		// baked in to dist versions?
 		toObfuscatedName: (function (map) {
 			var test, invert, p;
 			// test if we've been obfuscated
 			test = { prop: version };
-			if (test.prop == test['prop']) return noop;
+			if (test.prop == test['prop']) return identity;
 			// create a converter
 			invert = {};
 			for (p in map) invert[map[p]] = p;
-			return function (p) { return p in invert ? invert[p] : p; }
+			return function (it) {
+				var p;
+				if (core.isType(it, 'Object')) {
+					for (p in it) it[p] = it[core.toObfuscatedName(p)];
+				}
+				return it in invert ? invert[it] : it;
+			}
 		}({
 			baseUrl: 'baseUrl',
 			pluginPath: 'pluginPath',
@@ -533,8 +583,14 @@
 			type: 'type',
 			types: 'types',
 			amd: 'amd',
-			declare: 'declare',
-			locate: 'locate'
+			provide: 'provide',
+			normalize: 'normalize',
+			locate: 'locate',
+			fetch: 'fetch',
+			translate: 'translate',
+			resolve: 'resolve',
+			link: 'link',
+			define: 'define'
 		})),
 
 		/**
@@ -553,197 +609,200 @@
 
 	/***** config *****/
 
-	var escapeRx, escapeReplace, prevCurl, prevDefine;
+	var escapeRx, escapeReplace, prevCurl, prevDefine, config;
 
 	escapeRx = /\/|\./g;
 	escapeReplace = '\\$&';
 	prevCurl = global['curl'];
 	prevDefine = global['define'];
 
-	/**
-	 *
-	 * @param {Object} cfg
-	 * @return {promise}
-	 * @memberOf core
-	 */
-	function config (cfg) {
-		var prevCfg, newCfg, desclist,
-			cfgMaps, map, name, i, desc, promise,
-			pathMap, pathRx;
+	config = {
+		/**
+		 *
+		 * @param {Object} cfg
+		 * @return {promise}
+		 * @memberOf config
+		 */
+		set: function (cfg) {
+			var prevCfg, newCfg, desclist,
+				cfgMaps, map, name, i, desc, promise,
+				pathMap, pathRx;
 
-		// convert all new cfg props from quoted props (GCC AO)
-		prevCfg = globalRealm.cfg;
-		newCfg = core.beget(prevCfg, cfg, core.toObfuscatedName);
+			// convert all new cfg props from quoted props (GCC AO)
+			prevCfg = globalRealm.cfg;
+			newCfg = core.beget(prevCfg, cfg, core.toObfuscatedName);
 
-		if (typeof newCfg.dontAddFileExt == 'string') {
-			newCfg.dontAddFileExt = new RegExp(newCfg.dontAddFileExt);
-		}
-
-		// TODO: should pathMap prefix baseUrl in advance?
-		pathMap = {};
-
-		// create a list of paths from all of the configured path maps
-		desclist = [];
-		cfgMaps = { paths: 0, /*plugins: 0,*/ packages: 1 }; // TODO: hoist?
-		for (name in cfgMaps) {
-			// only process owned props
-			if (!own(newCfg, name)) continue;
-			map = newCfg[name];
-			if (core.isType(map, 'Array')) {
-				map = config.arrayToPkgMap(map);
+			if (typeof newCfg.dontAddFileExt == 'string') {
+				newCfg.dontAddFileExt = new RegExp(newCfg.dontAddFileExt);
 			}
-			newCfg[name] = core.beget(map, cfg[name] || {});
-			desclist = desclist.concat(
-				config.normalizePkgDescriptors(newCfg[name], cfgMaps[name])
-			);
-		}
 
-		// process desclist
-		i = -1;
-		while (++i < desclist.length) {
-			desc = desclist[i];
-			// prepare for pathMatcher
-			desc.specificity = desc.name.split('/').length;
-			desc.toString = function () { return this.name };
-			// add to path map
-			pathMap[desc.name] = desc;
-			// if this desc has a custom config, extend main config
-			if (own(desclist[i], core.toObfuscatedName('config'))) {
-				desc.config = core.beget(newCfg, desc.config);
+			// TODO: should pathMap prefix baseUrl in advance?
+			pathMap = {};
+
+			// create a list of paths from all of the configured path maps
+			desclist = [];
+			cfgMaps = { paths: 0, /*plugins: 0,*/ packages: 1 }; // TODO: hoist?
+			for (name in cfgMaps) {
+				// only process owned props
+				if (!own(newCfg, name)) continue;
+				map = newCfg[name];
+				if (core.isType(map, 'Array')) {
+					map = config.arrayToPkgMap(map);
+				}
+				newCfg[name] = core.beget(map, cfg[name] || {});
+				desclist = desclist.concat(
+					config.normalizePkgDescriptors(newCfg[name], cfgMaps[name])
+				);
 			}
-		}
-		pathRx = config.generatePathMatcher(desclist);
 
-		// TODO: how to deal with different realms
-		globalRealm.idToUrl = function (id) {
-			var url, pkgDesc;
-			if (!path.isAbsUrl(id)) {
-				url = id.replace(pathRx, function (match) {
-					pkgDesc = pathMap[match] || {};
-					return pkgDesc.path || '';
-				});
+			// process desclist
+			i = -1;
+			while (++i < desclist.length) {
+				desc = desclist[i];
+				// prepare for pathMatcher
+				desc.specificity = desc.name.split('/').length;
+				desc.toString = function () { return this.name };
+				// add to path map
+				pathMap[desc.name] = desc;
+				// if this desc has a custom config, extend main config
+				if (own(desclist[i], core.toObfuscatedName('config'))) {
+					desc.config = core.beget(newCfg, desc.config);
+				}
 			}
-			else {
-				url = id;
-			}
-			// NOTE: if url == id, then the id *is* a url, not an id!
-			// should we do anything with this knowledge?
-			url = url + (newCfg.dontAddFileExt.test(url) ? '' : '.js');
-			return path.joinPaths(newCfg.baseUrl, url);
-		};
+			pathRx = config.generatePathMatcher(desclist);
 
-		globalRealm.cfg = newCfg;
-
-		// TODO: create a config pipeline and put these in the pipeline:
-		// if preloads, fetch them
-		if (cfg.preloads && cfg.preloads.length) {
-			promise = new CurlApi(cfg.preloads);
-		}
-		// if main (string or array), fetch it/them
-		var main, fallback;
-		main = cfg.main;
-		if (main && main.length) {
-			if (core.isType(main, 'String')) main = main.split(',');
-			if (main[1]) fallback = function () {
-				promise = new CurlApi([main[1]], undefined, undefined, promise);
+			// TODO: how to deal with different realms
+			globalRealm.idToUrl = function (id) {
+				var url, pkgDesc;
+				if (!path.isAbsUrl(id)) {
+					url = id.replace(pathRx, function (match) {
+						pkgDesc = pathMap[match] || {};
+						return pkgDesc.path || '';
+					});
+				}
+				else {
+					url = id;
+				}
+				// NOTE: if url == id, then the id *is* a url, not an id!
+				// should we do anything with this knowledge?
+				url = url + (newCfg.dontAddFileExt.test(url) ? '' : '.js');
+				return path.joinPaths(newCfg.baseUrl, url);
 			};
-			promise = new CurlApi([main[0]], undefined, fallback, promise);
-		}
 
-		// when all is done, set global config and return it
-		return promise? promise.yield(newCfg) : newCfg;
-	}
+			globalRealm.cfg = newCfg;
 
-	config.normalizePkgDescriptors = function (map, isPackage) {
-		var list, name, desc;
-		list = [];
-		for (name in map) {
-			desc = map[name];
-			// don't process items in prototype chain again
-			if (own(map, name)) {
-				// TODO: plugin logic (but hopefully not here, before and/or after this loop?)
-				// normalize and add to path list
-				desc = config.normalizePkgDescriptor(desc, name, isPackage);
-				// TODO: baseUrl shenanigans with naked plugin name
+			// TODO: create a config pipeline and put these in the pipeline:
+			// if preloads, fetch them
+			if (cfg.preloads && cfg.preloads.length) {
+				promise = new CurlApi(cfg.preloads);
 			}
-			list.push(desc);
+			// if main (string or array), fetch it/them
+			var main, fallback;
+			main = cfg.main;
+			if (main && main.length) {
+				if (core.isType(main, 'String')) main = main.split(',');
+				if (main[1]) fallback = function () {
+					promise = new CurlApi([main[1]], undefined, undefined, promise);
+				};
+				promise = new CurlApi([main[0]], undefined, fallback, promise);
+			}
+
+			// when all is done, set global config and return it
+			return promise? promise.yield(newCfg) : newCfg;
+		},
+
+		normalizePkgDescriptors: function (map, isPackage) {
+			var list, name, desc;
+			list = [];
+			for (name in map) {
+				desc = map[name];
+				// don't process items in prototype chain again
+				if (own(map, name)) {
+					// TODO: plugin logic (but hopefully not here, before and/or after this loop?)
+					// normalize and add to path list
+					desc = config.normalizePkgDescriptor(desc, name, isPackage);
+					// TODO: baseUrl shenanigans with naked plugin name
+				}
+				list.push(desc);
+			}
+			return list;
+		},
+
+		/**
+		 * Normalizes a package (or path) descriptor.
+		 * @param {Object|String} orig - package/path descriptor.
+		 * @param {String} [name] - required if typeof orig == 'string'
+		 * @param {Boolean} isPackage - required if this is a package descriptor
+		 * @return {Object} descriptor that inherits from orig
+		 */
+		normalizePkgDescriptor: function (orig, name, isPackage) {
+			var desc, main;
+
+			// convert from string shortcut (such as paths config)
+			if (core.isType(orig, 'String')) {
+				orig = { name: name, path: orig };
+			}
+
+			desc = core.beget(orig);
+
+			// for object maps, name is probably not specified
+			if (!desc.name) desc.name = name;
+			desc.path = path.removeEndSlash(desc.path || desc.location || '');
+
+			if (isPackage) {
+				main = desc['main'] || './main';
+				if (!path.isRelPath(main)) main = './' + main;
+				// trailing slashes trick reduceLeadingDots to see them as base ids
+				desc.main = path.reduceLeadingDots(main, desc.name + '/');
+			}
+
+			return desc;
+		},
+
+		/**
+		 * @type {Function}
+		 * @param {Array} pathlist
+		 * @return {RegExp}
+		 * @memberOf core
+		 */
+		generatePathMatcher: function (pathlist) {
+			var pathExpressions;
+
+			pathExpressions = pathlist
+				.sort(sortBySpecificity)// put more specific paths, first
+				.join('|')
+				// escape slash and dot
+				.replace(escapeRx, escapeReplace)
+			;
+
+			return new RegExp('^(' + pathExpressions + ')(?=\\/|$)');
+		},
+
+		arrayToPkgMap: function (array) {
+			var map = {}, i = -1;
+			while (++i < array.length) map[array[i].name] = array[i];
+			return map;
+		},
+
+		/**
+		 *
+		 * @param {Object} defaultConfig
+		 * @return {Object}
+		 */
+		init: function (defaultConfig) {
+			var firstCfg;
+
+			// bail if there's a global curl that's not an object literal
+			if (prevCurl && !core.isType(prevCurl, 'Object')) return defaultConfig;
+
+			// merge any attributes off the data-curl-run script element
+			firstCfg = core.beget(prevCurl || {}, loadScript.extractDataAttrConfig());
+
+			// return the default config overridden with the global config(s)
+			return core.beget(defaultConfig, firstCfg);
 		}
-		return list;
 	};
 
-	/**
-	 * Normalizes a package (or path) descriptor.
-	 * @param {Object|String} orig - package/path descriptor.
-	 * @param {String} [name] - required if typeof orig == 'string'
-	 * @param {Boolean} isPackage - required if this is a package descriptor
-	 * @return {Object} descriptor that inherits from orig
-	 */
-	config.normalizePkgDescriptor = function (orig, name, isPackage) {
-		var desc, main;
-
-		// convert from string shortcut (such as paths config)
-		if (core.isType(orig, 'String')) {
-			orig = { name: name, path: orig };
-		}
-
-		desc = core.beget(orig);
-
-		// for object maps, name is probably not specified
-		if (!desc.name) desc.name = name;
-		desc.path = path.removeEndSlash(desc.path || desc.location || '');
-
-		if (isPackage) {
-			main = desc['main'] || './main';
-			if (!path.isRelPath(main)) main = './' + main;
-			// trailing slashes trick reduceLeadingDots to see them as base ids
-			desc.main = path.reduceLeadingDots(main, desc.name + '/');
-		}
-
-		return desc;
-	};
-
-	/**
-	 * @type {Function}
-	 * @param {Array} pathlist
-	 * @return {RegExp}
-	 * @memberOf core
-	 */
-	config.generatePathMatcher = function (pathlist) {
-		var pathExpressions;
-
-		pathExpressions = pathlist
-			.sort(sortBySpecificity)// put more specific paths, first
-			.join('|')
-			// escape slash and dot
-			.replace(escapeRx, escapeReplace)
-		;
-
-		return new RegExp('^(' + pathExpressions + ')(?=\\/|$)');
-	};
-
-	config.arrayToPkgMap = function (array) {
-		var map = {}, i = -1;
-		while (++i < array.length) map[array[i].name] = array[i];
-		return map;
-	};
-
-	/**
-	 *
-	 * @param {Object} defaultConfig
-	 * @return {Object}
-	 */
-	config.init = function (defaultConfig) {
-		var firstCfg;
-
-		// bail if there's a global curl that's not an object literal
-		if (prevCurl && !core.isType(prevCurl, 'Object')) return defaultConfig;
-
-		// merge any attributes off the data-curl-run script element
-		firstCfg = core.beget(prevCurl || {}, loadScript.extractDataAttrConfig());
-
-		// return the default config overridden with the global config(s)
-		return core.beget(defaultConfig, firstCfg);
-	};
 
 
 	/***** path *****/
@@ -1110,7 +1169,7 @@
 
 	/***** startup *****/
 
-	var firstConfig;
+	var firstConfig, globalRealm;
 
 	// default configs. some properties are quoted to assist GCC
 	// Advanced Optimization.
@@ -1127,15 +1186,27 @@
 			type: 'amd',
 			types: {
 				amd: {
-					declare: [
-						core.parseAmdFactory,
-						core.resolveDeps,
-						core.createFactoryExporter
-					],
-					locate: [
-						core.resolveAmdCtx,
-						core.fetchAmdModule
-					]
+//					declare: [
+//						core.parseAmdFactory,
+//						core.resolveDeps,
+//						core.createFactoryExporter
+//					],
+//					locate: [
+//						core.resolveAmdCtx,
+//						core.fetchAmdModule
+//					],
+					require: {
+						normalize: core.normalizeId,
+						locate: core.resolveUrl,
+						// provie (parseAmdFactory) happens here
+						fetch: core.fetchAmdModule,
+						translate: identity,
+						resolve: core.resolveDeps,
+						link: core.createFactoryExporter
+					},
+					provide: {
+						define: core.parseAmdFactory
+					}
 				}
 			}
 		},
@@ -1153,7 +1224,7 @@
 
 	// look for global configs and initialize the configs
 	globalRealm.cfg = config.init(globalRealm.cfg);
-	firstConfig = config(globalRealm.cfg);
+	firstConfig = config.set(globalRealm.cfg);
 
 
 	/***** exports *****/
@@ -1184,7 +1255,7 @@
 		return b.specificity - a.specificity;
 	}
 
-	function noop (val) { return val; }
+	function identity (val) { return val; }
 
 }(
 	// find global object (browser || commonjs)

@@ -10,26 +10,26 @@ define(function (require) {
 	var curl, core;
 
 	curl = require('curl');
-	core = curl('curl/core');
+	core = curl.get('curl/core');
 	curl.restore();
 
 	buster.testCase('core.createModuleContext', {
 		'should create a module context': function () {
-			var realm, mctx;
-			realm = {};
-			mctx = new core.createModuleContext('foo', realm);
+			var pctx, mctx;
+			pctx = { realm: {} };
+			mctx = new core.createModuleContext('foo', pctx);
 			assert(typeof mctx == 'object', 'context is an object');
 			assert.equals('foo', mctx.id, 'context has an id property');
-			assert.equals(realm, mctx.parentRealm, 'context has a parentRealm property');
-			assert.equals(realm, mctx.realm, 'context has a realm property');
+			assert.equals(pctx, mctx.parentCtx, 'context has a parentCtx property');
+			assert.equals(pctx.realm, mctx.realm, 'context has a realm property');
 		}
 	});
 
 	buster.testCase('core.isModuleContext', {
 		'should detect a module context': function () {
-			var realm, mctx;
-			realm = {};
-			mctx = new core.createModuleContext('foo', realm);
+			var pctx, mctx;
+			pctx = { realm: {} };
+			mctx = new core.createModuleContext('foo', pctx);
 			assert(core.isModuleContext(mctx), 'context is a ModuleContext');
 			refute(core.isModuleContext({}), 'non-context is not a ModuleContext');
 		}
@@ -37,13 +37,11 @@ define(function (require) {
 
 	buster.testCase('core.initModuleContext', {
 		'should initialize a module context': function () {
-			var realm, mctx;
-			realm = {
-				idToUrl: function (id) { return 'bar'; }
-			};
-			mctx = new core.createModuleContext('foo', realm);
+			var pctx, mctx;
+			pctx = { realm: {} };
+			mctx = new core.createModuleContext('foo', pctx);
 			mctx = core.initModuleContext(mctx);
-			assert.equals(mctx.url, 'bar');
+			assert.equals(mctx.realm, pctx.realm);
 		}
 	});
 

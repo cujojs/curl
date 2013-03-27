@@ -7,14 +7,15 @@ refute = buster.refute;
 
 define(function (require) {
 
-	var curl, core, define, Deferred;
+	var curl, core, config, define, Deferred;
 
 	// TODO: start using sinon stubs instead of mockCoreFunctions
 
 	curl = require('curl');
-	core = curl('curl/core');
-	define = curl('curl/define');
-	Deferred = curl('curl/Deferred');
+	core = curl.get('curl/core');
+	config = curl.get('curl/config');
+	define = curl.get('curl/define');
+	Deferred = curl.get('curl/Deferred');
 	curl.restore();
 
 	buster.testCase('define', {
@@ -42,37 +43,13 @@ define(function (require) {
 			assert(typeof curl.config == 'function', 'curl.config is a function');
 			assert(typeof curl.version == 'string', 'curl.version is a string');
 		},
-		'should call sync when given a string': function () {
-			var restore, marker;
-			restore = mockCoreFunctions({
-				createPipeline: function () { return function () { return marker; } }
-			});
-			try {
-				marker = {};
-				core.defineAmdModule('curl/test/one', [], function () {}, {});
-				assert.same(marker, curl('curl/test/one'));
-				assert.exception(function () {
-					curl('curl/foo/bar');
-				});
-			}
-			finally {
-				restore();
-			}
-		},
 		'should call config() when given an object': function () {
-			var restore, input, output, result;
-			restore = mockCoreFunctions({
-				config: function (cfg) { output = cfg; }
-			});
+			var stub, input, result;
+			stub = this.stub(config, 'set');
 			input = {};
-			try {
-				result = curl(input);
-				assert.same(input, output, 'call config() with first param');
-				assert(result && typeof result.then == 'function', 'return a promise');
-			}
-			finally {
-				restore();
-			}
+			result = curl(input);
+			assert.calledWith(stub, input);
+			assert(result && typeof result.then == 'function', 'return a promise');
 		},
 		'should return CurlApi when called with non-string': function () {
 			var restore, result;
@@ -95,6 +72,19 @@ define(function (require) {
 			finally {
 				restore();
 			}
+		}
+	});
+
+	buster.testCase('curl.get', {
+		'should call sync when given a string': function () {
+			var stub = this.stub(core, 'isModuleContext').returns(false);
+			refute.exception(function () {
+				curl.get('curl');
+			});
+			assert(!!curl.get('curl'), 'curl.get returns a known cached module');
+			assert.exception(function () {
+				curl.get('curl/foo/bar');
+			});
 		}
 	});
 
