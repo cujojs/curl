@@ -7,31 +7,31 @@ refute = buster.refute;
 
 define(function (require) {
 
-	var curl, loadScript;
+	var curl, script;
 
 	curl = require('curl');
-	loadScript = curl.get('curl/loadScript');
+	script = curl.get('curl/script');
 	curl.restore();
 
-	buster.testCase('loadScript.extractDataAttrConfig', {
+	buster.testCase('script.extractDataAttrConfig', {
 		'should get the data-curl-run attribute': function () {
 			var input, output, getAttr, setAttr;
 
 			// set up stubs
 			getAttr = this.stub().returns('bundle,main');
 			setAttr = this.stub();
-			this.stub(loadScript, 'findScript', function (predicate) {
-					var script = {
+			this.stub(script, 'findScript', function (predicate) {
+					var el = {
 						getAttribute: getAttr,
 						setAttribute: setAttr
 					};
-					predicate(script);
-					return script;
+					predicate(el);
+					return el;
 				}
 			);
 
 			input = {};
-			output = loadScript.extractDataAttrConfig(input);
+			output = script.extractDataAttrConfig(input);
 			assert.equals('bundle,main', output.main, 'main was set');
 			assert.calledOnce(getAttr);
 			assert.alwaysCalledWith(getAttr, 'data-curl-run');
@@ -39,16 +39,16 @@ define(function (require) {
 		}
 	});
 
-	buster.testCase('loadScript.findScript', {
+	buster.testCase('script.findScript', {
 		'// should should be tested somehow (uses document)': function () {}
 	});
 
-	buster.testCase('loadScript.getCurrentModuleId', {
+	buster.testCase('script.getCurrentModuleId', {
 		'// should should be tested somehow (uses document)': function () {}
 	});
 
-	buster.testCase('loadScript', {
-		'// should should be tested somehow (uses document)': function () {}
+	buster.testCase('script', {
+		'// should be tested somehow (uses document)': function () {}
 	});
 
 });

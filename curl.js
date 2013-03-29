@@ -811,7 +811,7 @@
 			if (prevCurl && !core.isType(prevCurl, 'Object')) return defaultConfig;
 
 			// merge any attributes off the data-curl-run script element
-			firstCfg = core.beget(prevCurl || {}, loadScript.extractDataAttrConfig());
+			firstCfg = core.beget(prevCurl || {}, script.extractDataAttrConfig());
 
 			// return the default config overridden with the global config(s)
 			return core.beget(defaultConfig, firstCfg);
@@ -896,129 +896,132 @@
 
 	/***** script loading *****/
 
-	var insertBeforeEl, runModuleAttr;
+	var script, insertBeforeEl, runModuleAttr;
 
 	insertBeforeEl = head && head.getElementsByTagName('base')[0] || null;
 	runModuleAttr = 'data-curl-run';
 
-	/**
-	 * @module 'curl/loadScript'
-	 * @param {Object} options
-	 * @param {String} options.id
-	 * @param {String} options.url
-	 * @param {String} [options.mimetype]
-	 * @param {String} [options.charset]
-	 * @param {Boolean} [options.order]
-	 * @param {Function} cb
-	 * @param {Function} eb
-	 * @return {HTMLScriptElement}
-	 */
-	function loadScript (options, cb, eb) {
-		var el;
-		// script processing rules learned from RequireJS
+	script = {
+		/**
+		 * @module 'curl/script'
+		 * @param {Object} options
+		 * @param {String} options.id
+		 * @param {String} options.url
+		 * @param {String} [options.mimetype]
+		 * @param {String} [options.charset]
+		 * @param {Boolean} [options.order]
+		 * @param {Function} cb
+		 * @param {Function} eb
+		 * @return {HTMLScriptElement}
+		 */
+		load: function (options, cb, eb) {
+			var el;
+			// script processing rules learned from RequireJS
 
-		el = doc.createElement('script');
+			el = doc.createElement('script');
 
-		// js! plugin uses alternate mimetypes and such
-		el.type = options.mimetype || 'text/javascript';
-		el.charset = options.charset || 'utf-8';
-		el.async = !options.order;
-		el.src = options.url;
+			// js! plugin uses alternate mimetypes and such
+			el.type = options.mimetype || 'text/javascript';
+			el.charset = options.charset || 'utf-8';
+			el.async = !options.order;
+			el.src = options.url;
 
-		// using dom0 event handlers instead of wordy w3c/ms
-		el.onload = el.onreadystatechange = process;
-		el.onerror = fail;
+			// using dom0 event handlers instead of wordy w3c/ms
+			el.onload = el.onreadystatechange = process;
+			el.onerror = fail;
 
-		// loading will start when the script is inserted into the dom.
-		// IE will load the script sync if it's in the cache, so
-		// indicate the current resource definition first.
-		loadScript.activeScripts[options.id] = el;
+			// loading will start when the script is inserted into the dom.
+			// IE will load the script sync if it's in the cache, so
+			// indicate the current resource definition first.
+			script.activeScripts[options.id] = el;
 
-		// to keep IE from crying, we need to put scripts before any
-		// <base> elements, but after any <meta>.
-		head.insertBefore(el, insertBeforeEl);
+			// to keep IE from crying, we need to put scripts before any
+			// <base> elements, but after any <meta>.
+			head.insertBefore(el, insertBeforeEl);
 
-		// the js! plugin uses this
-		return el;
+			// the js! plugin uses this
+			return el;
 
-		// initial script processing
-		function process (ev) {
-			ev = ev || global.event;
-			// detect when it's done loading
-			// ev.type == 'load' is for all browsers except IE6-9
-			// IE6-9 need to use onreadystatechange and look for
-			// el.readyState in {loaded, complete} (yes, we need both)
-			if (ev.type == 'load' || loadScript.readyStates[el.readyState]) {
-				delete loadScript.activeScripts[options.id];
-				// release event listeners
-				el.onload = el.onreadystatechange = el.onerror = ''; // ie cries if we use undefined
-				cb();
-			}
-		}
-
-		function fail (e) {
-			// some browsers send an event, others send a string, but none
-			// of them send anything informative, so just say we failed:
-			eb(new Error('Syntax or http error: ' + options.url));
-		}
-	}
-
-	loadScript.getCurrentModuleId = function () {
-		// IE6-9 mark the currently executing thread as "interactive"
-		// Note: Opera lies about which scripts are "interactive", so we
-		// just have to test for it. Opera provides a true browser test, not
-		// a UA sniff, thankfully.
-		// learned this trick from James Burke's RequireJS
-		var id;
-		if (!core.isType(global['opera'], 'Opera')) {
-			for (id in loadScript.activeScripts) {
-				if (loadScript.activeScripts[id].readyState == 'interactive') {
-					return id;
+			// initial script processing
+			function process (ev) {
+				ev = ev || global.event;
+				// detect when it's done loading
+				// ev.type == 'load' is for all browsers except IE6-9
+				// IE6-9 need to use onreadystatechange and look for
+				// el.readyState in {loaded, complete} (yes, we need both)
+				if (ev.type == 'load' || script.readyStates[el.readyState]) {
+					delete script.activeScripts[options.id];
+					// release event listeners
+					el.onload = el.onreadystatechange = el.onerror = ''; // ie cries if we use undefined
+					cb();
 				}
 			}
+
+			function fail (e) {
+				// some browsers send an event, others send a string, but none
+				// of them send anything informative, so just say we failed:
+				eb(new Error('Syntax or http error: ' + options.url));
+			}
+		},
+
+		getCurrentModuleId: function () {
+			// IE6-9 mark the currently executing thread as "interactive"
+			// Note: Opera lies about which scripts are "interactive", so we
+			// just have to test for it. Opera provides a true browser test, not
+			// a UA sniff, thankfully.
+			// learned this trick from James Burke's RequireJS
+			var id;
+			if (!core.isType(global['opera'], 'Opera')) {
+				for (id in script.activeScripts) {
+					if (script.activeScripts[id].readyState == 'interactive') {
+						return id;
+					}
+				}
+			}
+		},
+
+		/**
+		 * @type {Object}
+		 * this is the collection of scripts that IE is loading. one of these
+		 * will be the "interactive" script. too bad IE doesn't send a
+		 * readystatechange event to tell us exactly which one.
+		 */
+		activeScripts: {},
+
+		/**
+		 * readyStates for IE6-8
+		 * @type {Object}
+		 */
+		readyStates: 'addEventListener' in global
+			? {}
+			: { 'loaded': 1, 'complete': 1 },
+
+		findScript: function (predicate) {
+			var i = 0, script;
+			while (doc && (script = doc.scripts[i++])) {
+				if (predicate(script)) return script;
+			}
+		},
+
+		/**
+		 *
+		 * @return {Object|Undefined}
+		 */
+		extractDataAttrConfig: function () {
+			var el, cfg;
+			el = script.findScript(function (script) {
+				var main;
+				// find main module(s) in data-curl-run attr on script el
+				// TODO: extract baseUrl, too?
+				main = script.getAttribute(runModuleAttr);
+				if (main) cfg = { main: main };
+				return main;
+			});
+			// removeAttribute is wonky (in IE6?) but this works
+			if (el) el.setAttribute(runModuleAttr, '');
+			return cfg;
 		}
-	};
 
-	/**
-	 * @type {Object}
-	 * this is the collection of scripts that IE is loading. one of these
-	 * will be the "interactive" script. too bad IE doesn't send a
-	 * readystatechange event to tell us exactly which one.
-	 */
-	loadScript.activeScripts = {};
-
-	/**
-	 * readyStates for IE6-8
-	 * @type {Object}
-	 */
-	loadScript.readyStates = 'addEventListener' in global
-		? {}
-		: { 'loaded': 1, 'complete': 1 };
-
-	loadScript.findScript = function (predicate) {
-		var i = 0, script;
-		while (doc && (script = doc.scripts[i++])) {
-			if (predicate(script)) return script;
-		}
-	};
-
-	/**
-	 *
-	 * @return {Object|Undefined}
-	 */
-	loadScript.extractDataAttrConfig = function () {
-		var script, cfg;
-		script = loadScript.findScript(function (script) {
-			var main;
-			// find main module(s) in data-curl-run attr on script el
-			// TODO: extract baseUrl, too?
-			main = script.getAttribute(runModuleAttr);
-			if (main) cfg = { main: main };
-			return main;
-		});
-		// removeAttribute is wonky (in IE6?) but this works
-		if (script) script.setAttribute(runModuleAttr, '');
-		return cfg;
 	};
 
 	/***** deferred *****/
@@ -1232,7 +1235,7 @@
 			'curl/core': core,
 			'curl/path': path,
 			'curl/config': config,
-			'curl/loadScript': loadScript,
+			'curl/script': script,
 			'curl/Deferred': Deferred
 		}
 	};
