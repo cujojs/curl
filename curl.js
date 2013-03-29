@@ -366,19 +366,18 @@
 				var id, found, error;
 
 				if (!core.errorCache) {
+					found = core.anonCache || mctx.id in core.defineCache;
 					if (core.anonCache) {
-						// these are the args for the requested module
+						// these must be the args for the requested module
 						core.assignAmdProperties.apply(mctx, core.anonCache);
 						core.anonCache = undefined;
 					}
-					// look through all defines from this file
-					for (id in core.defineCache) {
-						if (mctx.realm != globalRealm) {
-							// move it to this realm.
-							delete globalRealm.cache[mctx.id];
-							mctx.realm.cache[mctx.id] = mctx;
+					// move all the defines to the correct realm
+					if (mctx.realm != globalRealm) {
+						for (id in core.defineCache) {
+							mctx.realm.cache[id] = globalRealm.cache[id];
+							delete globalRealm.cache[id];
 						}
-						if (mctx.id == id) found = true;
 					}
 				}
 				// clear define cache
@@ -413,12 +412,11 @@
 
 			if (id != undefined) {
 				// create a module context and put it in the define cache
+				// assume the global cache here so that inline modules can work
 				mctx = core.createModuleContext(id, globalRealm);
 				core.defineCache[id] = mctx;
 				// append amd-specific stuff
 				core.assignAmdProperties.apply(mctx, arguments);
-//				// initiate pipeline
-//				core.defineModule(mctx);
 			}
 		},
 
