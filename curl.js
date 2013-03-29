@@ -426,17 +426,25 @@
 			return this;
 		},
 
+		/**
+		 * Normalizes the many flavors of arguments passed to `define()`.
+		 * @param {Array} args
+		 * @return {Array} [id, deps, factory, options]
+		 * @description
+		 * The returned options contains `isCjsWrapped` (Boolean) and `arity`
+		 * (Number) the length of the factory function or -1.
+		 * valid combinations for define:
+		 * define(string, array, function)
+		 * define(string, array, <non-function>)
+		 * define(array, function)
+		 * define(array, <non-function>)
+		 * define(string, function)
+		 * define(string, <non-function>)
+		 * define(function)
+		 * define(<non-function>)
+		 */
 		fixDefineArgs: function (args) {
 			var id, deps, factory, arity, len, cjs;
-			// valid combinations for define:
-			// define(string, array, function)
-			// define(string, array, <non-function>)
-			// define(array, function)
-			// define(array, <non-function>)
-			// define(string, function)
-			// define(string, <non-function>)
-			// define(function)
-			// define(<non-function>)
 
 			len = args.length;
 
@@ -456,8 +464,8 @@
 				deps = args[1];
 			}
 
-			// Hybrid format: assume that a definition function with zero
-			// dependencies and non-zero arity is a wrapped CommonJS module
+			// assume that a definition function with zero dependencies and
+			// non-zero arity is a wrapped CommonJS module.
 			if (!deps && arity > 0) {
 				cjs = true;
 				deps = ['require', 'exports', 'module'].slice(0, arity);
@@ -476,6 +484,7 @@
 			if (!mctx.isCjsWrapped) return mctx;
 			rvals = core.extractCjsDeps(mctx.factory);
 			if (rvals.length > 0) {
+				// append to ['require', 'exports', 'module']
 				mctx.deps = (mctx.deps || []).concat(rvals);
 			}
 			return mctx;
