@@ -190,11 +190,10 @@
 
 	/***** core *****/
 
-	var doc, head, core, defineCache, argsNet;
+	var doc, head, core, argsNet;
 
 	doc = global.document;
 	head = doc && (doc['head'] || doc.getElementsByTagName('head')[0]);
-	defineCache = {};
 
 	/**
 	 *
@@ -221,6 +220,12 @@
 			while (++i < order.length) head = queue(head, map[order[i]]);
 			return head;
 		},
+
+		defineCache: {},
+
+		anonCache: undefined,
+
+		errorCache: undefined,
 
 		resolveDeps: function (mctx) {
 			var realm, promises, i;
@@ -354,37 +359,37 @@
 
 		fetchAmdModule: function (mctx) {
 			var dfd = new Deferred();
-			loadScript(mctx, resolve, dfd.reject);
+			script.load(mctx, resolve, dfd.reject);
 			return dfd.promise;
 
 			function resolve () {
-				var id, args, found, error;
+				var id, found, error;
 
-				if (!defineCache['curl$error']) {
-					for (id in defineCache) {
-						if ('curl$anon' == id) {
-							// these are the args for the requested module
-							args = defineCache['curl$anon'];
-							core.assignAmdProperties.apply(mctx, args);
-						}
-						else {
-							// this is a named module in a bundle.
+				if (!core.errorCache) {
+					if (core.anonCache) {
+						// these are the args for the requested module
+						core.assignAmdProperties.apply(mctx, core.anonCache);
+						core.anonCache = undefined;
+					}
+					// look through all defines from this file
+					for (id in core.defineCache) {
+						if (mctx.realm != globalRealm) {
 							// move it to this realm.
 							delete globalRealm.cache[mctx.id];
 							mctx.realm.cache[mctx.id] = mctx;
-							if (mctx.id == id) found = true;
 						}
+						if (mctx.id == id) found = true;
 					}
 				}
 				// clear define cache
-				defineCache = {};
+				core.defineCache = {};
 				// resolve
 				if (found) {
 					dfd.fulfill(mctx);
 				}
 				else {
 					error =
-						(defineCache['curl$error'] || 'module '+ mctx.id + ' not found in ')
+						(core.errorCache || 'module '+ mctx.id + ' not found in ')
 						+ mctx.url;
 					dfd.reject(new Error(error));
 				}
@@ -395,21 +400,21 @@
 			var mctx;
 
 			if (id == undefined) {
-				if ('curl$anon' in defineCache) {
-					defineCache['curl$error']
+				if (core.anonCache) {
+					core.errorCache
 						= 'previous anonymous module loaded as plain javascript, or'
 						+ 'multiple anonymous defines in ';
 				}
 				// check if we can find id in activeScripts
-				else if (!(id = loadScript.getCurrentModuleId())) {
-					defineCache['curl$anon'] = arguments;
+				else if (!(id = script.getCurrentModuleId())) {
+					core.anonCache = arguments;
 				}
 			}
 
 			if (id != undefined) {
 				// create a module context and put it in the define cache
 				mctx = core.createModuleContext(id, globalRealm);
-				defineCache[id] = mctx;
+				core.defineCache[id] = mctx;
 				// append amd-specific stuff
 				core.assignAmdProperties.apply(mctx, arguments);
 //				// initiate pipeline
