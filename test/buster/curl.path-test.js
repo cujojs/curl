@@ -58,6 +58,11 @@ define(function (require) {
 
 	buster.testCase('path.reduceLeadingDots', {
 		'should remove leading dots': function () {
+			assert.equals('', path.reduceLeadingDots('.', ''), 'base url');
+			assert.equals('..', path.reduceLeadingDots('..', ''), 'one level above base url');
+			assert.equals('../..', path.reduceLeadingDots('../..', ''), 'two levels above base url');
+			assert.equals('foo', path.reduceLeadingDots('.', 'foo/bar'), 'identity');
+			assert.equals('foo', path.reduceLeadingDots('..', 'foo/bar/gak'), 'parent');
 			assert.equals('foo/bar', path.reduceLeadingDots('foo/bar', 'gak'), 'no leading dots');
 			assert.equals('foo/bar', path.reduceLeadingDots('./bar', 'foo/gak'), 'peer');
 			assert.equals('bar', path.reduceLeadingDots('./bar', 'foo'), 'peer 2');
