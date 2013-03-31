@@ -350,15 +350,39 @@
 			return mctx;
 		},
 
-//		resolveAmdCtx: function (mctx) {
-//			// TODO: if module has no id, see if it's a newly-loaded anonymous module
-//			// TODO: where does the id transformation go? should it happen in an import pipeline?
-//			// resolve url, etc
-//			return when(core.initModuleContext(mctx));
-//		},
+		transformId: function (mctx) {
+			// TODO: id transforms
+			return core.normalizeId(mctx);
+		},
+
+		locateAmdModule: function (mctx) {
+			// check module cache
+			if (mctx.id in mctx.realm.cache) {
+				// we already have this module
+				return mctx.realm.cache[mctx.id];
+			}
+			// check define cache
+			else if (mctx.id in core.defineCache) {
+				core.assignAmdProperties.apply(mctx, core.defineCache);
+				delete core.defineCache[mctx.id];
+				return mctx;
+			}
+			// add a url. we're going to need to fetch it
+			else {
+				return core.resolveUrl(mctx);
+			}
+		},
 
 		fetchAmdModule: function (mctx) {
-			var dfd = new Deferred();
+			var dfd;
+
+			// check if we have it.
+			// hmmm... we're using mctx.factory as a flag that it was fetched
+			if (!core.isModuleContext(mctx) || mctx.factory) {
+				return mctx;
+			}
+
+			dfd = new Deferred();
 			script.load(mctx, resolve, dfd.reject);
 			return dfd.promise;
 
@@ -388,16 +412,14 @@
 				}
 				else {
 					error =
-						(core.errorCache || 'module '+ mctx.id + ' not found in ')
-						+ mctx.url;
+						(core.errorCache || 'module ' + mctx.id + ' not found in ')
+							+ mctx.url;
 					dfd.reject(new Error(error));
 				}
 			}
 		},
 
 		defineAmdModule: function (id, deps, factory, options) {
-			var mctx;
-
 			if (id == undefined) {
 				if (core.anonCache) {
 					core.errorCache
@@ -411,17 +433,13 @@
 			}
 
 			if (id != undefined) {
-				// create a module context and put it in the define cache
-				// assume the global cache here so that inline modules can work
-				mctx = core.createModuleContext(id, globalRealm);
-				core.defineCache[id] = mctx;
-				// append amd-specific stuff
-				core.assignAmdProperties.apply(mctx, arguments);
+				// is there a perf problem from storing arguments?
+				core.defineCache[id] = arguments;
 			}
 		},
 
 		assignAmdProperties: function (id, deps, factory, options) {
-			this.id = id;
+			if (id != undefined) this.id = id;
 			this.deps = deps;
 			this.factory = factory;
 			this.isCjsWrapped = options.isCjsWrapped;
@@ -1145,7 +1163,7 @@
 	Deferred.isDeferred = isDeferred;
 
 	function isPromise (it) {
-		return it && it.then == 'function';
+		return it && typeof it.then == 'function';
 	}
 	Deferred.isPromise = isPromise;
 
@@ -1217,9 +1235,9 @@
 //						core.fetchAmdModule
 //					],
 					require: {
-						normalize: core.normalizeId,
-						locate: core.resolveUrl,
-						// provie (parseAmdFactory) happens here
+						normalize: core.transformId,
+						locate: core.locateAmdModule,
+						// provide (parseAmdFactory) happens here:
 						fetch: core.fetchAmdModule,
 						translate: identity,
 						resolve: core.resolveDeps,
