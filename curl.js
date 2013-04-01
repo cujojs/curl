@@ -231,9 +231,10 @@
 			return head;
 
 			function next (i) {
-				return typeof order[i] == 'function'
-					? order[i]
-					: map[order[i]];
+				var item = order[i];
+				if (typeof item == 'function') return item;
+				if (typeof item == 'string') return map[item];
+				return core.createPipeline(item);
 			}
 		},
 
@@ -1246,11 +1247,11 @@
 					require: {
 						normalize: core.transformId,
 						locate: core.locateAmdModule,
-						fetch: core.createPipeline([
+						fetch: [
 							// provide (parseAmdFactory) happens here:
 							core.fetchAmdModule,
 							core.assignDefines
-						]),
+						],
 						transform: identity,
 						resolve: core.resolveDeps,
 						link: core.createFactoryExporter
