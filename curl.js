@@ -29,10 +29,11 @@
 	 * @param {*} factoryOrExports
 	 */
 	function define (factoryOrExports) {
-		var args = core.fixDefineArgs(arguments);
-		core.defineAmdModule.apply(undefined, args);
+		var args = amd.fixDefineArgs(arguments);
+		// Note: this is calling core.defineModule, not amd.defineModule
+		core.defineModule.apply(undefined, args);
 	}
-	define['amd'] = { 'plugins': true, 'jQuery': true, 'curl': version };
+	define['amd'] = { 'plugins': true, 'jQuery': true, 'curl': curl };
 
 	/**
 	 * @global
@@ -190,10 +191,7 @@
 
 	/***** core *****/
 
-	var doc, head, core, argsNet;
-
-	doc = global.document;
-	head = doc && (doc['head'] || doc.getElementsByTagName('head')[0]);
+	var core;
 
 	/**
 	 *
@@ -237,12 +235,6 @@
 				return core.createPipeline(item);
 			}
 		},
-
-		defineCache: {},
-
-		anonCache: undefined,
-
-		errorCache: undefined,
 
 		resolveDeps: function (mctx) {
 			var realm, promises, i;
@@ -350,183 +342,6 @@
 		initModuleContext: function (mctx) {
 			// TODO: figure out how to deal with different realms
 			mctx.realm = mctx.parentCtx.realm;
-			return mctx;
-		},
-
-		/***** amd-specific functions *****/
-
-		normalizeId: function (mctx) {
-			mctx.id = path.reduceLeadingDots(mctx.id, mctx.parentCtx.id);
-			return mctx;
-		},
-
-		resolveUrl: function (mctx) {
-			// NOTE: if url == id, then the id *is* a url, not an id!
-			// should we do anything with this knowledge?
-			mctx.url = mctx.realm.idToUrl(mctx.id);
-			return mctx;
-		},
-
-		transformId: function (mctx) {
-			// TODO: id transforms
-			return core.normalizeId(mctx);
-		},
-
-		locateAmdModule: function (mctx) {
-			// check realm's cache
-			if (mctx.id in mctx.realm.cache) {
-				// we already have this module
-				return mctx.realm.cache[mctx.id];
-			}
-			// check define cache
-			else if (mctx.id in core.defineCache) {
-				core.assignAmdProperties.apply(mctx, core.defineCache);
-				delete core.defineCache[mctx.id];
-				return mctx;
-			}
-			// add a url. we're going to need to fetch it
-			else {
-				return core.resolveUrl(mctx);
-			}
-		},
-
-		fetchAmdModule: function (mctx) {
-			var dfd;
-
-			// check if we have it.
-			// hmmm... we're using mctx.factory as a flag that it was fetched
-			if (!core.isModuleContext(mctx) || mctx.factory) {
-				return mctx;
-			}
-
-			dfd = new Deferred();
-			script.load(mctx, dfd.fulfill, dfd.reject);
-
-			return dfd.promise.yield(mctx);
-		},
-
-
-		assignDefines: function (mctx) {
-			var cache, id;
-
-			// save and clear define cache
-			cache = core.defineCache;
-			core.defineCache = {};
-
-			if (core.errorCache) err(core.errorCache);
-			if (!core.anonCache && !(mctx.id in cache)) {
-				err('module ' + mctx.id + ' not found in ' + mctx.url);
-			}
-
-			if (core.anonCache) {
-				// these must be the args for the requested module
-				core.assignAmdProperties.apply(mctx, core.anonCache);
-				core.anonCache = undefined;
-			}
-
-			// move all the named defines to the correct realm
-			if (mctx.realm != globalRealm) {
-				for (id in cache) {
-					mctx.realm.cache[id] = globalRealm.cache[id];
-					delete globalRealm.cache[id];
-				}
-			}
-
-			return mctx;
-
-			function err (msg) {
-				throw new Error(msg + mctx.url);
-			}
-		},
-		defineAmdModule: function (id, deps, factory, options) {
-			if (id == undefined) {
-				if (core.anonCache) {
-					core.errorCache
-						= 'previous anonymous module loaded as plain javascript, or'
-						+ 'multiple anonymous defines in ';
-				}
-				// check if we can find id in activeScripts
-				else if (!(id = script.getCurrentModuleId())) {
-					core.anonCache = arguments;
-				}
-			}
-
-			if (id != undefined) {
-				// is there a perf problem from storing arguments?
-				core.defineCache[id] = arguments;
-			}
-		},
-
-		assignAmdProperties: function (id, deps, factory, options) {
-			if (id != undefined) this.id = id;
-			this.deps = deps;
-			this.factory = factory;
-			this.isCjsWrapped = options.isCjsWrapped;
-			this.arity = options.arity;
-			return this;
-		},
-
-		/**
-		 * Normalizes the many flavors of arguments passed to `define()`.
-		 * @param {Array} args
-		 * @return {Array} [id, deps, factory, options]
-		 * @description
-		 * The returned options contains `isCjsWrapped` (Boolean) and `arity`
-		 * (Number) the length of the factory function or -1.
-		 * valid combinations for define:
-		 * define(string, array, function)
-		 * define(string, array, <non-function>)
-		 * define(array, function)
-		 * define(array, <non-function>)
-		 * define(string, function)
-		 * define(string, <non-function>)
-		 * define(function)
-		 * define(<non-function>)
-		 */
-		fixDefineArgs: function (args) {
-			var id, deps, factory, arity, len, cjs;
-
-			len = args.length;
-
-			factory = args[len - 1];
-			arity = core.isType(factory, 'Function') ? factory.length : -1;
-
-			if (len == 2) {
-				if (core.isType(args[0], 'Array')) {
-					deps = args[0];
-				}
-				else {
-					id = args[0];
-				}
-			}
-			else if (len == 3) {
-				id = args[0];
-				deps = args[1];
-			}
-
-			// assume that a definition function with zero dependencies and
-			// non-zero arity is a wrapped CommonJS module.
-			if (!deps && arity > 0) {
-				cjs = true;
-				deps = ['require', 'exports', 'module'].slice(0, arity);
-			}
-
-			return [
-				id,
-				deps,
-				arity >= 0 ? factory : function () { return factory; },
-				{ isCjsWrapped: cjs, arity: arity }
-			];
-		},
-
-		parseAmdFactory: function (mctx) {
-			var rvals;
-			if (!mctx.isCjsWrapped) return mctx;
-			rvals = core.extractCjsDeps(mctx.factory);
-			if (rvals.length > 0) {
-				// append to ['require', 'exports', 'module']
-				mctx.deps = (mctx.deps || []).concat(rvals);
-			}
 			return mctx;
 		},
 
@@ -656,8 +471,193 @@
 		nextTurn: typeof setImmediate == 'function'
 			? setImmediate.bind(global)
 			: typeof process === 'object' && process.nextTick
-				? process.nextTick
-				: function (task) { setTimeout(task, 0); }
+			? process.nextTick
+			: function (task) { setTimeout(task, 0); },
+	};
+
+		/***** amd-specific functions *****/
+
+	var amd;
+
+	/**
+	 * AMD-specific behavior.
+	 * @type {Object}
+	 * @module curl/amd
+	 */
+	amd = {
+
+		defineCache: {},
+
+		anonCache: undefined,
+
+		errorCache: undefined,
+
+		transformId: function (mctx) {
+			// TODO: id transforms
+			mctx.id = path.reduceLeadingDots(mctx.id, mctx.parentCtx.id);
+			return mctx;
+		},
+
+		locateModule: function (mctx) {
+			// check realm's cache
+			if (mctx.id in mctx.realm.cache) {
+				// we already have this module
+				return mctx.realm.cache[mctx.id];
+			}
+			// check define cache
+			else if (mctx.id in amd.defineCache) {
+				amd.applyArguments.apply(mctx, amd.defineCache);
+				delete amd.defineCache[mctx.id];
+				return mctx;
+			}
+			// add a url. we're going to need to fetch the module
+			else {
+				// NOTE: if url == id, then the id *is* a url, not an id!
+				// should we do anything with this knowledge?
+				mctx.url = mctx.realm.idToUrl(mctx.id);
+				return mctx;
+			}
+		},
+
+		fetchModule: function (mctx) {
+			var dfd;
+
+			// check if we have it.
+			// hmmm... we're using mctx.factory as a flag that it was fetched
+			if (!core.isModuleContext(mctx) || mctx.factory) {
+				return mctx;
+			}
+
+			dfd = new Deferred();
+			script.load(mctx, dfd.fulfill, dfd.reject);
+
+			return dfd.promise.yield(mctx);
+		},
+
+		assignDefines: function (mctx) {
+			var cache, id;
+
+			// save and clear define cache
+			cache = amd.defineCache;
+			amd.defineCache = {};
+
+			if (amd.errorCache) err(amd.errorCache);
+			if (!amd.anonCache && !(mctx.id in cache)) {
+				err('module ' + mctx.id + ' not found in ' + mctx.url);
+			}
+
+			if (amd.anonCache) {
+				// these must be the args for the requested module
+				amd.applyArguments.apply(mctx, amd.anonCache);
+				amd.anonCache = undefined;
+			}
+
+			// move all the named defines to the correct realm
+			if (mctx.realm != globalRealm) {
+				for (id in cache) {
+					mctx.realm.cache[id] = globalRealm.cache[id];
+					delete globalRealm.cache[id];
+				}
+			}
+
+			return mctx;
+
+			function err (msg) {
+				throw new Error(msg + mctx.url);
+			}
+		},
+
+		defineModule: function (id, deps, factory, options) {
+			if (id == undefined) {
+				if (amd.anonCache) {
+					amd.errorCache
+						= 'previous anonymous module loaded as plain javascript, or'
+						+ 'multiple anonymous defines in ';
+				}
+				// check if we can find id in activeScripts
+				else if (!(id = script.getCurrentModuleId())) {
+					amd.anonCache = arguments;
+				}
+			}
+
+			if (id != undefined) {
+				// is there a perf problem from storing arguments?
+				amd.defineCache[id] = arguments;
+			}
+		},
+
+		applyArguments: function (id, deps, factory, options) {
+			if (id != undefined) this.id = id;
+			this.deps = deps;
+			this.factory = factory;
+			this.isCjsWrapped = options.isCjsWrapped;
+			this.arity = options.arity;
+			return this;
+		},
+
+		/**
+		 * Normalizes the many flavors of arguments passed to `define()`.
+		 * @param {Array} args
+		 * @return {Array} [id, deps, factory, options]
+		 * @description
+		 * The returned options contains `isCjsWrapped` (Boolean) and `arity`
+		 * (Number) the length of the factory function or -1.
+		 * valid combinations for define:
+		 * define(string, array, function)
+		 * define(string, array, <non-function>)
+		 * define(array, function)
+		 * define(array, <non-function>)
+		 * define(string, function)
+		 * define(string, <non-function>)
+		 * define(function)
+		 * define(<non-function>)
+		 */
+		fixDefineArgs: function (args) {
+			var id, deps, factory, arity, len, cjs;
+
+			len = args.length;
+
+			factory = args[len - 1];
+			arity = core.isType(factory, 'Function') ? factory.length : -1;
+
+			if (len == 2) {
+				if (core.isType(args[0], 'Array')) {
+					deps = args[0];
+				}
+				else {
+					id = args[0];
+				}
+			}
+			else if (len == 3) {
+				id = args[0];
+				deps = args[1];
+			}
+
+			// assume that a definition function with zero dependencies and
+			// non-zero arity is a wrapped CommonJS module.
+			if (!deps && arity > 0) {
+				cjs = true;
+				deps = ['require', 'exports', 'module'].slice(0, arity);
+			}
+
+			return [
+				id,
+				deps,
+				arity >= 0 ? factory : function () { return factory; },
+				{ isCjsWrapped: cjs, arity: arity }
+			];
+		},
+
+		parseFactory: function (mctx) {
+			var rvals;
+			if (!mctx.isCjsWrapped) return mctx;
+			rvals = core.extractCjsDeps(mctx.factory);
+			if (rvals.length > 0) {
+				// append to ['require', 'exports', 'module']
+				mctx.deps = (mctx.deps || []).concat(rvals);
+			}
+			return mctx;
+		}
 
 	};
 
@@ -936,8 +936,10 @@
 
 	/***** script loading *****/
 
-	var script, insertBeforeEl, runModuleAttr;
+	var doc, head, script, insertBeforeEl, runModuleAttr;
 
+	doc = global.document;
+	head = doc && (doc['head'] || doc.getElementsByTagName('head')[0]);
 	insertBeforeEl = head && head.getElementsByTagName('base')[0] || null;
 	runModuleAttr = 'data-curl-run';
 
@@ -1245,19 +1247,19 @@
 			types: {
 				amd: {
 					require: {
-						normalize: core.transformId,
-						locate: core.locateAmdModule,
+						normalize: amd.transformId,
+						locate: amd.locateModule,
 						fetch: [
-							// provide (parseAmdFactory) happens here:
-							core.fetchAmdModule,
-							core.assignDefines
+							// provide (parseFactory) happens here:
+							amd.fetchModule,
+							amd.assignDefines
 						],
 						transform: identity,
 						resolve: core.resolveDeps,
 						link: core.createFactoryExporter
 					},
 					provide: {
-						define: core.parseAmdFactory
+						define: amd.parseFactory
 					}
 				}
 			}
@@ -1267,6 +1269,7 @@
 			'curl': curl,
 			'curl/define': define,
 			'curl/core': core,
+			'curl/amd': amd,
 			'curl/path': path,
 			'curl/config': config,
 			'curl/script': script,

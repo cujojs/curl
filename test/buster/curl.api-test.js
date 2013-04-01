@@ -7,24 +7,25 @@ refute = buster.refute;
 
 define(function (require) {
 
-	var curl, core, config, define, Deferred;
+	var curl, core, amd, config, define, Deferred;
 
 	curl = require('curl');
 	core = curl.get('curl/core');
+	amd = curl.get('curl/amd');
 	config = curl.get('curl/config');
 	define = curl.get('curl/define');
 	Deferred = curl.get('curl/Deferred');
 	curl.restore();
 
 	buster.testCase('define', {
-		'should call defineAmdModule with the results of fixDefineArgs': function () {
+		'should call amd.defineModule with the results of amd.fixDefineArgs': function () {
 			// this is a bit silly, but it's all that the public `define` does
-			var marker1 = {}, marker2 = {}, marker3 = {}, defineAmdModule;
-			this.stub(core, 'fixDefineArgs').returnsArg(0);
-			defineAmdModule = this.stub(core, 'defineAmdModule');
+			var marker1 = {}, marker2 = {}, marker3 = {};
+			this.stub(amd, 'fixDefineArgs').returnsArg(0);
+			this.stub(core, 'defineModule');
 			assert(typeof define == 'function', 'define is a function');
 			define(marker1, marker2, marker3);
-			assert.calledOnceWith(defineAmdModule, marker1, marker1, marker3);
+			assert.calledOnceWith(core.defineModule, marker1, marker1, marker3);
 		}
 	});
 
