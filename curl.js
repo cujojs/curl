@@ -205,7 +205,7 @@
 		/***** module pipelines *****/
 
 		requirePipeline: [
-			'normalize', 'locate', 'fetch', 'translate', 'resolve', 'link'
+			'normalize', 'locate', 'fetch', 'transform', 'resolve', 'link'
 		],
 
 		providePipeline: [
@@ -373,6 +373,39 @@
 			}
 		},
 
+		assignDefines: function (mctx) {
+			var cache, id;
+
+			// save and clear define cache
+			cache = core.defineCache;
+			core.defineCache = {};
+
+			if (core.errorCache) err(core.errorCache);
+			if (!core.anonCache && !(mctx.id in cache)) {
+				err('module ' + mctx.id + ' not found in ' + mctx.url);
+			}
+
+			if (core.anonCache) {
+				// these must be the args for the requested module
+				core.assignAmdProperties.apply(mctx, core.anonCache);
+				core.anonCache = undefined;
+			}
+
+			// move all the named defines to the correct realm
+			if (mctx.realm != globalRealm) {
+				for (id in cache) {
+					mctx.realm.cache[id] = globalRealm.cache[id];
+					delete globalRealm.cache[id];
+				}
+			}
+
+			return mctx;
+
+			function err (msg) {
+				throw new Error(msg + mctx.url);
+			}
+		},
+
 		fetchAmdModule: function (mctx) {
 			var dfd;
 
@@ -387,34 +420,12 @@
 			return dfd.promise;
 
 			function resolve () {
-				var id, found, error;
-
-				if (!core.errorCache) {
-					found = core.anonCache || mctx.id in core.defineCache;
-					if (core.anonCache) {
-						// these must be the args for the requested module
-						core.assignAmdProperties.apply(mctx, core.anonCache);
-						core.anonCache = undefined;
-					}
-					// move all the defines to the correct realm
-					if (mctx.realm != globalRealm) {
-						for (id in core.defineCache) {
-							mctx.realm.cache[id] = globalRealm.cache[id];
-							delete globalRealm.cache[id];
-						}
-					}
-				}
-				// clear define cache
-				core.defineCache = {};
-				// resolve
-				if (found) {
+				try {
+					mctx = core.assignDefines(mctx);
 					dfd.fulfill(mctx);
 				}
-				else {
-					error =
-						(core.errorCache || 'module ' + mctx.id + ' not found in ')
-							+ mctx.url;
-					dfd.reject(new Error(error));
+				catch (ex) {
+					dfd.reject(ex);
 				}
 			}
 		},
@@ -623,7 +634,7 @@
 			normalize: 'normalize',
 			locate: 'locate',
 			fetch: 'fetch',
-			translate: 'translate',
+			transform: 'transform',
 			resolve: 'resolve',
 			link: 'link',
 			define: 'define'
@@ -1239,7 +1250,7 @@
 						locate: core.locateAmdModule,
 						// provide (parseAmdFactory) happens here:
 						fetch: core.fetchAmdModule,
-						translate: identity,
+						transform: identity,
 						resolve: core.resolveDeps,
 						link: core.createFactoryExporter
 					},
