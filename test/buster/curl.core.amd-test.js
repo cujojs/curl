@@ -7,17 +7,28 @@ refute = buster.refute;
 
 define(function (require) {
 
-	var curl, core, script, Deferred;
+	var curl, core, path, script, Deferred;
 
 	curl = require('curl');
 	core = curl.get('curl/core');
+	path = curl.get('curl/path');
 	script = curl.get('curl/script');
 	Deferred = curl.get('curl/Deferred');
 
+	buster.testCase('core.transformId', {
+		'should call normalizeId': function () {
+			var ctx = {};
+			this.stub(core, 'normalizeId');
+			core.transformId(ctx);
+			assert.calledOnceWith(core.normalizeId, ctx);
+		}
+	});
+
 	buster.testCase('core.normalizeId', {
-		'// should reduce leading dots': function () {
-			// TODO: this is just a rehash of reduceLeadingDots(), no?
-			assert(false);
+		'should call reduceLeadingDots': function () {
+			this.stub(path, 'reduceLeadingDots');
+			core.normalizeId({ id: 'id', parentCtx: { id: 'pid' } });
+			assert.calledOnceWith(path.reduceLeadingDots, 'id', 'pid');
 		}
 	});
 
