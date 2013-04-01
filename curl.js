@@ -212,13 +212,29 @@
 			'define'
 		],
 
+		/**
+		 * Creates a promise-aware pipeline of composed functions.
+		 * @param {Array} order - list of pipeline functions or an array of
+		 *   strings that are used to look up pipeline functions in `map`
+		 * @param {Object} [map] - key-value pairs of pipeline functions
+		 *   that correspond to keys in the `order` list
+		 * @return {Function}
+		 */
 		createPipeline: function (order, map) {
-			// TODO: account for async construction of pipelines
 			var head, i;
-			head = map[order[0]];
+
+			head = next(0);
 			i = 0;
-			while (++i < order.length) head = queue(head, map[order[i]]);
+
+			while (++i < order.length) head = queue(head, next(i));
+
 			return head;
+
+			function next (i) {
+				return typeof order[i] == 'function'
+					? order[i]
+					: map[order[i]];
+			}
 		},
 
 		defineCache: {},
@@ -356,7 +372,7 @@
 		},
 
 		locateAmdModule: function (mctx) {
-			// check module cache
+			// check realm's cache
 			if (mctx.id in mctx.realm.cache) {
 				// we already have this module
 				return mctx.realm.cache[mctx.id];
@@ -372,6 +388,22 @@
 				return core.resolveUrl(mctx);
 			}
 		},
+
+		fetchAmdModule: function (mctx) {
+			var dfd;
+
+			// check if we have it.
+			// hmmm... we're using mctx.factory as a flag that it was fetched
+			if (!core.isModuleContext(mctx) || mctx.factory) {
+				return mctx;
+			}
+
+			dfd = new Deferred();
+			script.load(mctx, dfd.fulfill, dfd.reject);
+
+			return dfd.promise.yield(mctx);
+		},
+
 
 		assignDefines: function (mctx) {
 			var cache, id;
@@ -405,31 +437,6 @@
 				throw new Error(msg + mctx.url);
 			}
 		},
-
-		fetchAmdModule: function (mctx) {
-			var dfd;
-
-			// check if we have it.
-			// hmmm... we're using mctx.factory as a flag that it was fetched
-			if (!core.isModuleContext(mctx) || mctx.factory) {
-				return mctx;
-			}
-
-			dfd = new Deferred();
-			script.load(mctx, resolve, dfd.reject);
-			return dfd.promise;
-
-			function resolve () {
-				try {
-					mctx = core.assignDefines(mctx);
-					dfd.fulfill(mctx);
-				}
-				catch (ex) {
-					dfd.reject(ex);
-				}
-			}
-		},
-
 		defineAmdModule: function (id, deps, factory, options) {
 			if (id == undefined) {
 				if (core.anonCache) {
@@ -1236,20 +1243,14 @@
 			type: 'amd',
 			types: {
 				amd: {
-//					declare: [
-//						core.parseAmdFactory,
-//						core.resolveDeps,
-//						core.createFactoryExporter
-//					],
-//					locate: [
-//						core.resolveAmdCtx,
-//						core.fetchAmdModule
-//					],
 					require: {
 						normalize: core.transformId,
 						locate: core.locateAmdModule,
-						// provide (parseAmdFactory) happens here:
-						fetch: core.fetchAmdModule,
+						fetch: core.createPipeline([
+							// provide (parseAmdFactory) happens here:
+							core.fetchAmdModule,
+							core.assignDefines
+						]),
 						transform: identity,
 						resolve: core.resolveDeps,
 						link: core.createFactoryExporter
