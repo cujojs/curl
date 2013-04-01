@@ -19,18 +19,8 @@ define(function (require) {
 	buster.testCase('amd.transformId', {
 		'should call reduceLeadingDots': function () {
 			this.stub(path, 'reduceLeadingDots');
-			amd.transformId({ id: 'id', parentCtx: { id: 'pid' } });
+			amd.transformId({ id: 'id', realm: { }, baseId: 'pid' });
 			assert.calledOnceWith(path.reduceLeadingDots, 'id', 'pid');
-		}
-	});
-
-	buster.testCase('core.resolveUrl', {
-		'//TODO move this to correct place: should use realm\'s idToUrl to resolve a url': function () {
-			var fakeCtx = {
-				id: 'fake',
-				realm: { idToUrl: function (id) { return id; } }
-			};
-			assert.same('string', typeof core.resolveUrl(fakeCtx).url, 'adds a url property that is a string');
 		}
 	});
 
@@ -242,9 +232,11 @@ define(function (require) {
 			var mctx, result;
 			mctx = {
 				id: 'id',
-				realm: { cache: { } }
+				realm: { cache: { } },
+				baseId: 'pid'
 			};
 			mctx.realm.cache['id'] = mctx;
+			mctx.realm.idToUrl = this.stub().returns('id');
 			result = amd.locateModule(mctx);
 			assert.same(mctx.id, result.id, 'returned same module');
 		},
@@ -308,6 +300,18 @@ define(function (require) {
 	});
 
 	buster.testCase('amd.assignDefines', {
+		'setUp': function () {
+			// ensure they start empty
+			amd.anonCache = undefined;
+			amd.errorCache = undefined;
+			amd.defineCache = {};
+		},
+		'tearDown': function () {
+			// ensure they end empty
+			amd.anonCache = undefined;
+			amd.errorCache = undefined;
+			amd.defineCache = {};
+		},
 		'should return if module found in anon cache': function () {
 			var result;
 			this.stub(amd, 'applyArguments');
@@ -367,7 +371,7 @@ define(function (require) {
 		'should throw if error cache is full': function () {
 			var ctx;
 			this.stub(amd, 'applyArguments');
-			amd.errorCache = 'an error happened';
+			amd.errorCache = 'this should get caught ';
 			ctx = {
 				id: 'id',
 				realm: { cache: {} }

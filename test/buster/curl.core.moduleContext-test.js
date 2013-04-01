@@ -15,33 +15,22 @@ define(function (require) {
 
 	buster.testCase('core.createModuleContext', {
 		'should create a module context': function () {
-			var pctx, mctx;
-			pctx = { realm: {} };
-			mctx = new core.createModuleContext('foo', pctx);
+			var realm, mctx;
+			realm = { };
+			mctx = new core.createModuleContext('foo', realm, '');
 			assert(typeof mctx == 'object', 'context is an object');
 			assert.equals('foo', mctx.id, 'context has an id property');
-			assert.equals(pctx, mctx.parentCtx, 'context has a parentCtx property');
-			assert.equals(pctx.realm, mctx.realm, 'context has a realm property');
+			assert.equals(realm, mctx.realm, 'context has a parentCtx property');
 		}
 	});
 
 	buster.testCase('core.isModuleContext', {
 		'should detect a module context': function () {
-			var pctx, mctx;
-			pctx = { realm: {} };
-			mctx = new core.createModuleContext('foo', pctx);
+			var realm, mctx;
+			realm = { };
+			mctx = new core.createModuleContext('foo', realm, '');
 			assert(core.isModuleContext(mctx), 'context is a ModuleContext');
 			refute(core.isModuleContext({}), 'non-context is not a ModuleContext');
-		}
-	});
-
-	buster.testCase('core.initModuleContext', {
-		'should initialize a module context': function () {
-			var pctx, mctx;
-			pctx = { realm: {} };
-			mctx = new core.createModuleContext('foo', pctx);
-			mctx = core.initModuleContext(mctx);
-			assert.equals(mctx.realm, pctx.realm);
 		}
 	});
 

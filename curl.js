@@ -128,7 +128,7 @@
 
 		if (ids) {
 			// create a phony module context
-			ctx = core.createModuleContext('', globalRealm);
+			ctx = core.createModuleContext('', globalRealm, '');
 			// `|| []` prevents accidental cjs-wrapped functionality
 			ctx.deps = ids || [];
 			// create a "factory" that captures its arguments (dependencies)
@@ -252,13 +252,9 @@
 				if (id in core.cjsFreeVars) {
 					result = core.cjsFreeVars[id].call(mctx);
 				}
-				// check in cache
-				else if (id in realm.cache) {
-					result =realm.cache[id];
-				}
-				// go get it
+				// resolve it
 				else {
-					result = core.requireModule(mctx.realm, id).then(function (ctx) {
+					result = core.requireModule(mctx, id).then(function (ctx) {
 						// store a context in the cache
 						return mctx.realm.cache[id] = ctx;
 					});
@@ -270,9 +266,12 @@
 		requireModule: function (pctx, id) {
 			var realm = pctx.realm, mctx;
 			if (!realm.require) {
-				realm.require = core.createPipeline(core.requirePipeline, realm.cfg.require);
+				realm.require = core.createPipeline(
+					core.requirePipeline,
+					realm.cfg.types[realm.cfg.type].require
+				);
 			}
-			mctx = core.createModuleContext(realm, id);
+			mctx = core.createModuleContext(id, realm, pctx.id);
 			// store a promise in the cache
 			return realm.cache[id] = realm.require(mctx);
 		},
@@ -281,7 +280,10 @@
 			var realm = mctx.realm, id = mctx.id;
 			if (realm.cache[id]) throw new Error(id + ' already defined.');
 			if (!realm.provide) {
-				realm.provide = core.createPipeline(core.providePipeline, realm.cfg.provide);
+				realm.provide = core.createPipeline(
+					core.providePipeline,
+					realm.cfg.types[realm.cfg.type].provide
+				);
 			}
 			return realm.cache[id] = realm.provide(mctx);
 		},
@@ -330,18 +332,12 @@
 			return it instanceof ModuleContext;
 		},
 
-		createModuleContext: function (id, parentCtx) {
+		createModuleContext: function (id, realm, baseId) {
 			var mctx;
 			mctx = new ModuleContext();
 			mctx.id = id;
-			mctx.parentCtx = parentCtx;
-			mctx.realm = parentCtx.realm; // could be replaced later
-			return mctx;
-		},
-
-		initModuleContext: function (mctx) {
-			// TODO: figure out how to deal with different realms
-			mctx.realm = mctx.parentCtx.realm;
+			mctx.baseId = baseId;
+			mctx.realm = realm; // could be replaced later
 			return mctx;
 		},
 
@@ -494,36 +490,42 @@
 
 		transformId: function (mctx) {
 			// TODO: id transforms
-			mctx.id = path.reduceLeadingDots(mctx.id, mctx.parentCtx.id);
+			mctx.id = path.reduceLeadingDots(mctx.id, mctx.baseId);
 			return mctx;
 		},
 
 		locateModule: function (mctx) {
-			// check realm's cache
-			if (mctx.id in mctx.realm.cache) {
-				// we already have this module
-				return mctx.realm.cache[mctx.id];
-			}
-			// check define cache
-			else if (mctx.id in amd.defineCache) {
+			var cache, cached;
+
+			cache = mctx.realm.cache;
+			// Note: mctx === cache[mctx.id] the first time
+			// the code reaches here for every module.
+			cached = mctx.id in cache && cache[mctx.id] != mctx;
+
+			// use the cached one in case another pipeline is resolving
+			// already. the first one in the cache is used by all.
+			if (cached) return cache[mctx.id];
+
+			// check define cache (inline define()s?)
+			if (mctx.id in amd.defineCache) {
 				amd.applyArguments.apply(mctx, amd.defineCache);
 				delete amd.defineCache[mctx.id];
-				return mctx;
 			}
 			// add a url. we're going to need to fetch the module
 			else {
 				// NOTE: if url == id, then the id *is* a url, not an id!
 				// should we do anything with this knowledge?
 				mctx.url = mctx.realm.idToUrl(mctx.id);
-				return mctx;
 			}
+
+			return mctx;
 		},
 
 		fetchModule: function (mctx) {
 			var dfd;
 
 			// check if we have it.
-			// hmmm... we're using mctx.factory as a flag that it was fetched
+			// Note: we're using mctx.factory as a flag that it was fetched
 			if (!core.isModuleContext(mctx) || mctx.factory) {
 				return mctx;
 			}
@@ -1223,7 +1225,7 @@
 	Deferred.all = all;
 
 	function queue (task1, task2) {
-		return function () { return task1.apply(this, arguments).then(task2); };
+		return function () { return when(task1.apply(this, arguments)).then(task2); };
 	}
 
 
