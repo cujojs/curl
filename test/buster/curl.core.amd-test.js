@@ -297,56 +297,81 @@ define(function (require) {
 			var result;
 			this.stub(script, 'load');
 			this.stub(core, 'isModuleContext').returns(true);
+			this.stub(core, 'assignDefines');
 			result = core.fetchAmdModule({});
 			assert.called(script.load);
 			assert(Deferred.isPromise(result), 'returned a promise');
-		},
-		'should fulfill if module found in anon cache': function (done) {
-			var promise;
-			this.stub(core, 'isModuleContext').returns(true);
-			this.stub(script, 'load').callsArg(1);
+		}
+	});
+
+	buster.testCase('core.assignDefines', {
+		'should return if module found in anon cache': function () {
+			var result;
+			this.stub(core, 'assignAmdProperties');
 			core.anonCache = ['id', [], function () {}, {}];
-			promise = core.fetchAmdModule({});
-			promise.then(
-				function () {
-					assert(true);
-					done()
-				},
-				function (ex) {
-					assert(false, ex.message);
-					done();
-				}
-			);
+			result = core.assignDefines({});
+			assert(typeof result != 'undefined', 'returned');
 		},
-		'should fulfill if module found in define cache': function (done) {
-			var ctx, promise;
-			this.stub(core, 'isModuleContext').returns(true);
-			this.stub(script, 'load').callsArg(1);
+		'should return if module found in define cache': function () {
+			var ctx, result;
+			this.stub(core, 'assignAmdProperties');
 			core.defineCache['id'] = ['id', [], function () {}, {}];
 			ctx = {
 				id: 'id',
 				realm: { cache: {} }
 			};
-			promise = core.fetchAmdModule(ctx);
-			promise.then(
-				function () {
-					assert(true);
-					done()
-				},
-				function (ex) {
-					assert(false, ex.message);
-					done();
-				}
-			);
+			result = core.assignDefines(ctx);
+			assert(typeof result != 'undefined', 'returned');
 		},
 		'should move all named modules to correct cache': function () {
-
+			var ctx;
+			this.stub(core, 'assignAmdProperties');
+			core.anonCache = ['id', [], function () {}, {}];
+			core.defineCache['id'] = ['id', [], function () {}, {}];
+			core.defineCache['id2'] = ['id2', [], function () {}, {}];
+			ctx = {
+				id: 'id',
+				realm: { cache: {} }
+			};
+			core.assignDefines(ctx);
+			assert('id' in ctx.realm.cache, 'found id in cache');
+			assert('id2' in ctx.realm.cache, 'found id2 in cache');
 		},
 		'should clear define and anon caches': function () {
-
+			var ctx;
+			this.stub(core, 'assignAmdProperties');
+			core.anonCache = ['id', [], function () {}, {}];
+			core.defineCache['id'] = ['id', [], function () {}, {}];
+			ctx = {
+				id: 'id',
+				realm: { cache: {} }
+			};
+			core.assignDefines(ctx);
+			assert.equals(core.defineCache, {}, 'define cache is clear');
+			assert.equals(core.anonCache, undefined, 'anon cache is clear');
 		},
-		'should fill error cache if module not found': function () {
-
+		'should throw if module not found': function () {
+			var ctx;
+			this.stub(core, 'assignAmdProperties');
+			ctx = {
+				id: 'id',
+				realm: { cache: {} }
+			};
+			assert.exception(function () {
+				core.assignDefines(ctx);
+			});
+		},
+		'should throw if error cache is full': function () {
+			var ctx;
+			this.stub(core, 'assignAmdProperties');
+			core.errorCache = 'an error happened';
+			ctx = {
+				id: 'id',
+				realm: { cache: {} }
+			};
+			assert.exception(function () {
+				core.assignDefines(ctx);
+			});
 		}
 	});
 
