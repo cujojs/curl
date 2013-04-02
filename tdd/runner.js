@@ -8,7 +8,7 @@
  *
  */
 
-define(['curl', 'curl/_privileged', './undefine'], function (curl, priv, undefine) {
+define(['../.', 'curl/_privileged', './undefine'], function (curl, priv, undefine) {
 "use strict";
 
 	var Promise, runQueue, undef;
