@@ -16,7 +16,6 @@
 //	var
 //		msgUsingExports = {},
 //		msgFactoryExecuted = {},
-//		urlCache = {},
 
 	/***** public API *****/
 
@@ -30,8 +29,7 @@
 	 */
 	function define (factoryOrExports) {
 		var args = amd.fixDefineArgs(arguments);
-		// Note: this is calling core.defineModule, not amd.defineModule
-		core.defineModule.apply(undefined, args);
+		amd.defineModule.apply(undefined, args);
 	}
 	define['amd'] = { 'plugins': true, 'jQuery': true, 'curl': curl };
 
@@ -115,8 +113,6 @@
 	 */
 	function CurlApi (ids, callback, errback, waitFor) {
 		var ctx, dfd, promise, args;
-
-		// TODO: ensure next-turn so inline code can execute first
 
 		// defaults
 		if (!callback) callback = identity;
@@ -224,21 +220,28 @@
 			head = next(0);
 			i = 0;
 
+			// queue all the pipeline tasks
 			while (++i < order.length) head = queue(head, next(i));
 
-			return head;
+			// append an error handler that catches EShortCircuit
+			return queue(head, undefined, err);
 
 			function next (i) {
 				var item = order[i];
 				if (typeof item == 'function') return item;
-				if (typeof item == 'string') return map[item];
+				item = map[item];
+				if (typeof item == 'function') return item;
 				return core.createPipeline(item);
+			}
+
+			function err (ex) {
+				if (ex instanceof EShortCircuit) return ex.result;
+				else throw ex;
 			}
 		},
 
 		resolveDeps: function (mctx) {
-			var realm, promises, i;
-			realm = mctx.realm;
+			var promises, i;
 			promises = [];
 			i = 0;
 			while (i < mctx.deps.length) {
@@ -248,15 +251,16 @@
 
 			function resolveAndCache (id) {
 				var result;
+				// TODO: does this belong in the locate step now that we can shortcircuit?
 				// check for pseudo-modules
 				if (id in core.cjsFreeVars) {
 					result = core.cjsFreeVars[id].call(mctx);
 				}
 				// resolve it
 				else {
-					result = core.requireModule(mctx, id).then(function (ctx) {
-						// store a context in the cache
-						return mctx.realm.cache[id] = ctx;
+					result = core.requireModule(mctx, id).then(function (mctx) {
+						// replace cache with mctx
+						mctx.realm.cache[mctx.id] = mctx;
 					});
 				}
 				return result;
@@ -264,38 +268,40 @@
 		},
 
 		requireModule: function (pctx, id) {
-			var realm = pctx.realm, mctx;
+			var realm = pctx.realm, mctx, pipeline;
 			if (!realm.require) {
+				pipeline = core.requirePipeline;
 				realm.require = core.createPipeline(
-					core.requirePipeline,
+					pipeline,
 					realm.cfg.types[realm.cfg.type].require
 				);
 			}
 			mctx = core.createModuleContext(id, realm, pctx.id);
-			// store a promise in the cache
-			return realm.cache[id] = realm.require(mctx);
+			// don't store anything in the cache, yet. just save promise
+			return mctx.promise = realm.require(mctx);
 		},
 
-		defineModule: function (mctx) {
-			var realm = mctx.realm, id = mctx.id;
-			if (realm.cache[id]) throw new Error(id + ' already defined.');
-			if (!realm.provide) {
-				realm.provide = core.createPipeline(
-					core.providePipeline,
-					realm.cfg.types[realm.cfg.type].provide
-				);
-			}
-			return realm.cache[id] = realm.provide(mctx);
-		},
+//		defineModule: function (mctx) {
+//			var realm = mctx.realm, id = mctx.id;
+//			if (realm.cache[id]) throw new Error(id + ' already defined.');
+//			if (!realm.provide) {
+//				realm.provide = core.createPipeline(
+//					core.providePipeline,
+//					realm.cfg.types[realm.cfg.type].provide
+//				);
+//			}
+//			// TODO: is this right? do we stick it in the cache?
+//			return realm.cache[id] = realm.provide(mctx);
+//		},
 
 		createFactoryExporter: function (mctx) {
 			// hmm... is this the general pattern or is this too specific to
 			// CJS/AMD?
 			mctx.runFactory = function () {
 				var i, imports, dctx, imp;
-				i = 0;
+				i = -1;
 				imports = [];
-				while (i++ < mctx.deps.length) {
+				while (++i < mctx.deps.length) {
 					dctx = mctx.realm.cache[mctx.deps[i]];
 					imp = core.isModuleContext(dctx)
 						? core.importModuleSync(dctx)
@@ -338,6 +344,7 @@
 			mctx.id = id;
 			mctx.baseId = baseId;
 			mctx.realm = realm; // could be replaced later
+			mctx.deps = [];
 			return mctx;
 		},
 
@@ -468,7 +475,7 @@
 			? setImmediate.bind(global)
 			: typeof process === 'object' && process.nextTick
 			? process.nextTick
-			: function (task) { setTimeout(task, 0); },
+			: function (task) { setTimeout(task, 0); }
 	};
 
 		/***** amd-specific functions *****/
@@ -495,16 +502,17 @@
 		},
 
 		locateModule: function (mctx) {
-			var cache, cached;
+			var cache;
 
 			cache = mctx.realm.cache;
-			// Note: mctx === cache[mctx.id] the first time
-			// the code reaches here for every module.
-			cached = mctx.id in cache && cache[mctx.id] != mctx;
 
 			// use the cached one in case another pipeline is resolving
 			// already. the first one in the cache is used by all.
-			if (cached) return cache[mctx.id];
+			if (mctx.id in cache) throw new EShortCircuit(cache[mctx.id]);
+
+			// put this pipeline in the cache
+			cache[mctx.id] = mctx.promise;
+			mctx.promise = undefined;
 
 			// check define cache (inline define()s?)
 			if (mctx.id in amd.defineCache) {
@@ -524,11 +532,11 @@
 		fetchModule: function (mctx) {
 			var dfd;
 
-			// check if we have it.
+			// check if we have it. may have been in define cache
 			// Note: we're using mctx.factory as a flag that it was fetched
-			if (!core.isModuleContext(mctx) || mctx.factory) {
-				return mctx;
-			}
+			// Note: this only skips fetch pipeline (fetchModule +
+			// assignDefines).
+			if (mctx.factory) throw new EShortCircuit(mctx);
 
 			dfd = new Deferred();
 			script.load(mctx, dfd.fulfill, dfd.reject);
@@ -537,7 +545,7 @@
 		},
 
 		assignDefines: function (mctx) {
-			var cache, id;
+			var cache, args, id;
 
 			// save and clear define cache
 			cache = amd.defineCache;
@@ -549,10 +557,13 @@
 			}
 
 			if (amd.anonCache) {
-				// these must be the args for the requested module
-				amd.applyArguments.apply(mctx, amd.anonCache);
+				args = amd.anonCache;
 				amd.anonCache = undefined;
 			}
+			else {
+				args = cache[mctx.id];
+			}
+			amd.applyArguments.apply(mctx, args);
 
 			// move all the named defines to the correct realm
 			if (mctx.realm != globalRealm) {
@@ -590,7 +601,7 @@
 
 		applyArguments: function (id, deps, factory, options) {
 			if (id != undefined) this.id = id;
-			this.deps = deps;
+			if (deps) this.deps = deps;
 			this.factory = factory;
 			this.isCjsWrapped = options.isCjsWrapped;
 			this.arity = options.arity;
@@ -655,7 +666,6 @@
 			if (!mctx.isCjsWrapped) return mctx;
 			rvals = core.extractCjsDeps(mctx.factory);
 			if (rvals.length > 0) {
-				// append to ['require', 'exports', 'module']
 				mctx.deps = (mctx.deps || []).concat(rvals);
 			}
 			return mctx;
@@ -884,7 +894,8 @@
 		isRelPath: function (url) { return url.charAt(0) == '.'; },
 
 		joinPaths: function (base, sub) {
-			return path.removeEndSlash(base) + '/' + sub;
+			base = path.removeEndSlash(base);
+			return (base ? base + '/' : '') + sub;
 		},
 
 		removeEndSlash: function (path) {
@@ -1224,10 +1235,35 @@
 	}
 	Deferred.all = all;
 
-	function queue (task1, task2) {
-		return function () { return when(task1.apply(this, arguments)).then(task2); };
+	function queue (task1, task2, err2) {
+		return function () {
+			return when(task1.apply(this, arguments)).then(task2, err2);
+		};
 	}
 
+
+/***** debug *****/
+(function () {
+	var p;
+//	for (p in core) (function (orig, p) {
+//		if (typeof orig == 'function')
+//			core[p] = function () {
+//				console.log('core.' + p, 'arguments', arguments);
+//				var result = orig.apply(this, arguments);
+//				console.log('core.' + p, 'return', result);
+//				return result;
+//			};
+//	}(core[p], p));
+	for (p in amd) (function (orig, p) {
+		if (typeof orig == 'function')
+			amd[p] = function () {
+				console.log('amd.' + p, 'arguments', arguments);
+				var result = orig.apply(this, arguments);
+				console.log('amd.' + p, 'return', result);
+				return result;
+			};
+	}(amd[p], p));
+}());
 
 	/***** startup *****/
 
@@ -1252,16 +1288,15 @@
 						normalize: amd.transformId,
 						locate: amd.locateModule,
 						fetch: [
-							// provide (parseFactory) happens here:
 							amd.fetchModule,
 							amd.assignDefines
 						],
-						transform: identity,
+						transform: amd.parseFactory,
 						resolve: core.resolveDeps,
 						link: core.createFactoryExporter
-					},
-					provide: {
-						define: amd.parseFactory
+//					},
+//					provide: {
+//						define: amd.defineModule
 					}
 				}
 			}
@@ -1290,12 +1325,15 @@
 	global['define'] = define;
 	if (cjsModule) cjsModule.exports = curl;
 
-
 	/***** utilities *****/
 
 	var undefined; // this ensures `typeof undefined == 'undefined';`
 
 	function ModuleContext () {}
+
+	function EShortCircuit (result) {
+		this.result = result;
+	}
 
 	function importErrorMessage (id) {
 		// TODO: figure out how to display calling module's id
