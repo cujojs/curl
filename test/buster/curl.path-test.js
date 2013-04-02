@@ -40,6 +40,8 @@ define(function (require) {
 
 	buster.testCase('path.joinPaths', {
 		'should join paths': function () {
+			assert('bar', path.joinPaths('', 'bar'), 'join leading blank');
+			assert('foo', path.joinPaths('foo', ''), 'join trailing blank');
 			assert('foo/bar', path.joinPaths('foo', 'bar'), 'simple join');
 			assert('foo/bar', path.joinPaths('foo/', 'bar'), 'trailing slash');
 			assert('foo/bar.js', path.joinPaths('foo/', 'bar.js'), 'with extension');
