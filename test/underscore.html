@@ -12,7 +12,7 @@
 	curl = {
 			baseUrl: '',
 			paths: {
-				curl: '../curl',
+				curl: '..',
 				underscore: 'support/underscore-amdjs-1.3.1/underscore'
 			}
 		};
@@ -42,9 +42,11 @@
 	);
 
 	function write (msg) {
-//		curl(['domReady!'], function () {
-			document.body.appendChild(document.createElement('div')).innerHTML = msg;
-//		});
+		curl(['curl/domReady'], function (ready) {
+			ready(function () {
+				document.body.appendChild(document.createElement('div')).innerHTML = msg;
+			});
+		});
 	}
 
 </script>
