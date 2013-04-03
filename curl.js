@@ -260,7 +260,7 @@
 
 			function resolveAndCache (id) {
 				var result;
-				// TODO: does this belong in the locate step now that we can shortcircuit?
+				// TODO: move special treatment of cjs vars to locate step once caching is advice to the steps
 				// check for pseudo-modules
 				if (id in core.cjsFreeVars) {
 					result = core.cjsFreeVars[id].call(mctx);
@@ -271,6 +271,7 @@
 					// result may not be a promise:
 					when(result, function (mctx) {
 						// replace cache with mctx
+						// TODO: move this to advice at the end of the pipeline
 						return mctx.realm.cache[mctx.id] = mctx;
 					});
 				}
@@ -366,10 +367,12 @@
 				var mctx = this, realm = mctx.realm, xform;
 				xform = realm.cfg.types[realm.cfg.type].require.normalize;
 				return function (id) {
-					var cctx;
-					if (core.isType(arguments[1], 'Function')) {
-						// TODO: FIXME: this returns a module context, not a module
-						core.requireModule(mctx, id).then(arguments[1], arguments[2]);
+					var cctx, callback;
+					callback = arguments[1];
+					if (core.isType(callback, 'Function')) {
+						core.requireModule(mctx, id)
+							.then(core.importModuleSync, arguments[2])
+							.then(callback);
 					}
 					else {
 						// can't use promises here because they're async
@@ -541,6 +544,11 @@
 			// use the cached one in case another pipeline is resolving
 			// already. the first one in the cache is used by all.
 			if (mctx.id in cache) throw new ShortCircuit(cache[mctx.id]);
+
+			// TODO: turn this on when caching is added as advice to pipeline steps
+//			if (mctx.id in core.cjsFreeVars) {
+//				throw new ShortCircuit(core.cjsFreeVars[mctx.id].call(mctx));
+//			}
 
 			// put this pipeline in the cache
 			cache[mctx.id] = mctx.promise;
