@@ -392,12 +392,12 @@
 				var mctx = this, module = mctx.module;
 				if (!module) {
 					this.usesExports = true;
-					module = mctx.module = core.toObfuscatedName({
+					module = mctx.module = {
 						id: mctx.id,
 						uri: mctx.url,
 						exports: core.cjsFreeVars['exports'].call(mctx),
 						config: function () { return mctx.realm.cfg; }
-					});
+					};
 				}
 				return module;
 			}
@@ -459,45 +459,6 @@
 			for (p in mixin) child[p] = mixin[p];
 			return child;
 		},
-
-		// this is gross. can we move this to an external module that is
-		// baked in to dist versions?
-		toObfuscatedName: (function (map) {
-			var test, invert, p;
-			// test if we've been obfuscated
-			test = { prop: version };
-			if (test.prop == test['prop']) return identity;
-			// create a converter
-			invert = {};
-			for (p in map) invert[map[p]] = p;
-			return function (it) {
-				var p;
-				if (core.isType(it, 'Object')) {
-					for (p in it) it[p] = it[core.toObfuscatedName(p)];
-				}
-				return it in invert ? invert[it] : it;
-			}
-		}({
-			baseUrl: 'baseUrl',
-			pluginPath: 'pluginPath',
-			dontAddFileExt: 'dontAddFileExt',
-			paths: 'paths',
-			packages: 'packages',
-			plugins: 'plugins',
-			preloads: 'preloads',
-			main: 'main',
-			type: 'type',
-			types: 'types',
-			amd: 'amd',
-			provide: 'provide',
-			normalize: 'normalize',
-			locate: 'locate',
-			fetch: 'fetch',
-			transform: 'transform',
-			resolve: 'resolve',
-			link: 'link',
-			define: 'define'
-		})),
 
 		/**
 		 * Executes a task in the "next turn". Prefers process.nextTick or
@@ -744,7 +705,7 @@
 
 			// convert all new cfg props from quoted props (GCC AO)
 			prevCfg = globalRealm.cfg;
-			newCfg = core.beget(prevCfg, cfg, core.toObfuscatedName);
+			newCfg = core.beget(prevCfg, cfg);
 
 			if (typeof newCfg.dontAddFileExt == 'string') {
 				newCfg.dontAddFileExt = new RegExp(newCfg.dontAddFileExt);
@@ -779,7 +740,7 @@
 				// add to path map
 				pathMap[desc.name] = desc;
 				// if this desc has a custom config, extend main config
-				if (own(desclist[i], core.toObfuscatedName('config'))) {
+				if (own(desclist[i], 'config')) {
 					desc.config = core.beget(newCfg, desc.config);
 				}
 			}
