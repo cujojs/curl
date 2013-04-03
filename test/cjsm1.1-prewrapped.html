@@ -7,13 +7,13 @@
 
 	curl = {
 		paths: {
-			curl: '../src/curl',
+			curl: '..',
 			commonjs: 'support/commonjs'
 		}
 	};
 
 </script>
-<script src="../src/curl.js" type="text/javascript"></script>
+<script src="../curl.js"></script>
 
 
 <script type="text/javascript">
@@ -31,6 +31,11 @@
 			write('A module that exports as `this` loaded successfully if "it works" == ' + thisModule.testMessage + '.');
 			write('A module that inspects `require("module")` loaded successfully if "commonjs/module" == ' + hybrid.foo().testMessage + '.');
 			write('A module that exposes its module info loaded successfully if this "commonjs/this" == ' + thisModule._module.id + '.');
+		},
+		function (ex) {
+			write('ERROR: ' + ex.message);
+			console.log(ex.message);
+			if (ex.stack) console.log(ex.stack);
 		}
 	);
 
