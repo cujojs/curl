@@ -124,7 +124,7 @@
 
 		if (ids) {
 			// create a phony module context
-			ctx = core.createModuleContext('', globalRealm, '');
+			ctx = core.createModuleContext('', globalRealm, { id: '' });
 			// `|| []` prevents accidental cjs-wrapped functionality
 			ctx.deps = ids || [];
 			// create a "factory" that captures its arguments (dependencies)
@@ -217,18 +217,18 @@
 		createPipeline: function (order, map) {
 			var head, i;
 
-			head = next(0);
+			head = task(0);
 			i = 0;
 
 			// queue all the pipeline tasks
-			while (++i < order.length) head = queue(head, next(i));
+			while (++i < order.length) head = chain(head, task(i));
 
-			// append an error handler that catches ShortCircuit
-			return queue(head, undefined, err);
+			// hacky: this is just to put the ShortCircuit catcher at the top
+			return chain(head, undefined, err);
 
 			// TODO: hoist these functions?
 
-			function next (i) {
+			function task (i) {
 				var item = order[i];
 				if (typeof item == 'function') return item;
 				item = map[item];
@@ -241,7 +241,7 @@
 				else throw ex;
 			}
 
-			function queue (task1, task2, err2) {
+			function chain (task1, task2, err2) {
 				return function () {
 					return when(task1.apply(this, arguments)).then(task2, err2);
 				};
@@ -259,23 +259,13 @@
 			return count ? all(mctx.imports).then(replaceImports) : mctx;
 
 			function resolveAndCache (id) {
-				var result;
-				// TODO: move special treatment of cjs vars to locate step once caching is advice to the steps
+				// TODO: move special treatment of cjs vars to normalize step
+				// why is this canceling the entire resolveDeps all() when in th normalize step?
 				// check for pseudo-modules
 				if (id in core.cjsFreeVars) {
-					result = core.cjsFreeVars[id].call(mctx);
+					return core.cjsFreeVars[id].call(mctx);
 				}
-				// resolve it
-				else {
-					result = core.requireModule(mctx, id);
-					// result may not be a promise:
-					when(result, function (mctx) {
-						// replace cache with mctx
-						// TODO: move this to advice at the end of the pipeline
-						return mctx.realm.cache[mctx.id] = mctx;
-					});
-				}
-				return result;
+				return core.requireModule(mctx, id);
 			}
 
 			function replaceImports (imports) {
@@ -285,17 +275,49 @@
 		},
 
 		requireModule: function (pctx, id) {
-			var realm = pctx.realm, mctx, pipeline;
+			var realm = pctx.realm, mctx, pipeline, map;
+
 			if (!realm.require) {
 				pipeline = core.requirePipeline;
-				realm.require = core.createPipeline(
-					pipeline,
-					realm.cfg.types[realm.cfg.type].require
-				);
+				map = realm.cfg.types[realm.cfg.type].require;
+				// add advice
+				map.locate = beforeLocate(map.locate);
+				map.link = afterLink(map.link); // TODO: switch this to provide step when it's split
+				realm.require = core.createPipeline(pipeline, map);
 			}
-			mctx = core.createModuleContext(id, realm, pctx.id);
+
+			mctx = core.createModuleContext(id, realm, pctx);
+
 			// don't store anything in the cache, yet. just save the promise
 			return mctx.promise = realm.require(mctx);
+
+			// cache advices:
+
+			function beforeLocate (locate) {
+				return function (mctx) {
+					var cache;
+
+					cache = mctx.realm.cache;
+
+					// use the cached one in case another pipeline is resolving
+					// already. the first one in the cache is used by all.
+					if (mctx.id in cache) throw new ShortCircuit(cache[mctx.id]);
+
+					// put this pipeline in the cache
+					cache[mctx.id] = mctx.promise;
+					mctx.promise = undefined;
+
+					return locate.apply(this, arguments);
+				}
+			}
+
+			function afterLink (link) {
+				return function (mctx) {
+					var result = link.apply(this, arguments);
+					mctx.realm.cache[mctx.id] = mctx;
+					return result;
+				}
+			}
 		},
 
 		createFactoryExporter: function (mctx) {
@@ -313,7 +335,7 @@
 					}
 				}
 				// node.js runs the factory in the context of the exports
-				exports = mctx.module ? mctx.module.exports : mctx.exports;
+				exports = mctx.usesExports && mctx.exports;
 				// Note: don't grab a reference to mctx.factory in advance since
 				// it could be replaced or created just-in-time.
 				exp = mctx.factory.apply(exports, imports.slice(0, mctx.arity));
@@ -348,11 +370,11 @@
 			return it instanceof ModuleContext;
 		},
 
-		createModuleContext: function (id, realm, baseId) {
+		createModuleContext: function (id, realm, parent) {
 			var mctx;
 			mctx = new ModuleContext();
 			mctx.id = id;
-			mctx.baseId = baseId;
+			mctx.parent = parent;
 			mctx.realm = realm; // could be replaced later
 			mctx.deps = [];
 			return mctx;
@@ -360,6 +382,7 @@
 
 		/***** utilities *****/
 
+		// TODO: add `global` free var
 		cjsFreeVars: {
 			// these should be called in the context of a mctx
 			'require': function () {
@@ -376,7 +399,7 @@
 					}
 					else {
 						// can't use promises here because they're async
-						cctx = xform(core.createModuleContext(id, realm, mctx.id));
+						cctx = xform(core.createModuleContext(id, realm, mctx));
 						if (!cctx.id in realm.cache) {
 							throw new Error(cctx.id + ' not already loaded.');
 						}
@@ -385,13 +408,13 @@
 				};
 			},
 			'exports': function () {
-				this.usesExports = true;
-				return this.exports || (this.exports = {});
+				var mctx = this;
+				mctx.usesExports = true;
+				return mctx.exports || (mctx.exports = {});
 			},
 			'module': function () {
 				var mctx = this, module = mctx.module;
 				if (!module) {
-					this.usesExports = true;
 					module = mctx.module = {
 						id: mctx.id,
 						uri: mctx.url,
@@ -450,9 +473,8 @@
 			}
 		}(Object.prototype.toString)),
 
-		beget: function (parent, mixin, transform) {
+		beget: function (parent, mixin) {
 			var child, p;
-			if (!transform) transform = identity;
 			Begetter.prototype = parent || {};
 			child = new Begetter();
 			Begetter.prototype = {};
@@ -491,30 +513,19 @@
 
 		transformId: function (mctx) {
 			// TODO: id transforms
-			mctx.id = path.reduceLeadingDots(mctx.id, mctx.baseId);
+			// look for cjs vars
+			if (mctx.id in core.cjsFreeVars) {
+				throw new ShortCircuit(
+					core.cjsFreeVars[mctx.id].call(mctx.parent),
+					'cannot require() pseudo-module: ' + mctx.id
+				);
+			}
+			// relative to absolute
+			mctx.id = path.reduceLeadingDots(mctx.id, mctx.parent.id);
 			return mctx;
 		},
 
 		locateModule: function (mctx) {
-			var cache;
-
-			// TODO: remove cache-related behavior and put into advice
-
-			cache = mctx.realm.cache;
-
-			// use the cached one in case another pipeline is resolving
-			// already. the first one in the cache is used by all.
-			if (mctx.id in cache) throw new ShortCircuit(cache[mctx.id]);
-
-			// TODO: turn this on when caching is added as advice to pipeline steps
-//			if (mctx.id in core.cjsFreeVars) {
-//				throw new ShortCircuit(core.cjsFreeVars[mctx.id].call(mctx));
-//			}
-
-			// put this pipeline in the cache
-			cache[mctx.id] = mctx.promise;
-			mctx.promise = undefined;
-
 			// check define cache (inline define()s?)
 			if (mctx.id in amd.defineCache) {
 				amd.applyArguments.apply(mctx, amd.defineCache);
@@ -535,10 +546,7 @@
 
 			// check if we have it. may have been in define cache
 			// Note: we're using mctx.factory as a flag that it was fetched
-			// Note: this only skips fetch pipeline (fetchModule +
-			// assignDefines).
-			// TODO: consider doing this as advice
-			if (mctx.factory) throw new ShortCircuit(mctx);
+			if (mctx.factory) return mctx;
 
 			dfd = new Deferred();
 			script.load(mctx, assignSync, dfd.reject);
@@ -608,12 +616,13 @@
 		},
 
 		applyArguments: function (id, deps, factory, options) {
-			if (id != undefined) this.id = id;
-			if (deps) this.deps = deps;
-			this.factory = factory;
-			this.isCjsWrapped = options.isCjsWrapped;
-			this.arity = options.arity;
-			return this;
+			var mctx = this;
+			if (id != undefined) mctx.id = id;
+			if (deps) mctx.deps = deps;
+			mctx.factory = factory;
+			mctx.isCjsWrapped = options.isCjsWrapped;
+			mctx.arity = options.arity;
+			return mctx;
 		},
 
 		/**
@@ -1332,8 +1341,9 @@
 
 	function ModuleContext () {}
 
-	function ShortCircuit (result) {
+	function ShortCircuit (result, altMsg) {
 		this.result = result;
+		if (altMsg) this.message = altMsg;
 	}
 
 	function importErrorMessage (id) {
