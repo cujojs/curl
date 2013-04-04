@@ -755,7 +755,7 @@
 			}
 			pathRx = config.generatePathMatcher(desclist);
 
-			// TODO: how to deal with different realms
+			// TODO: different realms
 			globalRealm.idToUrl = function (id) {
 				var url, pkgDesc;
 				if (!path.isAbsUrl(id)) {
@@ -792,7 +792,11 @@
 			}
 
 			// when all is done, set global config and return it
-			return promise? promise.yield(newCfg) : newCfg;
+			return promise
+				// can't call .yield() since this is a CurlApi
+				// TODO: add .yield() to CurlApi?
+				? promise.then(function () { return newCfg; })
+				: newCfg;
 		},
 
 		normalizePkgDescriptors: function (map, isPackage) {
