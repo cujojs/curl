@@ -217,7 +217,8 @@
 		createPipeline: function (order, map) {
 			var head, i;
 
-			head = task(0);
+			// yuk. need to use fake first step to put err handler on first task
+			head = chain(identity, task(0));
 			i = 0;
 
 			// queue all the pipeline tasks
@@ -254,19 +255,9 @@
 			mctx.imports = [];
 			i = -1;
 			while (++i < count) {
-				mctx.imports.push(resolveAndCache(mctx.deps[i]));
+				mctx.imports.push(core.requireModule(mctx, mctx.deps[i]));
 			}
 			return count ? all(mctx.imports).then(replaceImports) : mctx;
-
-			function resolveAndCache (id) {
-				// TODO: move special treatment of cjs vars to normalize step
-				// why is this canceling the entire resolveDeps all() when in th normalize step?
-				// check for pseudo-modules
-				if (id in core.cjsFreeVars) {
-					return core.cjsFreeVars[id].call(mctx);
-				}
-				return core.requireModule(mctx, id);
-			}
 
 			function replaceImports (imports) {
 				mctx.imports = imports;
