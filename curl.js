@@ -69,14 +69,7 @@
 	 * @return {*} module
 	 */
 	curl['get'] = function (id) {
-		var ctx;
-		if (!(id in globalRealm.cache)) {
-			throw new Error(importErrorMessage(id));
-		}
-		ctx = globalRealm.cache[id];
-		return core.isModuleContext(ctx)
-			? core.importModuleSync(ctx)
-			: ctx;
+		return core.getModuleSync(globalRealm, id);
 	};
 
 	/**
@@ -129,7 +122,7 @@
 			ctx.deps = ids || [];
 			// create a "factory" that captures its arguments (dependencies)
 			ctx.factory = function () { args = arguments; };
-			// exporter will create ctx.funFactory()
+			// exporter will create ctx.runFactory()
 			core.createFactoryExporter(ctx);
 		}
 
@@ -271,9 +264,9 @@
 			if (!realm.require) {
 				pipeline = core.requirePipeline;
 				map = realm.cfg.types[realm.cfg.type].require;
-				// add advice
-				map.locate = beforeLocate(map.locate);
-				map.link = afterLink(map.link); // TODO: switch this to provide step when it's split
+				// add caching advice
+				core.advise(map, 'locate', core.cachePromise);
+				core.advise(map, 'link', core.cacheContext, true); // TODO: switch this to provide step when it's split
 				realm.require = core.createPipeline(pipeline, map);
 			}
 
@@ -281,34 +274,26 @@
 
 			// don't store anything in the cache, yet. just save the promise
 			return mctx.promise = realm.require(mctx);
+		},
 
-			// cache advices:
+		cachePromise: function (mctx) {
+			var cache;
 
-			function beforeLocate (locate) {
-				return function (mctx) {
-					var cache;
+			cache = mctx.realm.cache;
 
-					cache = mctx.realm.cache;
+			// use the cached one in case another pipeline is resolving
+			// already. the first one in the cache is used by all.
+			if (mctx.id in cache) throw new ShortCircuit(cache[mctx.id]);
 
-					// use the cached one in case another pipeline is resolving
-					// already. the first one in the cache is used by all.
-					if (mctx.id in cache) throw new ShortCircuit(cache[mctx.id]);
+			// put this pipeline in the cache
+			cache[mctx.id] = mctx.promise;
+			mctx.promise = undefined;
 
-					// put this pipeline in the cache
-					cache[mctx.id] = mctx.promise;
-					mctx.promise = undefined;
+			return mctx;
+		},
 
-					return locate.apply(this, arguments);
-				}
-			}
-
-			function afterLink (link) {
-				return function (mctx) {
-					var result = link.apply(this, arguments);
-					mctx.realm.cache[mctx.id] = mctx;
-					return result;
-				}
-			}
+		cacheContext: function (mctx) {
+			mctx.realm.cache[mctx.id] = mctx;
 		},
 
 		createFactoryExporter: function (mctx) {
@@ -318,6 +303,8 @@
 			mctx.runFactory = function () {
 				var i, imports, imp, exports, exp;
 				i = -1;
+				// TODO: stop caching imports and instead fetch them off the cache jit
+				// TODO: use deps and getModuleSync instead
 				imports = mctx.imports;
 				while (++i < imports.length) {
 					imp = imports[i];
@@ -348,11 +335,18 @@
 		 * TODO: should this be another pipeline, but sync?
 		 */
 		importModuleSync: function (mctx) {
-			var realm = mctx.realm, id = mctx.id, notReady;
-			notReady = isDeferred(mctx);
-			if (notReady) throw new Error(importErrorMessage(mctx.id));
-			realm.cache[id] = mctx.runFactory();
+			var realm, id;
+			if (isDeferred(mctx)) throw new Error(importErrorMessage(mctx.id));
+			realm = mctx.realm, id = mctx.id
+			if (core.isModuleContext(mctx)) realm.cache[mctx.id] = mctx.runFactory();
 			return realm.cache[id];
+		},
+
+		getModuleSync: function (realm, id) {
+			if (!(id in realm.cache)) {
+				throw new Error(importErrorMessage(id));
+			}
+			return core.importModuleSync(realm.cache[id]);
 		},
 
 		/**** module context *****/
@@ -384,6 +378,8 @@
 					var cctx, callback;
 					callback = arguments[1];
 					if (core.isType(callback, 'Function')) {
+						// TODO: FIXME: this should process an array of ids
+						// TODO: share code with CurlApi/resolveDeps
 						core.requireModule(mctx, id)
 							.then(core.importModuleSync, arguments[2])
 							.then(callback);
@@ -471,6 +467,16 @@
 			Begetter.prototype = {};
 			for (p in mixin) child[p] = mixin[p];
 			return child;
+		},
+
+		advise: function (obj, method, advice, after) {
+			var orig = obj[method];
+			obj[method] = function () {
+				if (!after) advice.apply(this, arguments);
+				var result = orig.apply(this, arguments);
+				if (after) advice(result);
+				return result;
+			};
 		},
 
 		/**
