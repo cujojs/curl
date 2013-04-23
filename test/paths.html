@@ -31,7 +31,9 @@
 					'plainJane.js': 'stuff/plain_old.js',
 					'jane2.js': 'stuff/plain_old.js', // shouldn't get loaded
 					'js!jane2.js': 'stuff/plain_old_2.js', // this one should
-					'increments': 'stuff/increments'
+					'increments': 'stuff/increments',
+					'undotted': 'stuff',
+					'.dotted': 'stuff'
 					// TODO: more tests
 				})
 			}),
@@ -60,6 +62,11 @@
 							.then(cb.success, cb.failure)
 							.then(checkIncrements)
 							.then(done, done);
+					},
+					'should map a dot-leading path correctly': function (cb, assert) {
+						curl(['require'], function (require) {
+							assert.equal(require.toUrl('undotted'), require.toUrl('.dotted'));
+						});
 					}
 				};
 				for (var name in tests) {
@@ -79,10 +86,11 @@
 			domReady = ready;
 			configureAsserts = asserts;
 		}
-	).then(
-		function () {
+	).next(
+		['require'],
+		function (require) {
 			for (var name in tests) {
-				testRunner(false, tests[name].setup).run(tests[name].test);
+				testRunner(require, tests[name].setup).run(tests[name].test);
 			}
 		}
 	);
