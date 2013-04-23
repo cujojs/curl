@@ -38,5 +38,8 @@
 	},
 	"scripts": {
 		"test": "buster test -e node"
+	},
+	"volo": {
+		"type": "directory"
 	}
 }
