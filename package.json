@@ -35,5 +35,8 @@
 	"main": "./src/curl",
 	"directories": {
 		"test": "test"
+	},
+	"volo": {
+		"type": "directory"
 	}
 }
