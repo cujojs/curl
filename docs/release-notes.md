@@ -1,6 +1,16 @@
 Release notes for curl.js
 ---
 
+* 0.7.4
+	* curl.js is now available on CDN: http://cdnjs.com/#curl and
+	  http://jsdelivr.com/#!curl.js
+	* "main" modules specified in config are fetched after a delay for better
+	  compatibility with bundles.
+	* cram.js support
+	* data-curl-run attribute for loading run.js files.
+	* fix to stop IE6-8 complaining about sourceURL when @cc_on.
+	* new debug dist version of curl.js.
+	* bug fixes for running curl.js inside node.js.
 * 0.7.3
 	* css! plugin no longer fails when sniffing for Opera (Fixes #147)
 	* new curl.config() API method (fixes #146)
