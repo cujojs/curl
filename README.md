@@ -6,17 +6,6 @@ Check out the newly updated [wiki](https://github.com/cujojs/curl/wiki)!
 See the [wiki](https://github.com/cujojs/curl/wiki) for information about using
 curl.js with jQuery, dojo, or underscore.
 
-Please Note: this project has moved from unscriptable/curl to cujojs/curl.
-Any existing forks have been automatically moved to cujojs/curl. However,
-you will need to update your clone and submodule remotes manually.
-
-Update the url in your .git/config, and also .gitmodules for submodules:
-	git://github.com/cujojs/curl.git
-	https://cujojs@github.com/cujojs/curl.git
-
-Helpful link for updating submodules:
-[Git Submodules: Adding, Using, Removing, Updating](http://chrisjean.com/2009/04/20/git-submodules-adding-using-removing-and-updating/)
-
 What's New?
 =======
 
@@ -72,12 +61,11 @@ What is curl.js?
 ================
 
 curl.js is a small and very fast AMD-compliant asynchronous loader.
-Size: 5KB (2.5KB gzipped) using Google's Closure Compiler.
+Size: <4KB (gzipped) using Google's Closure Compiler.
 
 If you'd like to use curl.js for non-AMD modules (ordinary javascript files),
 you'll want to  use a version with the js! plugin built in.  You may also
-want to build-in the domReady module.  The combined curl+js+domReady loader
-is still only 6.5KB (3KB gzipped).
+want to build-in the domReady module.
 
 What the heck is "cujo"?  cujo.js is a web app development platform.
 See the bottom of this file for more info.
