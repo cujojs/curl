@@ -13,7 +13,7 @@
 (function (global) {
 //"use strict"; don't restore this until the config routine is refactored
 	var
-		version = '0.7.3',
+		version = '0.7.4',
 		curlName = 'curl',
 		defineName = 'define',
 		runModuleAttr = 'data-curl-run',
@@ -241,7 +241,7 @@
 			return result;
 		}
 	}
-	
+
 	core = {
 
 		/**
@@ -1134,7 +1134,7 @@
 			}
 			return cfg;
 		},
-		
+
 		nextTurn: function (task) {
 			setTimeout(task, 0);
 		}
@@ -1160,7 +1160,7 @@
 
 	function _config (cfg, callback, errback) {
 		var pPromise, mPromise, main, devmain, fallback;
-		
+
 		if (cfg) {
 			core.setApi(cfg);
 			userCfg = core.config(cfg);
