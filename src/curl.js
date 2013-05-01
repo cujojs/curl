@@ -1291,7 +1291,7 @@
 	prevDefine = global[defineName];
 
 	// only run config if there is something to config (perf saver?)
-	if (isType(prevCurl, 'Object') || userCfg.main) {
+	if (prevCurl && isType(prevCurl, 'Object') || userCfg.main) {
 		// remove global curl object
 		global[curlName] = undef; // can't use delete in IE 6-8
 		// configure curl
