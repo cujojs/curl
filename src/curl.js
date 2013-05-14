@@ -1195,7 +1195,7 @@
 
 		ctx = core.createContext(userCfg, undef, [].concat(ids), isPreload);
 
-		this['then'] = then = function (resolved, rejected) {
+		this['then'] = this.then = then = function (resolved, rejected) {
 			when(ctx,
 				// return the dependencies as arguments, not an array
 				function (deps) {
