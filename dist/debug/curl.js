@@ -13,7 +13,7 @@
 (function (global) {
 //"use strict"; don't restore this until the config routine is refactored
 	var
-		version = '0.7.3',
+		version = '0.7.4',
 		curlName = 'curl',
 		defineName = 'define',
 		runModuleAttr = 'data-curl-run',
@@ -52,6 +52,7 @@
 		findDotsRx = /(\.)(\.?)(?:$|\/([^\.\/]+.*)?)/g,
 		removeCommentsRx = /\/\*[\s\S]*?\*\/|\/\/.*?[\n\r]/g,
 		findRValueRequiresRx = /require\s*\(\s*(["'])(.*?[^\\])\1\s*\)|[^\\]?(["'])/g,
+		splitMainDirectives = /\s*,\s*/,
 		cjsGetters,
 		core;
 
@@ -1120,12 +1121,22 @@
 		extractDataAttrConfig: function (cfg) {
 			var script;
 			script = core.findScript(function (script) {
+				var main;
+				// find main module(s) in data-curl-run attr on script element
 				// TODO: extract baseUrl, too?
-				return (cfg.main = script.getAttribute(runModuleAttr));
+				main = script.getAttribute(runModuleAttr);
+				if (main) cfg.main = main;
+				return main;
 			});
 			// removeAttribute is wonky (in IE6?) but this works
-			if (script) script.setAttribute(runModuleAttr, '');
+			if (script) {
+				script.setAttribute(runModuleAttr, '');
+			}
 			return cfg;
+		},
+
+		nextTurn: function (task) {
+			setTimeout(task, 0);
 		}
 
 	};
@@ -1148,22 +1159,32 @@
 	}
 
 	function _config (cfg, callback, errback) {
-		var promise;
+		var pPromise, mPromise, main, devmain, fallback;
+
 		if (cfg) {
 			core.setApi(cfg);
 			userCfg = core.config(cfg);
 			// check for preloads
 			if ('preloads' in cfg) {
-				promise = new CurlApi(cfg['preloads'], undef, errback, preload, true);
+				pPromise = new CurlApi(cfg['preloads'], undef, errback, preload, true);
 				// yes, this is hacky and embarrassing. now that we've got that
 				// settled... until curl has deferred factory execution, this
 				// is the only way to stop preloads from dead-locking when
 				// they have dependencies inside a bundle.
-				setTimeout(function () { preload = promise; }, 0);
+				core.nextTurn(function () { preload = pPromise; });
 			}
-			// check for main module(s). this waits for preloads implicitly.
-			if ('main' in cfg) {
-				return new CurlApi(cfg['main'], callback, errback)
+			// check for main module(s). all modules wait for preloads implicitly.
+			main = cfg['main'];
+			main = main && String(main).split(splitMainDirectives);
+			if (main) {
+				mPromise = new Promise();
+				mPromise.then(callback, errback);
+				// figure out if we are using a dev-time fallback
+				fallback = main[1]
+					? function () { new CurlApi(main[1], mPromise.resolve, mPromise.reject); }
+					: mPromise.reject;
+				new CurlApi(main[0], mPromise.resolve, fallback);
+				return mPromise;
 			}
 		}
 	}
@@ -1174,7 +1195,7 @@
 
 		ctx = core.createContext(userCfg, undef, [].concat(ids), isPreload);
 
-		this['then'] = then = function (resolved, rejected) {
+		this['then'] = this.then = then = function (resolved, rejected) {
 			when(ctx,
 				// return the dependencies as arguments, not an array
 				function (deps) {
@@ -1198,11 +1219,11 @@
 		if (callback || errback) then(callback, errback);
 
 		// ensure next-turn so inline code can execute first
-		setTimeout(function () {
+		core.nextTurn(function () {
 			when(isPreload || preload, function () {
 				when(waitFor, function () { core.getDeps(ctx); }, errback);
 			});
-		}, 0);
+		});
 	}
 
 	_curl['version'] = version;
@@ -1270,7 +1291,7 @@
 	prevDefine = global[defineName];
 
 	// only run config if there is something to config (perf saver?)
-	if (isType(prevCurl, 'Object') || userCfg.main) {
+	if (prevCurl && isType(prevCurl, 'Object') || userCfg.main) {
 		// remove global curl object
 		global[curlName] = undef; // can't use delete in IE 6-8
 		// configure curl
