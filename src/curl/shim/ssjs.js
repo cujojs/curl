@@ -1,4 +1,4 @@
-/** MIT License (c) copyright B Cavalier & J Hann */
+/** MIT License (c) copyright 2010-2013 B Cavalier & J Hann */
 
 /**
  * curl ssjs shim
@@ -58,7 +58,7 @@ define(/*=='curl/shim/ssjs',==*/ function (require, exports) {
 	else {
 		localLoadFunc = remoteLoadFunc = failIfInvoked;
 	}
-	
+
 	if (typeof process === 'object' && process.nextTick) {
 		priv.core.nextTurn = process.nextTick;
 	}
@@ -83,7 +83,7 @@ define(/*=='curl/shim/ssjs',==*/ function (require, exports) {
 			return localLoadFunc(def, success, fail);
 		}
 	};
-	
+
 	function loadScriptViaLoad (def, success, fail) {
 		try {
 			globalLoad(def.url);
@@ -139,7 +139,7 @@ define(/*=='curl/shim/ssjs',==*/ function (require, exports) {
 			? protocol += ':'
 			: protocol;
 	}
-	
+
 	function _nextTick (func) {
 		nextTick(func);
 	}
