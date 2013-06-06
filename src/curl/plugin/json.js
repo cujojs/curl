@@ -53,5 +53,5 @@ define(/*=='curl/plugin/json',==*/ ['./_fetchText'], function (fetchText) {
 
 });
 }(
-	function (source) {/*jshint evil:true*/ eval(source); }
+	function () {/*jshint evil:true*/ return (1,eval)(arguments[0]); }
 ));
