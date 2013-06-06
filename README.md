@@ -75,7 +75,13 @@ you'll want to  use a version with the js! plugin built in.  You may also
 want to build-in the domReady module.  The combined curl+js+domReady loader
 is still only 6.5KB (3KB gzipped).
 
-What the heck is "cujo"?  cujo.js is a web app development platform.
+curl.js, like all async loaders, cannot circumvent browsers' security
+restrictions when using the `file:` protocol.  Therefore, you must use
+curl from a page served from a web server (i.e. using `http:` or `https:`).
+Trying to run curl.js from a page loaded from your local file system
+will not work correctly.
+
+What the heck is "cujo"?  cujoJS is a web app development platform.
 See the bottom of this file for more info.
 
 What is "cram"? cram (cujo resource assembler) is the build tool companion to
