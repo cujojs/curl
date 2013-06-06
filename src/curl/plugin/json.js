@@ -21,24 +21,20 @@ define(/*=='curl/plugin/json',==*/ ['./_fetchText'], function (fetchText) {
 
 			errback = loaded['error'] || error;
 
+			// create a json evaluator function
 			if (config.strictJSONParse) {
 				if (!hasJsonParse) error(new Error(missingJsonMsg));
-				evaluator = parseSource;
+				evaluator = guard(parseSource, loaded, errback);
 			}
 			else {
-				evaluator = evalSource;
+				evaluator = guard(evalSource, loaded, errback);
 			}
 
 			// get the text, then eval it
 			fetchText(require['toUrl'](absId), evaluator, errback);
 
 			function evalSource (source) {
-				try {
-					loaded(globalEval('(' + source + ')'));
-				}
-				catch (ex) {
-					errback(ex);
-				}
+				loaded(globalEval('(' + source + ')'));
 			}
 
 			function parseSource (source) {
@@ -50,6 +46,21 @@ define(/*=='curl/plugin/json',==*/ ['./_fetchText'], function (fetchText) {
 		'cramPlugin': '../cram/json'
 
 	};
+
+	function error (ex) {
+		throw ex;
+	}
+
+	function guard (evaluator, success, fail) {
+		return function (source) {
+			try {
+				success(evaluator(source));
+			}
+			catch (ex) {
+				fail(ex);
+			}
+		}
+	}
 
 });
 }(
