@@ -1,5 +1,5 @@
 (function(){/*
- MIT License (c) copyright B Cavalier & J Hann */
+ MIT License (c) copyright 2010-2013 B Cavalier & J Hann */
 var h=!0,n=null,r=!1,s=this.window||"undefined"!=typeof global&&global||this;function aa(){}function v(a,b){return 0==ba.call(a).indexOf("[object "+b)}function w(a){return a&&"/"==a.charAt(a.length-1)?a.substr(0,a.length-1):a}function ca(a,b){var d,c,e,f;d=1;c=a;"."==c.charAt(0)&&(e=h,c=c.replace(da,function(a,b,c,e){c&&d++;return e||""}));if(e){e=b.split("/");f=e.length-d;if(0>f)return a;e.splice(f,d);return e.concat(c||[]).join("/")}return c}
 function ea(a){var b=a.indexOf("!");return{p:a.substr(b+1),m:0<=b&&a.substr(0,b)}}function fa(){}function x(a,b){fa.prototype=a||ga;var d=new fa;fa.prototype=ga;for(var c in b)d[c]=b[c];return d}
 function y(){function a(a,b,d){c.push([a,b,d])}function b(a,b){for(var d,e=0;d=c[e++];)(d=d[a])&&d(b)}var d,c,e;d=this;c=[];e=function(d,g){a=d?function(a){a&&a(g)}:function(a,b){b&&b(g)};e=aa;b(d?0:1,g);b=aa;c=z};this.g=function(b,c,e){a(b,c,e);return d};this.f=function(a){d.F=a;e(h,a)};this.d=function(a){d.va=a;e(r,a)};this.C=function(a){b(2,a)}}function A(a){return a instanceof y||a instanceof B}function C(a,b,d,c){A(a)?a.g(b,d,c):b(a)}

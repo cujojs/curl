@@ -1,4 +1,4 @@
-/** @license MIT License (c) copyright B Cavalier & J Hann */
+/** @license MIT License (c) copyright 2010-2013 B Cavalier & J Hann */
 
 /**
  * curl (cujo resource loader)
@@ -1320,7 +1320,7 @@
 	};
 
 }(this.window || (typeof global != 'undefined' && global) || this));
-/** MIT License (c) copyright B Cavalier & J Hann */
+/** MIT License (c) copyright 2010-2013 B Cavalier & J Hann */
 
 /**
  * curl CommonJS Modules/1.1 loader
@@ -1403,7 +1403,7 @@ define('curl/loader/cjsm11', function () {
 });
 
 }(this, this.document, function () { /* FB needs direct eval here */ eval(arguments[0]); }));
-/** MIT License (c) copyright B Cavalier & J Hann */
+/** MIT License (c) copyright 2010-2013 B Cavalier & J Hann */
 
 /**
  * curl ssjs shim
@@ -1463,7 +1463,7 @@ define('curl/shim/ssjs', function (require, exports) {
 	else {
 		localLoadFunc = remoteLoadFunc = failIfInvoked;
 	}
-	
+
 	if (typeof process === 'object' && process.nextTick) {
 		priv.core.nextTurn = process.nextTick;
 	}
@@ -1488,7 +1488,7 @@ define('curl/shim/ssjs', function (require, exports) {
 			return localLoadFunc(def, success, fail);
 		}
 	};
-	
+
 	function loadScriptViaLoad (def, success, fail) {
 		try {
 			globalLoad(def.url);
@@ -1544,7 +1544,7 @@ define('curl/shim/ssjs', function (require, exports) {
 			? protocol += ':'
 			: protocol;
 	}
-	
+
 	function _nextTick (func) {
 		nextTick(func);
 	}
