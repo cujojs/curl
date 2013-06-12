@@ -1,4 +1,5 @@
 {
 	"name": "curl",
-	"version": "0.7.4"
+	"version": "0.7.4",
+	"main": "./src/curl.js"
 }
