@@ -1181,9 +1181,9 @@
 				mPromise.then(callback, errback);
 				// figure out if we are using a dev-time fallback
 				fallback = main[1]
-					? function () { new CurlApi(main[1], mPromise.resolve, mPromise.reject); }
+					? function () { new CurlApi([main[1]], mPromise.resolve, mPromise.reject); }
 					: mPromise.reject;
-				new CurlApi(main[0], mPromise.resolve, fallback);
+				new CurlApi([main[0]], mPromise.resolve, fallback);
 				return mPromise;
 			}
 		}
