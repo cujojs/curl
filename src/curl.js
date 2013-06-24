@@ -1237,7 +1237,7 @@
 
 		if (id == undef) {
 			if (argsNet !== undef) {
-				argsNet = { ex: 'Multiple anonymous defines in url' };
+				argsNet = { ex: 'Multiple anonymous defines encountered' };
 			}
 			else if (!(id = core.getCurrentDefName())/* intentional assignment */) {
 				// anonymous define(), defer processing until after script loads
