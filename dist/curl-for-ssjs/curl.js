@@ -13,7 +13,7 @@
 (function (global) {
 //"use strict"; don't restore this until the config routine is refactored
 	var
-		version = '0.7.4',
+		version = '0.7.5',
 		curlName = 'curl',
 		defineName = 'define',
 		runModuleAttr = 'data-curl-run',
@@ -303,15 +303,32 @@
 
 			// functions that dependencies will use:
 
-			function toAbsId (childId) {
-				return core.toAbsId(childId, def.id, cfg);
+			function toAbsId (childId, checkPlugins) {
+				var absId, parts, plugin;
+
+				absId = core.toAbsId(childId, def.id, cfg);
+				if (!checkPlugins) return absId;
+
+				parts = pluginParts(absId);
+				if (!parts.pluginId) return absId;
+
+				plugin = cache[parts.pluginId];
+				// check if plugin supports the normalize method
+				if ('normalize' in plugin) {
+					// note: dojo/has may return falsey values (0, actually)
+					parts.resourceId = plugin['normalize'](parts.resourceId, toAbsId, def.config) || '';
+				}
+				else {
+					parts.resourceId = toAbsId(parts.resourceId);
+				}
+				return parts.pluginId + '!' + parts.resourceId;
 			}
 
 			function toUrl (n) {
 				// the AMD spec states that we should not append an extension
 				// in this function since it could already be appended.
 				// we need to use toAbsId in case this is a module id.
-				return core.resolvePathInfo(toAbsId(n), cfg).url;
+				return core.resolvePathInfo(toAbsId(n, true), cfg).url;
 			}
 
 			function localRequire (ids, callback, errback) {
@@ -327,7 +344,7 @@
 						throw new Error('require(id, callback) not allowed');
 					}
 					// return resource
-					rvid = toAbsId(ids);
+					rvid = toAbsId(ids, true);
 					childDef = cache[rvid];
 					if (!(rvid in cache)) {
 						// this should only happen when devs attempt their own
@@ -1112,8 +1129,9 @@
 		},
 
 		findScript: function (predicate) {
-			var i = 0, script;
-			while (doc && (script = doc.scripts[i++])) {
+			var i = 0, scripts, script;
+			scripts = doc && (doc.scripts || doc.getElementsByTagName('script'));
+			while (scripts && (script = scripts[i++])) {
 				if (predicate(script)) return script;
 			}
 		},
@@ -1181,9 +1199,9 @@
 				mPromise.then(callback, errback);
 				// figure out if we are using a dev-time fallback
 				fallback = main[1]
-					? function () { new CurlApi(main[1], mPromise.resolve, mPromise.reject); }
+					? function () { new CurlApi([main[1]], mPromise.resolve, mPromise.reject); }
 					: mPromise.reject;
-				new CurlApi(main[0], mPromise.resolve, fallback);
+				new CurlApi([main[0]], mPromise.resolve, fallback);
 				return mPromise;
 			}
 		}
@@ -1237,7 +1255,7 @@
 
 		if (id == undef) {
 			if (argsNet !== undef) {
-				argsNet = { ex: 'Multiple anonymous defines in url' };
+				argsNet = { ex: 'Multiple anonymous defines encountered' };
 			}
 			else if (!(id = core.getCurrentDefName())/* intentional assignment */) {
 				// anonymous define(), defer processing until after script loads

@@ -9,6 +9,8 @@ curl.js with jQuery, dojo, or underscore.
 What's New?
 =======
 
+* 0.7.5
+	* Can now resolve relative plugin ids in local require (bug fix).
 * 0.7.4
 	* curl.js is now available on CDN: http://cdnjs.com/#curl and
 	  http://jsdelivr.com/#!curl.js
