@@ -7,6 +7,9 @@ define(['./jsEncode', '../loader/cjsm11'], function (jsEncode, wrapCjsm11) {
 
 	return {
 		compile: function (pluginId, resId, req, io, config) {
+			if (resId.substr(resId.length - 3) !== ".js") {
+				resId += ".js";
+			}
 			io.read(resId, function (text) {
 				io.write(jsEncode(wrapCjsm11(text, resId)));
 			}, io.error);
