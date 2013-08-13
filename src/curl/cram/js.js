@@ -5,7 +5,7 @@
  *
  * TODO: figure out when to return window.<exported-thing> vs. global.<exported-thing> vs just <exported-thing>
  */
-define(['./jsEncode'], function (jsEncode) {
+define(function () {
 	var stripOrderOptionRx;
 
 	stripOrderOptionRx = /!order/;
@@ -33,7 +33,7 @@ define(['./jsEncode'], function (jsEncode) {
 			io.read(resId, function (text) {
 				var moduleText;
 
-				moduleText = jsEncode(text) + ';\n'
+				moduleText = text + ';\n'
 					+ 'define("' + absId + '", function () {\n';
 
 				moduleText += exports
