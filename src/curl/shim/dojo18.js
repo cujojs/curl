@@ -23,16 +23,30 @@ var require;
 define(/*=='curl/shim/dojo18',==*/ ['curl/_privileged'], function (priv) {
 "use strict";
 
-	var _curl = priv['_curl'],
-		moduleCache = priv['cache'],
-		Promise = priv['Promise'],
-		origCreateContext = priv['core'].createContext;
+	var _curl, moduleCache, Promise, origCreateContext;
 
-	var hasCache = {},
-		element = doc && doc.createElement('div'),
-		has = _has;
+	_curl = priv['_curl'];
+	moduleCache = priv['cache'];
+	Promise = priv['Promise'];
+	origCreateContext = priv['core'].createContext;
 
+	var hasCache, hasElement, has;
+
+	// grab has profile from user config.
+	hasCache = priv.config().has || {};
+	// element for has() tests
+	hasElement = doc && doc.createElement('div');
+
+	// create has implementation
+	has = _has;
 	has.add = _add;
+
+	// just in case:
+	hasCache['dojo-loader'] = false;
+
+	// production builds of dojo assume the sync loader exists.
+	// this will prevent anything from trying to use it:
+	moduleCache['dojo/_base/loader'] = 0;
 
 	// ugh. dojo 1.9 still expects a global `require`!
 	// so make sure it's got one.
@@ -52,8 +66,8 @@ define(/*=='curl/shim/dojo18',==*/ ['curl/_privileged'], function (priv) {
 
 	function _has (name) {
 		// dojo-ish has implementation
-		typeof hasCache[name] == 'function'
-			? (hasCache[name] = hasCache[name](global, doc, element))
+		return typeof hasCache[name] == 'function'
+			? (hasCache[name] = hasCache[name](global, doc, hasElement))
 			: hasCache[name];
 	}
 
@@ -79,6 +93,8 @@ define(/*=='curl/shim/dojo18',==*/ ['curl/_privileged'], function (priv) {
 		if (!req['idle']) {
 			req['idle'] = idle;
 		}
+		// tell dojo to always load async
+		req.async = true;
 		return req;
 	}
 
