@@ -1,21 +1,41 @@
-/** MIT License (c) copyright 2010-2013 B Cavalier & J Hann */
+/** @license MIT (c) copyright 2010-2013 B Cavalier & J Hann */
 
 /**
+ * @module curl/shim/dojo18
+ *
+ * @description
+ *
  * curl dojo 1.8 and 1.9 shim
  *
- * Licensed under the MIT License at:
- * 		http://www.opensource.org/licenses/mit-license.php
- */
-
-/**
- * This shim overcomes some issues with dojo 1.8 and 1.9 local require().
+ * This shim overcomes some issues with dojo 1.8 and 1.9 when used with
+ * curl.js as a "foreign loader".
  *
- * usage:
+ * Specifics:
+ *
+ *  1. Adds a global `require` function.
+ *  2. Adds a `has` implementation to global and local `require` functions.
+ *  3. Adds a `idle` function to global and local `require` functions.
+ *  4. Adds a noop `on` function to global and local `require` functions.
+ *  5. Copies any curl config.has properties into the `has` implementation
+ *     similar to what the dojo loader does.
+ *  6. Adds a "null" dojo/_base/loader module to prevent production builds
+ *     from trying to load that module.  (This seems compatible with the
+ *     same logic dojo uses internally.)
+ *  7. Ensures that dojo knows that a foreign loader is being used by
+ *     setting the 'dojo-loader' `has` test to true;
+ *
+ * Many thanks to Bryan Forbes @bryanforbes!
+ *
+ * @example
+ *
  * curl.config({
  *     // <packages, etc. go here>
  *
  *     // load this shim as a preload
- *     preloads: ['curl/shim/dojo18']
+ *     preloads: ['curl/shim/dojo18'],
+ *
+ *     // set any initial has-profile properties
+ *     has: { 'mvc-bindings-log-api': 1 }
  * });
  */
 var require;
@@ -87,7 +107,7 @@ define(/*=='curl/shim/dojo18',==*/ ['curl/_privileged'], function (priv) {
 		}
 		// create a stub for on()
 		if (!req['on']) {
-			req['on'] = function () {};
+			req['on'] = noop;
 		}
 		// create an idle()
 		if (!req['idle']) {
@@ -105,6 +125,8 @@ define(/*=='curl/shim/dojo18',==*/ ['curl/_privileged'], function (priv) {
 		}
 		return true;
 	}
+
+	function noop () {}
 
 });
 }(
