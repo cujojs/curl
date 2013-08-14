@@ -68,10 +68,10 @@ define(/*=='curl/shim/dojo18',==*/ ['curl/_privileged'], function (priv) {
 	// this will prevent anything from trying to use it:
 	moduleCache['dojo/_base/loader'] = 0;
 
-	// ugh. dojo 1.9 still expects a global `require`!
-	// so make sure it's got one.
-	duckPunchRequire(_curl);
+	// ugh! dojo 1.9 still expects a global `require` in at least one
+	// place: dojo/_base/browser. so make sure it's got one.
 	if (typeof require == 'undefined') {
+		duckPunchRequire(_curl);
 		require = _curl;
 	}
 
@@ -101,15 +101,15 @@ define(/*=='curl/shim/dojo18',==*/ ['curl/_privileged'], function (priv) {
 	}
 
 	function duckPunchRequire (req) {
-		// create a functioning has()
+		// create a functioning has() for built dojos (1.8 and 1.9)
 		if (!req['has']) {
 			req['has'] = has;
 		}
-		// create a stub for on()
+		// create a stub for on() for dojo 1.8.x
 		if (!req['on']) {
 			req['on'] = noop;
 		}
-		// create an idle()
+		// create an idle() for dojo 1.8.x
 		if (!req['idle']) {
 			req['idle'] = idle;
 		}
