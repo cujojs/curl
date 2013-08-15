@@ -36,10 +36,10 @@
  *
  * Configuration options:
  *
- * locale {Boolean|String|Function} (default === false)
+ * locale {Boolean|String|Function} (default === true)
  *   If an explicit false value is provided, the plugin will not attempt
  *   to determine the browser's locale and will only use the default bundle.
- *   This is a great option for early development and when you want don't
+ *   This is a great option for early development and when you don't
  *   want this plugin to attempt to fetch (possibly unsupported) locales
  *   automatically in production.
  *   If an explicit true value is provided, the plugin will use the
@@ -48,8 +48,29 @@
  *   If this is a string, it is assumed to be an RFC 5646-compatible language
  *   specifier(s).  The plugin will seek the i18n bundles for this locale.
  *   This is an excellent option to test specific locales.
- *   This option could also specify a function that returns language specifiers.
+ *   This option may also be a function that returns a language specifier.
  *   A module id is passed as the only parameter to this function.
+ *
+ *   Note: contrary to our advice for most other plugin options, locale
+ *   should be specified at the package level or at the top level of the
+ *   configuration.  Specifying it at the plugin level won't work when
+ *   loading code in a bundle since the i18n plugin is not used in a bundle.
+ *   For instance, the following configuration for the i18n plugin will
+ *   not be visible to anything in a bundle:
+ *
+ *   curl.config({ plugins: { i18n: { locale: false } } });
+ *
+ *   Use one of these configuration strategies, instead:
+ *
+ *   // locale is configured for the "myApp" package
+ *   curl.config({
+ *     packages: {
+ *       myApp: { location: 'myapp', config: { locale: false } }
+ *     }
+ *   });
+ *
+ *   // locale is configured for all packages
+ *   curl.config({ locale: false });
  *
  * localeToModuleId {Function} a function that translates a locale string to a
  *   module id where an AMD-formatted string bundle may be found.  The default
@@ -66,7 +87,7 @@
  * bundles, which could provide a small performance benefit under some
  * circumstances.
  *
- * @examples
+ * @example
  *
  * `var strings = require("i18n!myapp/myview/strings");`
  *
