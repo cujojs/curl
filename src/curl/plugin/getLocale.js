@@ -1,6 +1,16 @@
 (function (define) {
 define(/*=='curl/plugin/getLocale',==*/ function () {
 
+	var appendLocaleRx;
+
+	// finds the end and an optional .js extension since some devs may have
+	// added it, which is legal since plugins sometimes require an extension.
+	appendLocaleRx = /(\.js)?$/;
+
+	getLocale.toModuleId = localeToModuleId;
+
+	return getLocale;
+
 	/**
 	 * Sniffs the current locale.  In environments that don't have
 	 * a global `window` object, no sniffing happens and false is returned.
@@ -10,7 +20,7 @@ define(/*=='curl/plugin/getLocale',==*/ function () {
 	 * assumed to be a locale override and is returned.  If a strict false,
 	 * locale sniffing is skipped and false is returned. If a function, it is
 	 * called with the same signature as this function and the result returned.
-	 * @param {String} [absId]
+	 * @param {String} [absId] the normalized id sent to the i18n plugin.
 	 * @returns {String|Boolean}
 	 */
 	function getLocale (options, absId) {
@@ -33,7 +43,9 @@ define(/*=='curl/plugin/getLocale',==*/ function () {
 		return ci && ci.language || ci['userLanguage'];
 	}
 
-	return getLocale;
+	function localeToModuleId (defaultId, locale) {
+		return defaultId.replace(appendLocaleRx, locale ? '/' + locale  : '');
+	}
 
 });
 }(
