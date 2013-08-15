@@ -1,4 +1,3 @@
-(function (define) {
 define(/*=='curl/plugin/getLocale',==*/ function () {
 
 	var appendLocaleRx;
@@ -48,8 +47,3 @@ define(/*=='curl/plugin/getLocale',==*/ function () {
 	}
 
 });
-}(
-	typeof define == 'function' && define.amd
-		? define
-		: function (deps, factory) { module.exports = factory(deps.map(require)); }
-));
