@@ -106,9 +106,7 @@
  *
  */
 
-(function (window) {
-
-define(/*=='curl/plugin/i18n',==*/ function () {
+define(/*=='curl/plugin/i18n',==*/ ['./getLocale'], function (getLocale) {
 
 	var appendLocaleRx;
 
@@ -129,16 +127,14 @@ define(/*=='curl/plugin/i18n',==*/ function () {
 
 			// resolve config options
 			toFile = config['localeToModuleId'] || localeToModuleId;
-			locale = !('locale' in config) || config['locale']; // default: true
-			if (locale === true) locale = getLocale;
-			if (typeof locale == 'function') locale = locale(absId);
+			locale = getLocale(config);
 
 			// keep track of what bundles we've found
 			ids = [absId];
 			bundles = [];
 			fetched = 0;
 
-			if (locale !== false) {
+			if (locale) {
 				// get variations / specificities
 
 				// determine all the variations / specificities we might find
@@ -201,17 +197,8 @@ define(/*=='curl/plugin/i18n',==*/ function () {
 		return base;
 	}
 
-	function getLocale () {
-		var ci;
-		if (!window) return false;
-		ci = window['clientInformation'] || window.navigator;
-		return ci.language || ci['userLanguage'];
-	}
-
 	function localeToModuleId (absId, locale) {
 		return absId.replace(appendLocaleRx, locale ? '/' + locale  : '');
 	}
 
 });
-
-}(typeof window != 'undefined' && window));
