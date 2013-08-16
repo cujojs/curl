@@ -28,20 +28,25 @@ define(['../plugin/i18n', '../plugin/locale'], function (i18n, getLocale) {
 
 	bundleToString.compile = function (pluginId, resId, req, io, config) {
 		var i18nId, localeId, locales, output, count, toId;
-
+		
 		i18nId = pluginId + '!' + resId;
 		localeId = 'locale!' + resId;
 		locales = config.locales || [];
-		locales.push(''); // default bundle
+		// Only add defaule bundle once;
+		if (locales.indexOf('') === -1 ) {
+			locales.push(''); // default bundle
+		}
 		output = [];
 		count = locales.length;
 		toId = config['localeToModuleId'] || getLocale.toModuleId;
 
 		// use the load method of the run-time plugin, capturing bundles.
 		locales.forEach(function (locale, i) {
-
+			var i18nIdLocale = i18nId;
+			if (locale) i18nIdLocale += '/' + locale;
+			
 			loaded.error = stop;
-			i18n.load(i18nId, req, loaded, config);
+			i18n.load(i18nIdLocale, req, loaded, config);
 
 			function loaded (bundle) {
 				// each bundle captured is output as a locale!id module, e.g.:
