@@ -22,8 +22,8 @@ define(/*=='curl/plugin/getLocale',==*/ function () {
 	// added it, which is legal since plugins sometimes require an extension.
 	appendLocaleRx = /(\.js)?$/;
 
-	getLocale.toModuleId = toModuleId;
-	getLocale.load = load;
+	getLocale['toModuleId'] = toModuleId;
+	getLocale['load'] = load;
 
 	return getLocale;
 
