@@ -3,7 +3,7 @@
 /**
  * curl i18n! cram plugin
  */
-define(['../plugin/i18n'], function (i18n) {
+define(['../plugin/i18n', '../plugin/locale'], function (i18n, getLocale) {
 
 	var tos, stringifiers, beenThereFlag;
 
@@ -27,26 +27,62 @@ define(['../plugin/i18n'], function (i18n) {
 	}
 
 	bundleToString.compile = function (pluginId, resId, req, io, config) {
-		var absId, loaded;
+		var i18nId, localeId, locales, captured, count, toId;
 
-		absId = pluginId + '!' + resId;
+		i18nId = pluginId + '!' + resId;
+		localeId = 'locale!' + resId;
+		locales = config.locales || [];
+		locales.push(''); // default bundle
+		captured = [];
+		count = locales.length;
+		toId = config['localeToModuleId'] || getLocale.toModuleId;
 
-		// use the load method of the run-time plugin, snooping in on
-		// requests.
-		loaded = function (bundle) {
-			var str;
-			// convert to JSON with most Javascript objects preserved
-			str = bundleToString(bundle);
-			// wrap in define()
-			str = 'define("'
-				+ absId
-				+ '", function () {\n\treturn '
-				+ str
-				+ ';\n});\n';
-			io.write(str);
-		};
-		loaded.error = io.error;
-		i18n.load(pluginId + '!' + resId, req, loaded, config);
+		// use the load method of the run-time plugin, capturing bundles.
+		locales.forEach(function (locale, i) {
+
+			loaded.error = stop;
+			i18n.load(i18nId, req, loaded, config);
+
+			function loaded (bundle) {
+				// each bundle captured is converted to a locale!id variant
+				captured[i] = {
+					locale: locale,
+					id: toId(localeId, locale),
+					body: 'return ' + bundleToString(bundle)
+				};
+				if (--count == 0) done();
+			}
+		});
+
+		if (!locales.length) done();
+
+		function stop (ex) {
+			count = 0;
+			io.error(ex);
+		}
+
+		function done () {
+			// add the default i18n bundle which uses the locale! plugin to
+			// require() or fetch the correct bundle.
+			captured.push({
+				id: i18nId,
+				body: 'return bundle;',
+				modules: [localeId],
+				args: ['bundle']
+			});
+			io.write(captured.reduce(reduceOneCapture, ''));
+		}
+
+		function reduceOneCapture (output, capture) {
+			var body, id, modules, args;
+
+			body = capture.body;
+			id = capture.id;
+			modules = capture.modules;
+			args = capture.args;
+
+			return output += amdDefine(id, modules, args, body);
+		}
 
 	};
 
@@ -117,6 +153,14 @@ define(['../plugin/i18n'], function (i18n) {
 
 	function type (thing) {
 		return tos.call(thing).slice(8, -1);
+	}
+
+	function amdDefine (id, deps, args, body) {
+		return 'define("' + id + '", '
+			+ (deps && deps.length ? arrayAsString(deps) + ', ' : '')
+			+ 'function (' + (args && args.join(',')) + ') {\n'
+			+ body
+			+ ';\n});\n';
 	}
 
 });
