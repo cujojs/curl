@@ -29,11 +29,13 @@ define(['../plugin/i18n', '../plugin/locale'], function (i18n, getLocale) {
 	bundleToString.compile = function (pluginId, resId, req, io, config) {
 		var i18nId, localeId, locales, output, count, toId;
 		
-		config = config.plugins['curl/plugin/i18n'];
 		i18nId = pluginId + '!' + resId;
 		localeId = 'locale!' + resId;
 		locales = config.locales || [];
-		locales.push(''); // default bundle
+		// Only add defaule bundle once;
+		if (locales.indexOf('') === -1 ) {
+			locales.push(''); // default bundle
+		}
 		output = [];
 		count = locales.length;
 		toId = config['localeToModuleId'] || getLocale.toModuleId;
