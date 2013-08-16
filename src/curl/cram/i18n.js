@@ -27,13 +27,13 @@ define(['../plugin/i18n', '../plugin/locale'], function (i18n, getLocale) {
 	}
 
 	bundleToString.compile = function (pluginId, resId, req, io, config) {
-		var i18nId, localeId, locales, captured, count, toId;
+		var i18nId, localeId, locales, output, count, toId;
 
 		i18nId = pluginId + '!' + resId;
 		localeId = 'locale!' + resId;
 		locales = config.locales || [];
 		locales.push(''); // default bundle
-		captured = [];
+		output = [];
 		count = locales.length;
 		toId = config['localeToModuleId'] || getLocale.toModuleId;
 
@@ -44,12 +44,13 @@ define(['../plugin/i18n', '../plugin/locale'], function (i18n, getLocale) {
 			i18n.load(i18nId, req, loaded, config);
 
 			function loaded (bundle) {
-				// each bundle captured is converted to a locale!id variant
-				captured[i] = {
-					locale: locale,
-					id: toId(localeId, locale),
-					body: 'return ' + bundleToString(bundle)
-				};
+				// each bundle captured is output as a locale!id module, e.g.:
+				// define("locale!foo/en-us", function () {
+				//   return {/*...*/};
+				// });
+				output[i] = amdDefine(
+					toId(localeId, locale), '', '', bundleToString(bundle)
+				);
 				if (--count == 0) done();
 			}
 		});
@@ -57,31 +58,18 @@ define(['../plugin/i18n', '../plugin/locale'], function (i18n, getLocale) {
 		if (!locales.length) done();
 
 		function stop (ex) {
-			count = 0;
+			count = 0; // prevents done() from executing
 			io.error(ex);
 		}
 
 		function done () {
-			// add the default i18n bundle which uses the locale! plugin to
-			// require() or fetch the correct bundle.
-			captured.push({
-				id: i18nId,
-				body: 'return bundle;',
-				modules: [localeId],
-				args: ['bundle']
-			});
-			io.write(captured.reduce(reduceOneCapture, ''));
-		}
-
-		function reduceOneCapture (output, capture) {
-			var body, id, modules, args;
-
-			body = capture.body;
-			id = capture.id;
-			modules = capture.modules;
-			args = capture.args;
-
-			return output += amdDefine(id, modules, args, body);
+			// add the default i18n bundle module which uses the locale!
+			// plugin to require() or fetch the correct bundle. e.g.
+			// define("i18n!foo/en", ["locale!foo/en"], function (bundle) {
+			//   return bundle;
+			// });
+			output.push(amdDefine(i18nId, [localeId], ['bundle'], 'bundle'));
+			io.write(output.join(''));
 		}
 
 	};
@@ -155,11 +143,11 @@ define(['../plugin/i18n', '../plugin/locale'], function (i18n, getLocale) {
 		return tos.call(thing).slice(8, -1);
 	}
 
-	function amdDefine (id, deps, args, body) {
+	function amdDefine (id, deps, args, exports) {
 		return 'define("' + id + '", '
 			+ (deps && deps.length ? arrayAsString(deps) + ', ' : '')
-			+ 'function (' + (args && args.join(',')) + ') {\n'
-			+ body
+			+ 'function (' + (args && args.join(',')) + ') {\nreturn '
+			+ exports
 			+ ';\n});\n';
 	}
 
