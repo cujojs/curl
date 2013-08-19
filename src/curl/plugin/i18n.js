@@ -51,7 +51,7 @@
  *
  *   If this is a string, it is assumed to be an RFC 5646-compatible language
  *   specifier(s).  The plugin will seek the i18n bundles for this locale.
- *   This is an excellent option to test specific localesor to override
+ *   This is an excellent option to test specific locales or to override
  *   the browser's locale.
  *
  *   This option may also be a function that returns a language specifier
