@@ -136,21 +136,21 @@ define(/*=='curl/plugin/i18n',==*/ ['./locale'], function (getLocale) {
 
 	return {
 
-		load: function (absId, require, loaded, config) {
+		load: function (resId, require, loaded, config) {
 			var eb, toId, locale, bundles, fetched, id, ids, specifiers, i;
 
 			eb = loaded.error;
 
-			if (!absId) {
+			if (!resId) {
 				eb(new Error('blank i18n bundle id.'));
 			}
 
 			// resolve config options
 			toId = config['localeToModuleId'] || getLocale.toModuleId;
-			locale = getLocale(config, absId);
+			locale = getLocale(config, resId);
 
 			// keep track of what bundles we've found
-			ids = [absId];
+			ids = [resId];
 			bundles = [];
 			fetched = 0;
 
@@ -166,7 +166,7 @@ define(/*=='curl/plugin/i18n',==*/ ['./locale'], function (getLocale) {
 					// add next part to specifiers
 					specifiers[i - 1] = ids[i];
 					// create bundle id
-					id = toId(absId, specifiers.join('-'));
+					id = toId(resId, specifiers.join('-'));
 					// fetch and save found bundles, while silently skipping
 					// missing ones
 					fetch(require, id, i, got, countdown);
@@ -175,7 +175,7 @@ define(/*=='curl/plugin/i18n',==*/ ['./locale'], function (getLocale) {
 
 			// get the default bundle, if any. this goes after we get
 			// variations to ensure that ids.length is set correctly.
-			fetch(require, absId, 0, got, countdown);
+			fetch(require, resId, 0, got, countdown);
 
 			function got (bundle, i) {
 				bundles[i] = bundle;
@@ -186,7 +186,7 @@ define(/*=='curl/plugin/i18n',==*/ ['./locale'], function (getLocale) {
 				var base;
 				if (++fetched == ids.length) {
 					if (bundles.length == 0) {
-						eb(new Error('No i18n bundles found: "' + absId + '", locale "' + locale + '"'));
+						eb(new Error('No i18n bundles found: "' + resId + '", locale "' + locale + '"'));
 					}
 					else {
 						base = bundles[0] || {};

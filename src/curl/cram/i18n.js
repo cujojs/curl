@@ -41,7 +41,7 @@ define(['../plugin/i18n', '../plugin/locale'], function (i18n, getLocale) {
 		locales.forEach(function (locale, i) {
 
 			loaded.error = stop;
-			i18n.load(toId(i18nId, locale), req, loaded, config);
+			i18n.load(toId(resId, locale), req, loaded, config);
 
 			function loaded (bundle) {
 				// each bundle captured is output as a locale!id module, e.g.:
