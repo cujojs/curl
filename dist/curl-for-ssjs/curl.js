@@ -1421,6 +1421,55 @@ define('curl/loader/cjsm11', function () {
 });
 
 }(this, this.document, function () { /* FB needs direct eval here */ eval(arguments[0]); }));
+(function (freeRequire) {
+define('curl/shim/_fetchText', function () {
+
+	var fs, http, url;
+
+	fs = freeRequire('fs');
+	http = freeRequire('http');
+	url = freeRequire('url');
+
+	var hasHttpProtocolRx;
+
+	hasHttpProtocolRx = /^https?:/;
+
+	function fetchText (url, callback, errback) {
+		if (hasHttpProtocolRx.test(url)) {
+			loadFileViaNodeHttp(url, callback, errback);
+		}
+		else {
+			loadLocalFile(url, callback, errback);
+		}
+	}
+
+	return fetchText;
+
+	function loadLocalFile (uri, callback, errback) {
+		fs.readFile(uri, function (ex, contents) {
+			if (ex) {
+				errback(ex);
+			}
+			else {
+				callback(contents.toString());
+			}
+		});
+	}
+
+	function loadFileViaNodeHttp (uri, callback, errback) {
+		var options, data;
+		options = url.parse(uri, false, true);
+		data = '';
+		http.get(options, function (response) {
+			response
+				.on('data', function (chunk) { data += chunk; })
+				.on('end', function () { callback(data); })
+				.on('error', errback);
+		}).on('error', errback);
+	}
+
+});
+}(require));
 /** MIT License (c) copyright 2010-2013 B Cavalier & J Hann */
 
 /**
@@ -1438,10 +1487,11 @@ define('curl/loader/cjsm11', function () {
 define['amd'].ssjs = true;
 var require, load;
 (function (freeRequire, globalLoad) {
-define('curl/shim/ssjs', function (require, exports) {
+define('curl/shim/ssjs', ['curl/_privileged', './_fetchText'], function (priv, _fetchText) {
 "use strict";
 
-	var priv, config, hasProtocolRx, extractProtocolRx, protocol,
+	var cache, config,
+		hasProtocolRx, extractProtocolRx, protocol,
 		http, localLoadFunc, remoteLoadFunc,
 		undef;
 
@@ -1450,10 +1500,16 @@ define('curl/shim/ssjs', function (require, exports) {
 		return;
 	}
 
-	priv = require('curl/_privileged');
+	cache = priv.cache;
 	config = priv.config();
+
     hasProtocolRx = /^\w+:/;
 	extractProtocolRx = /(^\w+:)?.*$/;
+
+	// force-overwrite the xhr-based _fetchText
+	if (typeof XMLHttpRequest == 'undefined') {
+		cache['curl/plugin/_fetchText'] = _fetchText;
+	}
 
     protocol = fixProtocol(config.defaultProtocol)
 		|| extractProtocol(config.baseUrl)
