@@ -3,7 +3,7 @@
 /**
  * curl json! cram plugin
  */
-define(['./jsEncode'], function (jsEncode) {
+define(function () {
 
 	return {
 
