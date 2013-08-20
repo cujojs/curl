@@ -58,7 +58,7 @@ define(['../plugin/i18n', '../plugin/locale'], function (i18n, getLocale) {
 
 		if (!locales.length) done();
 
-		function stop () {
+		function stop (ex) {
 			io.warn(ex.message);
 			if (--count == 0) done();
 		}
