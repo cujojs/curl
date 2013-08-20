@@ -1,6 +1,17 @@
 Release notes for curl.js
 ---
 
+* 0.7.6
+	* Many fixes to curl's i18n and cjsm11 cram (build) plugins.
+	* Stop encoding the output of the cram plugins that emit javascript code.
+	* Code documentation improvements in the plugins.
+	* Seriously overdue README updates.
+	* Compatibility with dojo 1.8 and 1.9, including the ability to provide
+	  `has` configuration via `curl.config()`. (Requires use of the
+	  curl/shim/dojo18 shim.)
+	* Restores text! plugin functionality to the "kitchen sink" build.
+* 0.7.5
+	* Can now resolve relative plugin ids in local require (bug fix).
 * 0.7.4
 	* curl.js is now available on CDN: http://cdnjs.com/#curl and
 	  http://jsdelivr.com/#!curl.js
