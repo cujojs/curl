@@ -128,12 +128,6 @@
 
 define(/*=='curl/plugin/i18n',==*/ ['./locale'], function (getLocale) {
 
-	var appendLocaleRx;
-
-	// finds the end and an optional .js extension since some devs may have
-	// added it, which is legal since plugins sometimes require an extension.
-	appendLocaleRx = /(\.js)?$/;
-
 	return {
 
 		load: function (resId, require, loaded, config) {
@@ -215,10 +209,6 @@ define(/*=='curl/plugin/i18n',==*/ ['./locale'], function (getLocale) {
 			}
 		}
 		return base;
-	}
-
-	function localeToModuleId (absId, locale) {
-		return absId.replace(appendLocaleRx, locale ? '/' + locale  : '');
 	}
 
 });

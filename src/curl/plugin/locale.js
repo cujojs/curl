@@ -60,7 +60,8 @@ define(/*=='curl/plugin/getLocale',==*/ function () {
 	}
 
 	function toModuleId (defaultId, locale) {
-		return defaultId.replace(appendLocaleRx, locale ? '/' + locale  : '');
+		var suffix = locale ? '/' + locale  : '';
+		return defaultId.replace(appendLocaleRx, suffix + '$&');
 	}
 
 	function load (absId, require, loaded, config) {
