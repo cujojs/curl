@@ -402,7 +402,7 @@ at a global level, the concerns of a loader are about application bootstrapping
 and not about finding dependencies. To keep the confusion about these two
 concepts to a minimum, curl.js uses `curl()` for the public API.  You may rename
 this API back to `require()` by supplying the `apiName` config param
-(`apiName: "require"`), but this is not receommended.
+(`apiName: "require"`), but this is not recommended.
 
 It's more important that the `define()` method be consistent.  This is the
 method that tells the loader what modules have been loaded by a script.
