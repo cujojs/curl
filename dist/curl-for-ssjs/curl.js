@@ -1,104 +1,3 @@
-define([], function () {
-
-	var xhr, progIds;
-
-	progIds = ['Msxml2.XMLHTTP', 'Microsoft.XMLHTTP', 'Msxml2.XMLHTTP.4.0'];
-
-	xhr = function () {
-		if (typeof XMLHttpRequest !== "undefined") {
-			// rewrite the getXhr method to always return the native implementation
-			xhr = function () {
-				return new XMLHttpRequest();
-			};
-		}
-		else {
-			// keep trying progIds until we find the correct one, then rewrite the getXhr method
-			// to always return that one.
-			var noXhr = xhr = function () {
-				throw new Error("getXhr(): XMLHttpRequest not available");
-			};
-			while (progIds.length > 0 && xhr === noXhr) (function (id) {
-				try {
-					new ActiveXObject(id);
-					xhr = function () {
-						return new ActiveXObject(id);
-					};
-				}
-				catch (ex) {
-				}
-			}(progIds.shift()));
-		}
-		return xhr();
-	};
-
-	function fetchText (url, callback, errback) {
-		var x = xhr();
-		x.open('GET', url, true);
-		x.onreadystatechange = function (e) {
-			if (x.readyState === 4) {
-				if (x.status < 400) {
-					callback(x.responseText);
-				}
-				else {
-					errback(new Error('fetchText() failed. status: ' + x.statusText));
-				}
-			}
-		};
-		x.send(null);
-	}
-
-	return fetchText;
-
-});
-(function (freeRequire) {
-define('curl/shim/_fetchText', function () {
-
-	var fs, http, url;
-
-	fs = freeRequire('fs');
-	http = freeRequire('http');
-	url = freeRequire('url');
-
-	var hasHttpProtocolRx;
-
-	hasHttpProtocolRx = /^https?:/;
-
-	function fetchText (url, callback, errback) {
-		if (hasHttpProtocolRx.test(url)) {
-			loadFileViaNodeHttp(url, callback, errback);
-		}
-		else {
-			loadLocalFile(url, callback, errback);
-		}
-	}
-
-	return fetchText;
-
-	function loadLocalFile (uri, callback, errback) {
-		fs.readFile(uri, function (ex, contents) {
-			if (ex) {
-				errback(ex);
-			}
-			else {
-				callback(contents.toString());
-			}
-		});
-	}
-
-	function loadFileViaNodeHttp (uri, callback, errback) {
-		var options, data;
-		options = url.parse(uri, false, true);
-		data = '';
-		http.get(options, function (response) {
-			response
-				.on('data', function (chunk) { data += chunk; })
-				.on('end', function () { callback(data); })
-				.on('error', errback);
-		}).on('error', errback);
-	}
-
-});
-}(require));
 /** @license MIT License (c) copyright 2010-2013 B Cavalier & J Hann */
 
 /**
@@ -1439,6 +1338,107 @@ define('curl/shim/_fetchText', function () {
 	};
 
 }(this.window || (typeof global != 'undefined' && global) || this));
+define('curl/plugin/_fetchText', [], function () {
+
+	var xhr, progIds;
+
+	progIds = ['Msxml2.XMLHTTP', 'Microsoft.XMLHTTP', 'Msxml2.XMLHTTP.4.0'];
+
+	xhr = function () {
+		if (typeof XMLHttpRequest !== "undefined") {
+			// rewrite the getXhr method to always return the native implementation
+			xhr = function () {
+				return new XMLHttpRequest();
+			};
+		}
+		else {
+			// keep trying progIds until we find the correct one, then rewrite the getXhr method
+			// to always return that one.
+			var noXhr = xhr = function () {
+				throw new Error("getXhr(): XMLHttpRequest not available");
+			};
+			while (progIds.length > 0 && xhr === noXhr) (function (id) {
+				try {
+					new ActiveXObject(id);
+					xhr = function () {
+						return new ActiveXObject(id);
+					};
+				}
+				catch (ex) {
+				}
+			}(progIds.shift()));
+		}
+		return xhr();
+	};
+
+	function fetchText (url, callback, errback) {
+		var x = xhr();
+		x.open('GET', url, true);
+		x.onreadystatechange = function (e) {
+			if (x.readyState === 4) {
+				if (x.status < 400) {
+					callback(x.responseText);
+				}
+				else {
+					errback(new Error('fetchText() failed. status: ' + x.statusText));
+				}
+			}
+		};
+		x.send(null);
+	}
+
+	return fetchText;
+
+});
+(function (freeRequire) {
+define('curl/shim/_fetchText', function () {
+
+	var fs, http, url;
+
+	fs = freeRequire('fs');
+	http = freeRequire('http');
+	url = freeRequire('url');
+
+	var hasHttpProtocolRx;
+
+	hasHttpProtocolRx = /^https?:/;
+
+	function fetchText (url, callback, errback) {
+		if (hasHttpProtocolRx.test(url)) {
+			loadFileViaNodeHttp(url, callback, errback);
+		}
+		else {
+			loadLocalFile(url, callback, errback);
+		}
+	}
+
+	return fetchText;
+
+	function loadLocalFile (uri, callback, errback) {
+		fs.readFile(uri, function (ex, contents) {
+			if (ex) {
+				errback(ex);
+			}
+			else {
+				callback(contents.toString());
+			}
+		});
+	}
+
+	function loadFileViaNodeHttp (uri, callback, errback) {
+		var options, data;
+		options = url.parse(uri, false, true);
+		data = '';
+		http.get(options, function (response) {
+			response
+				.on('data', function (chunk) { data += chunk; })
+				.on('end', function () { callback(data); })
+				.on('error', errback);
+		}).on('error', errback);
+	}
+
+});
+}(require));
 /** MIT License (c) copyright 2010-2013 B Cavalier & J Hann */
 
 /**
