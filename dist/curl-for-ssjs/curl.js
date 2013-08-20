@@ -1,3 +1,104 @@
+define([], function () {
+
+	var xhr, progIds;
+
+	progIds = ['Msxml2.XMLHTTP', 'Microsoft.XMLHTTP', 'Msxml2.XMLHTTP.4.0'];
+
+	xhr = function () {
+		if (typeof XMLHttpRequest !== "undefined") {
+			// rewrite the getXhr method to always return the native implementation
+			xhr = function () {
+				return new XMLHttpRequest();
+			};
+		}
+		else {
+			// keep trying progIds until we find the correct one, then rewrite the getXhr method
+			// to always return that one.
+			var noXhr = xhr = function () {
+				throw new Error("getXhr(): XMLHttpRequest not available");
+			};
+			while (progIds.length > 0 && xhr === noXhr) (function (id) {
+				try {
+					new ActiveXObject(id);
+					xhr = function () {
+						return new ActiveXObject(id);
+					};
+				}
+				catch (ex) {
+				}
+			}(progIds.shift()));
+		}
+		return xhr();
+	};
+
+	function fetchText (url, callback, errback) {
+		var x = xhr();
+		x.open('GET', url, true);
+		x.onreadystatechange = function (e) {
+			if (x.readyState === 4) {
+				if (x.status < 400) {
+					callback(x.responseText);
+				}
+				else {
+					errback(new Error('fetchText() failed. status: ' + x.statusText));
+				}
+			}
+		};
+		x.send(null);
+	}
+
+	return fetchText;
+
+});
+(function (freeRequire) {
+define('curl/shim/_fetchText', function () {
+
+	var fs, http, url;
+
+	fs = freeRequire('fs');
+	http = freeRequire('http');
+	url = freeRequire('url');
+
+	var hasHttpProtocolRx;
+
+	hasHttpProtocolRx = /^https?:/;
+
+	function fetchText (url, callback, errback) {
+		if (hasHttpProtocolRx.test(url)) {
+			loadFileViaNodeHttp(url, callback, errback);
+		}
+		else {
+			loadLocalFile(url, callback, errback);
+		}
+	}
+
+	return fetchText;
+
+	function loadLocalFile (uri, callback, errback) {
+		fs.readFile(uri, function (ex, contents) {
+			if (ex) {
+				errback(ex);
+			}
+			else {
+				callback(contents.toString());
+			}
+		});
+	}
+
+	function loadFileViaNodeHttp (uri, callback, errback) {
+		var options, data;
+		options = url.parse(uri, false, true);
+		data = '';
+		http.get(options, function (response) {
+			response
+				.on('data', function (chunk) { data += chunk; })
+				.on('end', function () { callback(data); })
+				.on('error', errback);
+		}).on('error', errback);
+	}
+
+});
+}(require));
 /** @license MIT License (c) copyright 2010-2013 B Cavalier & J Hann */
 
 /**
@@ -13,7 +114,7 @@
 (function (global) {
 //"use strict"; don't restore this until the config routine is refactored
 	var
-		version = '0.7.5',
+		version = '0.7.5a',
 		curlName = 'curl',
 		defineName = 'define',
 		runModuleAttr = 'data-curl-run',
@@ -1352,14 +1453,17 @@
  */
 (function (global, document, globalEval) {
 
-define('curl/loader/cjsm11', function () {
+define('curl/loader/cjsm11', ['../plugin/_fetchText', 'curl/_privileged'], function (fetchText, priv) {
 
-	var head, insertBeforeEl /*, findRequiresRx, myId*/;
+	var head, insertBeforeEl, extractCjsDeps, checkToAddJsExt;
 
 	head = document && (document['head'] || document.getElementsByTagName('head')[0]);
 	// to keep IE from crying, we need to put scripts before any
 	// <base> elements, but after any <meta>. this should do it:
 	insertBeforeEl = head && head.getElementsByTagName('base')[0] || null;
+
+	extractCjsDeps = priv['core'].extractCjsDeps;
+	checkToAddJsExt = priv['core'].checkToAddJsExt;
 
 	function wrapSource (source, resourceId, fullUrl) {
 		var sourceUrl = fullUrl ? '/*\n////@ sourceURL=' + fullUrl.replace(/\s/g, '%20') + '.js\n*/' : '';
@@ -1384,19 +1488,24 @@ define('curl/loader/cjsm11', function () {
 	}
 
 	wrapSource['load'] = function (resourceId, require, callback, config) {
-		// TODO: extract xhr from text! plugin and use that instead (after we upgrade to cram.js)
-		require(['text!' + resourceId + '.js', 'curl/_privileged'], function (source, priv) {
+		var errback, url, sourceUrl;
+
+		errback = callback['error'] || function (ex) { throw ex; };
+		url = checkToAddJsExt(require.toUrl(resourceId), config);
+		sourceUrl = config['injectSourceUrl'] !== false && url;
+
+		fetchText(url, function (source) {
 			var moduleMap;
 
 			// find (and replace?) dependencies
-			moduleMap = priv['core'].extractCjsDeps(source);
-			//source = parseDepModuleIds(source, moduleMap, config.replaceRequires);
+			moduleMap = extractCjsDeps(source);
 
 			// get deps
 			require(moduleMap, function () {
 
+
 				// wrap source in a define
-				source = wrapSource(source, resourceId, config['injectSourceUrl'] !== false && require.toUrl(resourceId));
+				source = wrapSource(source, resourceId, sourceUrl);
 
 				if (config['injectScript']) {
 					injectScript(source);
@@ -1409,9 +1518,8 @@ define('curl/loader/cjsm11', function () {
 				// call callback now that the module is defined
 				callback(require(resourceId));
 
-			}, callback['error'] || function (ex) { throw ex; });
-
-		});
+			}, errback);
+		}, errback);
 	};
 
 	wrapSource['cramPlugin'] = '../cram/cjsm11';
@@ -1421,55 +1529,6 @@ define('curl/loader/cjsm11', function () {
 });
 
 }(this, this.document, function () { /* FB needs direct eval here */ eval(arguments[0]); }));
-(function (freeRequire) {
-define('curl/shim/_fetchText', function () {
-
-	var fs, http, url;
-
-	fs = freeRequire('fs');
-	http = freeRequire('http');
-	url = freeRequire('url');
-
-	var hasHttpProtocolRx;
-
-	hasHttpProtocolRx = /^https?:/;
-
-	function fetchText (url, callback, errback) {
-		if (hasHttpProtocolRx.test(url)) {
-			loadFileViaNodeHttp(url, callback, errback);
-		}
-		else {
-			loadLocalFile(url, callback, errback);
-		}
-	}
-
-	return fetchText;
-
-	function loadLocalFile (uri, callback, errback) {
-		fs.readFile(uri, function (ex, contents) {
-			if (ex) {
-				errback(ex);
-			}
-			else {
-				callback(contents.toString());
-			}
-		});
-	}
-
-	function loadFileViaNodeHttp (uri, callback, errback) {
-		var options, data;
-		options = url.parse(uri, false, true);
-		data = '';
-		http.get(options, function (response) {
-			response
-				.on('data', function (chunk) { data += chunk; })
-				.on('end', function () { callback(data); })
-				.on('error', errback);
-		}).on('error', errback);
-	}
-
-});
-}(require));
 /** MIT License (c) copyright 2010-2013 B Cavalier & J Hann */
 
 /**

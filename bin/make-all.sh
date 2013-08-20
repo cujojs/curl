@@ -13,4 +13,4 @@
 ./make.sh ../dist/curl-for-jQuery/curl.js ../src/curl.js  ../src/curl/domReady.js ../src/curl/plugin/js.js ../src/curl/plugin/link.js ../src/curl/plugin/domReady.js
 
 #make minimally-compressed ssjs
-./make.sh --NONE ../dist/curl-for-ssjs/curl.js ../src/curl.js ../src/curl/loader/cjsm11.js ../src/curl/shim/_fetchText.js ../src/curl/shim/ssjs.js
+./make.sh --NONE ../dist/curl-for-ssjs/curl.js ../src/curl/plugin/_fetchText.js ../src/curl/shim/_fetchText.js ../src/curl.js ../src/curl/loader/cjsm11.js ../src/curl/shim/ssjs.js
