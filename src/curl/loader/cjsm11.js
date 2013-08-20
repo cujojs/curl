@@ -7,9 +7,6 @@
  * 		http://www.opensource.org/licenses/mit-license.php
  */
 
-/**
- * @experimental
- */
 (function (global, document, globalEval) {
 
 define(/*=='curl/loader/cjsm11',==*/ ['../plugin/_fetchText', 'curl/_privileged'], function (fetchText, priv) {

@@ -1450,8 +1450,6 @@ define('curl/shim/_fetchText', function () {
  * 		http://www.opensource.org/licenses/mit-license.php
  *
  * TODO: support environments that implement XMLHttpRequest such as Wakanda
- *
- * @experimental
  */
 define['amd'].ssjs = true;
 var require, load;
@@ -1601,10 +1599,6 @@ define('curl/shim/ssjs', ['curl/_privileged', './_fetchText'], function (priv, _
  *
  * Licensed under the MIT License at:
  * 		http://www.opensource.org/licenses/mit-license.php
- */
-
-/**
- * @experimental
  */
 (function (global, document, globalEval) {
 
