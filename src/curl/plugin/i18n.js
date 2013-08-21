@@ -205,12 +205,12 @@ define(/*=='curl/plugin/i18n',==*/ ['./locale'], function (getLocale) {
 	}
 
 	function mixin (base, props) {
+		var obj = {}, p;
+		for (p in base) obj[p] = base[p];
 		if (props) {
-			for (var p in props) {
-				base[p] = props[p];
-			}
+			for (p in props) obj[p] = props[p];
 		}
-		return base;
+		return obj;
 	}
 
 });
