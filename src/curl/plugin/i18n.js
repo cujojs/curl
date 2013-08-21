@@ -37,32 +37,46 @@
  * Configuration options:
  *
  * locale {Boolean|String|Function} (default === true)
- *   If an explicit true value is provided, the plugin will sniff the
+ *   tl;dr: `false` means only do the minimum work to get the correct locale
+ *   bundle or use the default. `true` means do whatever possible to try
+ *   to get the correct locale bundle before using the default. A string
+ *   means do the minimum work to get the locale specified in the string
+ *   or use the default.  The default value of this param is `true` for
+ *   backwards compat, but you probably want `false` to prevent extra
+ *   fetches to the server when a locale isn't already loaded.
+ *
+ *   If an explicit `true` value is provided, the plugin will sniff the
  *   browser's clientInformation.language property (or fallback equivalent)
  *   to determine the locale and seek a locale-specific i18n bundle.  If the
  *   bundle is not already loaded, it will be fetched, potentially in many
  *   parts -- one part for each dash-delimited term in the locale.
+ *   If the no bundles are found, an error is returned.
  *
- *   If an explicit false value is provided, the plugin will sniff the
- *   browser's locale but will only seek the default bundle if the correct
- *   bundle isn't already loaded.  This is a great option for early
- *   development and when you don't want this plugin to attempt to fetch
- *   (possibly unsupported) locales automatically in production.
+ *   If an explicit `false` value is provided, the plugin will sniff the
+ *   browser's locale and use it if it is already loaded.  If it is not loaded
+ *   it will attempt to use (and potentially fetch) the default bundle.
+ *   (Note: within a bundle, the default bundle will not be fetched from the
+ *   server.)  If the default bundle is not found, an error is returned.
+ *   This is a great option when you don't want this plugin to attempt to fetch
+ *   (possibly unsupported) locales automatically, like `true` does.
  *
  *   If this is a string, it is assumed to be an RFC 5646-compatible language
- *   specifier(s).  The plugin will seek the i18n bundles for this locale.
+ *   specifier(s).  The plugin will seek the i18n bundle for this locale
+ *   and use the default bundle if it doesn't exist. (Note: within a bundle,
+ *   the default bundle will not be fetched from the server.)
  *   This is an excellent option to test specific locales or to override
- *   the browser's locale.
+ *   the browser's locale at run-time.
  *
  *   This option may also be a function that returns a language specifier
- *   string or boolean. The absolute module id and a language specifier
- *   are passed as the parameters to this function.
+ *   string or boolean, which will be processed as per the details above.
+ *   The absolute module id and a language specifier are passed as the
+ *   parameters to this function.
  *
  *   Note: contrary to our advice for most other plugin options, locale
  *   should be specified at the package level or at the top level of the
  *   configuration.  Specifying it at the plugin level won't work when
  *   loading code in a bundle since the i18n plugin is not used in a bundle.
- *   The locale! plugin is used, instead.  For instance, the following
+ *   The locale! plugin may be used, instead.  For instance, the following
  *   configuration for the i18n plugin will not be visible to anything in a
  *   bundle:
  *
@@ -80,14 +94,6 @@
  *   // locale is configured for all packages
  *   curl.config({ locale: false });
  *
- *   // locale is specified for both plugins
- *   curl.config({
- *     plugins: {
- *       i18n: { locale: false },
- *       locale: { locale: false }
- *     }
- *   });
- *
  * localeToModuleId {Function} a function that translates a locale string to a
  *   module id where an AMD-formatted string bundle may be found.  The default
  *   format is a module whose name is the locale located under the default
@@ -100,13 +106,15 @@
  *   AMD bundle as locale bundles.
  *
  * During a build, locale-specific i18n bundles are merged into a single
- * bundle and prefixed with the locale! plugin id. This allows the lightweight
- * locale! plugin to be used in the build, rather than the larger i18n! plugin.
- * The locale! plugin takes the same run-time configuration options as the
- * i18n! plugin and will exhibit nearly identical behavior.
- * For instance, if you specify the locales for "en" and "en-us" for a module,
- * "foo", two separate i18n bundles, "locale!foo/en" and "locale!foo/en-us"
- * will be included in the AMD bundle.
+ * bundle. This allows the lightweight locale! plugin to be used in the
+ * build, rather than the larger i18n! plugin. The locale! plugin takes the
+ * same run-time configuration options as the i18n! plugin and will exhibit
+ * nearly* identical behavior. For instance, if you specify the locales for
+ * "en" and "en-us" for a module, "foo", two separate i18n bundles,
+ * "foo/en" and "foo/en-us" will be included in the AMD bundle.
+ *
+ * *The locale! plugin only fetches additional locale bundles when the
+ * locale config option is true.
  *
  * @example
  *
