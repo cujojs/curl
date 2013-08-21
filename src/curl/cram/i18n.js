@@ -29,6 +29,9 @@ define(['../plugin/i18n', '../plugin/locale'], function (i18n, getLocale) {
 	bundleToString.compile = function (pluginId, resId, req, io, config) {
 		var toId, i18nId, localeId, locales, output, count;
 
+		// inherit from config so we can extend it
+		config = Object.create(config);
+
 		toId = config['localeToModuleId'] || getLocale.toModuleId;
 		i18nId = pluginId + '!' + resId;
 		// toId() on localeId ensure it is output the same as other locales
@@ -42,7 +45,9 @@ define(['../plugin/i18n', '../plugin/locale'], function (i18n, getLocale) {
 		locales.forEach(function (locale, i) {
 
 			loaded.error = stop;
-			i18n.load(toId(resId, locale), req, loaded, config);
+			// load bundle with this locale
+			config.locale = locale;
+			i18n.load(resId, req, loaded, config);
 
 			function loaded (bundle) {
 				// each bundle captured is output as a locale!id module, e.g.:
@@ -50,7 +55,7 @@ define(['../plugin/i18n', '../plugin/locale'], function (i18n, getLocale) {
 				//   return {/*...*/};
 				// });
 				output[i] = amdDefine(
-					toId(localeId, locale), '', '', bundleToString(bundle)
+					toId(resId, locale), '', '', bundleToString(bundle)
 				);
 				if (--count == 0) done();
 			}

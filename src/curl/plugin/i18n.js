@@ -148,11 +148,13 @@ define(/*=='curl/plugin/i18n',==*/ ['./locale'], function (getLocale) {
 			bundles = [];
 			fetched = 0;
 
-			if (locale) {
+			// only look for locales if we sniffed one and the dev
+			// hasn't said "don't fetch" via `locale: false`.
+			if (locale && config.locale !== false) {
 				// get variations / specificities
 
 				// determine all the variations / specificities we might find
-				ids = ids.concat(locale.toLowerCase().split('-'));
+				ids = ids.concat(locale.split('-'));
 				specifiers = [];
 
 				// correct. start loop at 1! default bundle was already fetched

@@ -40,15 +40,14 @@ define(/*=='curl/plugin/getLocale',==*/ function () {
 	 * @returns {String|Boolean}
 	 */
 	function getLocale (options, absId) {
-		var locale, ci;
+		var locale, ci, lang;
 
 		if (options) {
 			locale = options['locale'];
 			// if locale is a function, use it to get the locale
 			if (typeof locale == 'function') locale = locale(options, absId);
-			// just return any configured locale or false if the config
-			// says to not sniff.
-			if (typeof locale == 'string' || locale === false) return locale;
+			// just return any pre-configured locale.
+			if (typeof locale == 'string') return locale;
 		}
 
 		// bail if we're server-side
@@ -56,7 +55,8 @@ define(/*=='curl/plugin/getLocale',==*/ function () {
 
 		// closure doesn't seem to know about recent DOM standards
 		ci = window['clientInformation'] || window.navigator;
-		return ci && ci.language || ci['userLanguage'];
+		lang = ci && (ci.language || ci['userLanguage']) || '';
+		return lang.toLowerCase();
 	}
 
 	function toModuleId (defaultId, locale) {
@@ -65,27 +65,36 @@ define(/*=='curl/plugin/getLocale',==*/ function () {
 	}
 
 	function load (absId, require, loaded, config) {
-		var defaultId, locale, bundleId;
+		var locale, toId, bundleId, defaultId;
 
 		// figure out the locale and bundle to use
-		defaultId = absId.split('!')[0];
-		locale = getLocale(config, defaultId);
-		bundleId = locale
-			? config['localeToModuleId'] || toModuleId(defaultId, locale)
-			: defaultId;
+		locale = getLocale(config, absId);
+		toId = config['localeToModuleId'] || toModuleId;
+		bundleId = locale ? toId(absId, locale) : absId;
 
 		try {
-			// try to get a bundle that's already loaded
-			loaded(require('i18n!' + bundleId));
+			// try to get a bundle that's already loaded (sync require)
+			loaded(require(bundleId));
 		}
 		catch (ex) {
-			// unless locale == false, fetch the locale async via i18n plugin
-			if (config.locale) {
-				require(['i18n!' + defaultId], loaded, loaded.error);
+			// try default bundle sync (unless we've already tried it)
+			defaultId = locale ? toId(absId, false) : absId;
+			if (defaultId == bundleId) return fail();
+
+			try {
+				loaded(require(defaultId));
 			}
-			else {
-				throw ex;
+			catch (ex) {
+				// locale === true, try to use the i18n plugin
+				if (locale !== true) return fail();
+				require(['i18n!' + absId], loaded, fail);
 			}
+		}
+
+		function fail () {
+			var ex = new Error('Unable to find correct locale for ' + absId);
+			if (loaded.error) loaded.error(ex);
+			else throw ex;
 		}
 	}
 
