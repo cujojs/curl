@@ -85,7 +85,7 @@ Trying to run curl.js from a page loaded from your local file system
 will not work correctly.
 
 What the heck is "cujoJS"?  cujoJS is a web app development platform.
-See the bottom of this file for more info.
+More info: [cujojs.com](http://cujojs.com)
 
 What is "cram"? cram (cujoJS resource assembler) is the build tool companion to
 curl.js.  You use cram to compile all of your modules into a small number of
@@ -96,15 +96,15 @@ javascript files which are loaded much faster into the browsers.
 Features at a glance:
 =====================
 
-* Loads CommonJS AMD-formatted javascript modules in parallel (fast!)
+* Loads AMD-formatted javascript modules in parallel (fast!)
 * Loads CommonJS Modules (v1.1 when wrapped in a `define()`) (fast!)
-* Loads CommonJS Packages (v1.1 modules wrapped in a `define()`) (fast!)
+* Loads CommonJS Modules (unwrapped when using the cjsm11 loader) (fast!)
 * Loads non-AMD javascript files in parallel, too (fast! via js! plugin)
 * Loads CSS files and text files in parallel (fast! via plugins)
 * Waits for dependencies (js, css, text, etc) before executing javascript
 * Waits for domReady, if/when desired
 * Allows for virtually limitless combinations of files and dependencies
-* Tested with Chrome, FF3+, Safari 3.2+, IE6-8, Opera 9.5+
+* Tested with Safari 5+, IE6+, and recent Chrome, FF, Opera
 
 Oh, did we mention?  It's fast!  It's even faster than the leading non-AMD
 script loaders.
@@ -114,14 +114,17 @@ script loaders.
 How to get support
 ===============
 
-1. Go to the issues section of the curl repo (https://github.com/cujojs/curl/issues)
-	and search for an answer to your question or problem.
-2. If no answer exists, file a new ticket!  Somebody will typically respond within a
-	few hours.
+1. Go to the issues section of the curl repo
+   (https://github.com/cujojs/curl/issues) and search for an answer to your
+   question or problem.
+2. If no answer exists, file a new ticket!  Somebody will typically respond
+   within a few hours.
 
 It's that easy.
 
-Got more in-depth questions?  Browse the [cujoJS discussion group](https://groups.google.com/d/forum/cujojs).
+Got more in-depth questions?  Browse the
+[cujoJS discussion group](https://groups.google.com/d/forum/cujojs) or
+come chat with us on freenode @ #cujojs.
 
 ----------------------------------------
 
