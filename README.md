@@ -1,8 +1,6 @@
 curl (cujoJS resource loader)
 =====================
 
-Check out the newly updated [wiki](https://github.com/cujojs/curl/wiki)!
-
 See the [wiki](https://github.com/cujojs/curl/wiki) for information about using
 curl.js with jQuery, dojo, or underscore.
 

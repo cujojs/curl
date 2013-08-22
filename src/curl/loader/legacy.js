@@ -5,7 +5,77 @@
  */
 
 /**
- * TODO: code docs
+ * Loads legacy javascript scripts as if they were modules.  Since legacy
+ * scripts don't specify any dependencies and typically hoard many
+ * things into one file, this isn't always straightforward.  This loader
+ * can be configured to adapt to almost any situation.
+ *
+ * Config options:
+ *
+ * `exports` {string} Typically, specifies the name of a
+ * global variable exposed by the legacy script, but can be any code that
+ * can be executed by `eval()` at the global scope.  The result of the
+ * `eval()` is verified not to throw an exception and is used as the value
+ * exported to other modules that depend on this script.
+ *
+ * `factory` {function} The factory is executed when the script
+ * is loaded and should return something to export to other modules.  The
+ * factory should thow an exception if it can't find the thing to export.
+ * Even though the `exports` config option can evaluate arbitrary code, the
+ * `factory` option should be used since it can be tested and/or linted.
+ * Furthermore, the factory function takes a string argument that identifies
+ * the module being requested.  This allows the function to be reused for
+ * multiple modules.
+ *
+ * NOTE: One of the `exports` or `factory` config options must be provided
+ * because, without them, there is no way for a loader to determine if a
+ * script has loaded in IE6-10.
+ *
+ * `requires` {array} An array of module ids that are required for the script
+ * to execute correctly.  These module ids may refer to other legacy scripts
+ * that have been configured via the legacy loader.
+ *
+ * @example Backbone
+ *
+ * This backbone example uses a function call to return the exports.  If
+ * the code to return the exports is any more sophisticated than this, you
+ * should consider using a `factory` option instead of `exports` since
+ * factory functions can be tested and/or linted.
+ *
+ * curl.config({
+ *     paths: {
+ *         backbone: {
+ *             location: 'modules/backbone-1.3.1/backbone.js',
+ *             config: {
+ *                 loader: 'curl/loader/legacy',
+ *                 exports: 'Backbone.noConflict()',
+ *                 requires: ['jquery', 'lodash']
+ *             }
+ *         }
+ *     }
+ * });
+ *
+ * @example jQuery UI
+ *
+ * This jQuery UI example uses the `factory` option to return the correct
+ * jQuery UI widget from a concatenated collection of widgets in a
+ * jqueryui.js file.
+ *
+ * curl.config({
+ *     packages: {
+ *         jqueryui: {
+ *             location: 'modules/jquery-1.6.3/jqueryui.js#',
+ *             config: {
+ *                 loader: 'curl/loader/legacy',
+ *                 factory: function (fullId) {
+ *                     var id = fullId.replace('jqueryui/', '');
+ *                     return $.fn[id];
+ *                 }
+ *                 requires: ['jquery', 'css!jqueryui.css']
+ *             }
+ *         }
+ *     }
+ * });
  */
 (function (global, doc, testGlobalVar) {
 define(/*=='curl/loader/legacy',==*/ ['curl/_privileged'], function (priv) {
@@ -19,11 +89,12 @@ define(/*=='curl/loader/legacy',==*/ ['curl/_privileged'], function (priv) {
 	return {
 
 		'load': function (resId, require, callback, cfg) {
-			var exports, deps, dontAddFileExt, url, options, countdown;
+			var exports, factory, deps, dontAddFileExt, url, options, countdown;
 
 			exports = cfg['exports'] || cfg.exports;
-			if (!exports) {
-				throw new Error('`exports` required for legacy: ' + resId);
+			factory = cfg['factory'] || cfg.factory;
+			if (!exports && !factory) {
+				throw new Error('`exports` or `factory` required for legacy: ' + resId);
 			}
 
 			deps = [].concat(cfg['requires'] || cfg.requires || []);
@@ -78,13 +149,25 @@ define(/*=='curl/loader/legacy',==*/ ['curl/_privileged'], function (priv) {
 			}
 
 			function _export () {
+				var exported;
 				if (--countdown > 0) return;
-				try {
-					callback(testGlobalVar(exports));
+				if (factory) {
+					try {
+						exported = factory(resId);
+					}
+					catch (ex) {
+						reject(new Error('Factory for legacy ' + resId + ' failed: ' + ex.message));
+					}
 				}
-				catch (ex) {
-					reject(new Error ('Failed to find exports ' + exports + ' for legacy ' + resId));
+				else {
+					try {
+						exported = testGlobalVar(exports);
+					}
+					catch (ex) {
+						reject(new Error ('Failed to find exports ' + exports + ' for legacy ' + resId));
+					}
 				}
+				callback(exported);
 			}
 
 			function reject (ex) {
