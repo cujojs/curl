@@ -978,12 +978,12 @@
 		},
 
 		fetchDep: function (depName, parentDef) {
-			var toAbsId, isPreload, cfg, parts, absId, mainId, loaderId, pluginId,
+			var toAbsId, isPreload, parentCfg, parts, absId, mainId, loaderId, pluginId,
 				resId, pathInfo, def, tempDef, resCfg;
 
 			toAbsId = parentDef.toAbsId;
 			isPreload = parentDef.isPreload;
-			cfg = parentDef.config || userCfg; // is this fallback necessary?
+			parentCfg = parentDef.config || userCfg; // is this fallback necessary?
 
 			absId = toAbsId(depName);
 
@@ -997,24 +997,27 @@
 				resId = parts.resourceId;
 				// get id of first resource to load (which could be a plugin)
 				mainId = parts.pluginId || resId;
-				pathInfo = core.resolvePathInfo(mainId, cfg);
+				pathInfo = core.resolvePathInfo(mainId, parentCfg);
 			}
 
-			// get custom module loader from package config if not a plugin
-			if (parts) {
+			if (!(absId in cache)) {
+				// use plugin's config if specified
+				resCfg = parts && parts.pluginId && parentCfg.plugins[parts.pluginId]
+					|| core.resolvePathInfo(resId, parentCfg).config;
 				if (parts.pluginId) {
 					loaderId = mainId;
 				}
 				else {
-					// TODO: move config.moduleLoader to config.transform
-					loaderId = pathInfo.config['moduleLoader'] || pathInfo.config.moduleLoader;
+					// get custom module loader from package config if not a plugin
+					// TODO: move config.moduleLoader to config.loader
+					loaderId = resCfg['moduleLoader'] || resCfg.moduleLoader;
 					if (loaderId) {
 						// TODO: allow transforms to have relative module ids?
 						// (we could do this by returning package location from
 						// resolvePathInfo. why not return all package info?)
 						resId = mainId;
 						mainId = loaderId;
-						pathInfo = core.resolvePathInfo(loaderId, cfg);
+						pathInfo = core.resolvePathInfo(loaderId, parentCfg);
 					}
 				}
 			}
@@ -1026,7 +1029,7 @@
 				def = cache[mainId] = urlCache[pathInfo.url];
 			}
 			else {
-				def = core.createResourceDef(pathInfo.config, mainId, isPreload);
+				def = core.createResourceDef(resCfg, mainId, isPreload);
 				// TODO: can this go inside createResourceDef?
 				// TODO: can we pass pathInfo.url to createResourceDef instead?
 				def.url = core.checkToAddJsExt(pathInfo.url, pathInfo.config);
@@ -1045,10 +1048,6 @@
 				// resId doesn't change, the check if this is a new
 				// normalizedDef (below) will think it's already being loaded.
 				tempDef = new Promise();
-
-				// note: this means moduleLoaders can store config info in the
-				// plugins config, too.
-				resCfg = cfg.plugins[loaderId] || cfg;
 
 				// wait for plugin resource def
 				when(def, function(plugin) {
