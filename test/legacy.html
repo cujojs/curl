@@ -24,7 +24,7 @@
 				main: 'plain_old_2',
 				config: {
 					loader: 'curl/loader/legacy',
-					exports: 'testDomain.awesome',
+					factory: function () { return testDomain.awesome; },
 					requires: ['test1']
 				}
 			}

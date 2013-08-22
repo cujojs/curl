@@ -153,7 +153,7 @@ define(/*=='curl/loader/legacy',==*/ ['curl/_privileged'], function (priv) {
 				if (--countdown > 0) return;
 				if (factory) {
 					try {
-						exported = factory(resId);
+						exported = factory.call(global, resId);
 					}
 					catch (ex) {
 						reject(new Error('Factory for legacy ' + resId + ' failed: ' + ex.message));
