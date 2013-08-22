@@ -36,7 +36,7 @@ define(/*=='curl/plugin/js',==*/ ['curl/_privileged'], function (priv) {
 		supportsAsyncFalse = doc && doc.createElement('script').async == true,
 		Promise,
 		waitForOrderedScript,
-		undef;
+		dontAddExtRx = /\?|\.js\b/;
 
 	Promise = priv['Promise'];
 
@@ -126,7 +126,8 @@ define(/*=='curl/plugin/js',==*/ ['curl/_privileged'], function (priv) {
 
 		'load': function (resId, require, callback, config) {
 
-			var order, exportsPos, exports, prefetch, url, def, promise;
+			var order, exportsPos, exports, prefetch, dontAddFileExt,
+				url, def, promise;
 
 			order = resId.indexOf('!order') > 0; // can't be zero
 			exportsPos = resId.indexOf('!exports=');
@@ -134,9 +135,20 @@ define(/*=='curl/plugin/js',==*/ ['curl/_privileged'], function (priv) {
 				? resId.substr(exportsPos + 9) // must be last option!
 				: config.exports;
 			prefetch = 'prefetch' in config ? config['prefetch'] : true;
-			resId = order || exportsPos > 0 ? resId.substr(0, resId.indexOf('!')) : resId;
-			// add extension afterwards so js!-specific path mappings don't need extension, too
-			url = nameWithExt(require['toUrl'](resId), 'js');
+			resId = order || exportsPos > 0
+				? resId.substr(0, resId.indexOf('!'))
+				: resId;
+			// add extension afterwards so js!-specific path mappings don't
+			// need extension, too.
+			dontAddFileExt = config['dontAddFileExt'] || config.dontAddFileExt;
+			dontAddFileExt = dontAddFileExt
+				? new RegExp(dontAddFileExt)
+				: dontAddExtRx;
+
+			url = require['toUrl'](resId);
+			if (!dontAddFileExt.test(url)) {
+				url = nameWithExt(url, 'js');
+			}
 
 			function reject (ex) {
 				(callback['error'] || function (ex) { throw ex; })(ex);
