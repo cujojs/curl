@@ -1006,7 +1006,8 @@
 				else {
 					// get custom module loader from package config if not a plugin
 					// TODO: move config.moduleLoader to config.loader
-					loaderId = resCfg['moduleLoader'] || resCfg.moduleLoader;
+					loaderId = resCfg['moduleLoader'] || resCfg.moduleLoader
+						|| resCfg['loader'] || resCfg.loader;
 					if (loaderId) {
 						// TODO: allow transforms to have relative module ids?
 						// (we could do this by returning package location from
