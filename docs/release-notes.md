@@ -1,6 +1,16 @@
 Release notes for curl.js
 ---
 
+* 0.7.7
+	* Adds new curl/loader/legacy module loader that provides similar
+	  functionality to RequireJS's "shim config".
+	* Adds dontAddFileExt config option functionality to js! plugin and
+	  curl/loader/legacy module loader.
+	* Fixes configuration context mixups. Modules will get their package's
+	  config unless they are loaded explicitly via a plugin and that
+	  plugin has a custom configuration.
+	* Paths can now be objects like packages and can have all of the same
+	  properties, except `main`, i.e. `location` (or `path`), `config`, `name`.
 * 0.7.6
 	* Adds compatibility with dojo 1.8 and 1.9, including the ability to provide
 	  `has` configuration via `curl.config()`. (Requires use of the

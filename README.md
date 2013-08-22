@@ -40,41 +40,6 @@ What's New?
 	* fix to stop IE6-8 complaining about sourceURL when @cc_on.
 	* new debug dist version of curl.js.
 	* bug fixes for running curl.js inside node.js.
-* 0.7.3
-	* css! plugin no longer fails when sniffing for Opera (Fixes #147)
-	* new curl.config() API method
-	* curl(config) and curl.config() can be called repeatedly (fixes #146)
-	* new "main" {String|Array} config option to init loading of main modules
-	  for an application
-	* new i18n plugin (fixes #26)
-* 0.7.2
-	* css! plugin now works everywhere (closed an Opera-XDomain issue).
-	* css! plugin now returns the stylesheet created (as it used to, but for
-	  all browsers).
-	* curl() error handler is called even if no success handler is specified.
-* 0.7.1
-	* fixed inability to load non-anonymous "main" modules (packages) (also #138)
-	* restored ability to use urls in place of module ids as dependencies
-	* fixed duplicate downloads/execution of modules if dev specified
-	  module in two different ways (e.g. as module and as url) (#137)
-	* fixed early callback in IE under load (#136)
-	* restored plugin-specific config and paths
-* 0.7.0
-	* new module.config() method when using CommonJS-wrapped modules
-	* dontAddFileExt config option (RegExp or string) decides whether or not
-	  to add a .js file extension to module urls.
-	* Implement error callbacks in require() and plugin load() methods.
-	* Improved css! plugin no longer fails on blank stylesheets and supports
-	  all features in all browsers (except for error callbacks in Opera, IE6,
-	  Safari 5 (and below) and Firefox 8 (and below)).
-	* shell scripts now work in more environments
-	* many other fixes
-
-TODO:
-
-* document plugin configuration options and how to use each plugin
-* notes about using JSONP (it works for objects, arrays, functions, numbers
-  and strings! use ?callback=define)
 
 ----------------------------------------
 
