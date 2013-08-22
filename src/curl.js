@@ -62,15 +62,16 @@
 		return toString.call(obj).indexOf('[object ' + type) == 0;
 	}
 
-	function normalizePkgDescriptor (descriptor) {
+	function normalizePkgDescriptor (descriptor, isPkg) {
 		var main;
 
 		descriptor.path = removeEndSlash(descriptor['path'] || descriptor['location'] || '');
-		main = descriptor['main'] || './main';
-		if (!isRelUrl(main)) main = './' + main;
-		// trailing slashes trick reduceLeadingDots to see them as base ids
-		descriptor.main = reduceLeadingDots(main, descriptor.name + '/');
-		//if (isRelUrl(descriptor.main)) throw new Error('invalid main (' + main + ') in ' + descriptor.name);
+		if (isPkg) {
+			main = descriptor['main'] || './main';
+			if (!isRelUrl(main)) main = './' + main;
+			// trailing slashes trick reduceLeadingDots to see them as base ids
+			descriptor.main = reduceLeadingDots(main, descriptor.name + '/');
+		}
 		descriptor.config = descriptor['config'];
 
 		return descriptor;
@@ -587,13 +588,8 @@
 						// remove plugin-specific path from coll
 						delete coll[name];
 					}
-					if (isPkg) {
-						info = normalizePkgDescriptor(data);
-						if (info.config) info.config = beget(newCfg, info.config);
-					}
-					else {
-						info = { path: removeEndSlash(data.path) };
-					}
+					info = normalizePkgDescriptor(data, isPkg);
+					if (info.config) info.config = beget(newCfg, info.config);
 					info.specificity = id.split('/').length;
 					if (id) {
 						currCfg.pathMap[id] = info;
