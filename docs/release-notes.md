@@ -12,7 +12,9 @@ Release notes for curl.js
 	* Paths can now be objects like packages and can have all of the same
 	  properties, except `main`, i.e. `location` (or `path`), `config`, `name`.
 	* Fixes an issue in node on windows wherein C: was seen as a web protocol.
-	* Updated READMEs in the plugin and loader folders.
+	* Updates READMEs in the plugin and loader folders.
+	* Drops dojo 1.6 compatibility in the "kitchen sink" distribution.
+	* Adds new dojo 1.8 distribution.
 * 0.7.6
 	* Adds compatibility with dojo 1.8 and 1.9, including the ability to provide
 	  `has` configuration via `curl.config()`. (Requires use of the
