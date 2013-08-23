@@ -997,9 +997,7 @@
 			}
 
 			if (!(absId in cache)) {
-				// use plugin's config if specified
-				resCfg = parts && parts.pluginId && parentCfg.plugins[parts.pluginId]
-					|| core.resolvePathInfo(resId, parentCfg).config;
+				resCfg = core.resolvePathInfo(resId, parentCfg).config;
 				if (parts.pluginId) {
 					loaderId = mainId;
 				}
@@ -1037,6 +1035,10 @@
 			// plugin or transformer
 			if (mainId == loaderId) {
 
+				// use plugin's config if specified
+				if (parts.pluginId && parentCfg.plugins[parts.pluginId]) {
+					resCfg = parentCfg.plugins[parts.pluginId];
+				}
 				// we need to use an anonymous promise until plugin tells
 				// us normalized id. then, we need to consolidate the promises
 				// below. Note: exports objects will be different between
