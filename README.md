@@ -179,7 +179,7 @@ exports.foo2 = function () { return foo() + 2; };
 
 curl.js also supports *unwrapped* CommonJS modules (and node.js modules)
 via the cjsm11 module loader. To use this module loader for a package, say
-Backbone, you would provide it to a package's config, like this:
+Backbone, you would provide it to a package config, like this:
 
 ```javascript
 curl.config({
