@@ -7,7 +7,7 @@ curl.js with jQuery, dojo, or underscore.
 What's New?
 =======
 
-* 0.7.7
+* 0.8.0
 	* Adds new curl/loader/legacy module loader that provides similar
 	  functionality to RequireJS's "shim config".
 	* Adds dontAddFileExt config option functionality to js! plugin and
