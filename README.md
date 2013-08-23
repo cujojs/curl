@@ -131,6 +131,8 @@ as defined in the CommonJS Modules 1.1 proposal.
   recommended.  "Named modules" are typically only created by build tools
   and AMD bundlers.
 
+----------------------------------------
+
 ```javascript
 define(function (require, exports, module) {
 	var dep1 = require('app/foo');
@@ -143,6 +145,8 @@ has parameters, but the dependency list is missing, this format is assumed.
 The `exports` and `module` parameters are optional, but when specified, must
 be in this exact order.
 
+----------------------------------------
+
 ```javascript
 define(function (require) {
 	var dep1 = require('app/foo');
@@ -152,6 +156,8 @@ define(function (require) {
 
 Another variation on AMD-wrapped-CommonJS that uses `require()` in the
 tidy CommonJS manner, but returns the exports as per typical AMD.
+
+----------------------------------------
 
 ```javascript
 define(['require', 'exports', 'module'], function (require, exports, module) {
@@ -164,6 +170,7 @@ Another way to gain access to the CommonJS-like variables, `require`,
 `exports`, `module`.  When specified in the dependency list, these
 "pseudo-modules" are provided as arguments to the factory function.
 
+----------------------------------------
 
 ```javascript
 var dep1 = require('app/foo');
