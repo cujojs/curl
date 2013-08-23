@@ -52,7 +52,7 @@ curl.js is a small and very fast AMD-compliant asynchronous loader.
 Size: ~4KB (gzipped) using Google's Closure Compiler.
 
 If you'd like to use curl.js for non-AMD modules (ordinary javascript files),
-you'll want to  use a version with the js! plugin built in.  You may also
+you'll want to  use a version with the legacy loader built in.  You may also
 want to build-in the domReady module.
 
 curl.js, like all async loaders, cannot circumvent browsers' security
@@ -76,7 +76,7 @@ Features at a glance:
 * Loads AMD-formatted javascript modules in parallel (fast!)
 * Loads CommonJS Modules (v1.1 when wrapped in a `define()`) (fast!)
 * Loads CommonJS Modules (unwrapped when using the cjsm11 loader) (fast!)
-* Loads non-AMD javascript files in parallel, too (fast! via js! plugin)
+* Loads non-AMD javascript files in parallel, too (fast!)
 * Loads CSS files and text files in parallel (fast! via plugins)
 * Waits for dependencies (js, css, text, etc) before executing javascript
 * Waits for domReady, if/when desired
@@ -170,9 +170,9 @@ var dep1 = require('app/foo');
 exports.foo2 = function () { return foo() + 2; };
 ```
 
-curl.js also supports *unwrapped* CommonJS modules via the cjsm11 module loader.
-To use this module loader for a package, say Backbone, you would provide it
-to a package's config, like this:
+curl.js also supports *unwrapped* CommonJS modules (and node.js modules)
+via the cjsm11 module loader. To use this module loader for a package, say
+Backbone, you would provide it to a package's config, like this:
 
 ```javascript
 curl.config({
@@ -186,6 +186,9 @@ curl.config({
 	]
 });
 ```
+
+Read the notes in the src/curl/loader folder and the cjsm11.js file for
+more information about loading CommonJS and node.js modules.
 
 -----
 
@@ -264,6 +267,10 @@ Executes the function when the non-AMD javascript files are loaded and
 the dom is ready. The another.js file will wait for the nonAMD.js file
 before executing.
 
+Note: Please use curl.js's new legacy loader for much more flexible and
+sensible loading of non-AMD scripts.  Please read the docs in the
+src/curl/loader folder for more information.
+
 Note: if a file supports AMD or CommonJS module formats, you *can not* use the
 js! plugin on that file.
 
@@ -289,7 +296,7 @@ Executes callbacks in stages using `.next(deps, callback)`.
 
 Note: `.next()` does not load resources in parallel.  Therefore, it is a
 last resort when other options do not satisfy your use case.  You should
-use the `preloads` config option and/or the js! plugin's !order suffix
+use the `preloads` config option and/or the legacy loader
 whenever possible.
 
 ---------
@@ -497,17 +504,25 @@ Can curl.js work with non-AMD and non-CommonJS javascript files?
 
 Yes, but why would you?  Once you start using AMD, you'll never go back! :)
 
-You may use non-AMD javascript files by specifying the js! plugin prefix
+You may use non-AMD javascript files by using the legacy loader
 like this:
 
 ```javascript
-curl(
-	[
-		'js!plainOldJsFile1.js!order',
-		'js!anotherPlainOldJsFile.js!order'
-	]
-).then(
-	function () {
+curl.config({
+	paths: {
+		plainOldJsFile1: {
+			location: 'js/plainOldJsFile1.js',
+			exports: 'aGlobal'
+		},
+		anotherPlainOldJsFile: {
+			location: 'js/anotherPlainOldJsFile.js',
+			exports: 'anotherGlobal',
+			requires: ['plainOldJsFile1']
+		}
+	}
+});
+curl(['anotherPlainOldJsFile']).then(
+	function (anotherGlobal) {
 		/* do something with your plain, boring javascript files */
 	},
 	function () {
@@ -516,15 +531,11 @@ curl(
 );
 ```
 
-The !order suffix instructs curl.js to wait for previous scripts to execute
-before executing the current script. All scripts download in parallel, though,
-unless you specify `prefetch: false` in the config.  Be sure to have proper
-cache headers set if you plan to use `prefetch: true` or scripts will get
-downloaded twice in browsers that don't support `async="false"`.
+Please read the docs in the src/curl/loader folder for more information.
 
 ----------------------------------------
 
-Can curl.js load non-javascript files?
+Can curl.js load non-javascript files via plugins?
 =======================
 
 Yes, curl.js follows the CommonJS Loader Plugin specification, so you can use
@@ -544,7 +555,9 @@ async! -- resolves when a module signals it's ready
 
 i18n! -- loads text strings and other locale-specific constants
 
-Plugin docs are on the [wiki](https://github.com/cujojs/curl/wiki/Plugins).
+Some plugin docs are on the [wiki](https://github.com/cujojs/curl/wiki/Plugins).
+
+More documentation is available inside the source of these plugins!
 
 ----------------------------------------
 
