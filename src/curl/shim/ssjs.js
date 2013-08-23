@@ -29,7 +29,7 @@ define(/*=='curl/shim/ssjs',==*/ ['curl/_privileged', './_fetchText'], function 
 	cache = priv.cache;
 	config = priv.config();
 
-    hasProtocolRx = /^\w+:/;
+    hasProtocolRx = /^\w+:\/\//;
 	extractProtocolRx = /(^\w+:)?.*$/;
 
 	// force-overwrite the xhr-based _fetchText
