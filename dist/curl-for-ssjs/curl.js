@@ -62,15 +62,16 @@
 		return toString.call(obj).indexOf('[object ' + type) == 0;
 	}
 
-	function normalizePkgDescriptor (descriptor) {
+	function normalizePkgDescriptor (descriptor, isPkg) {
 		var main;
 
 		descriptor.path = removeEndSlash(descriptor['path'] || descriptor['location'] || '');
-		main = descriptor['main'] || './main';
-		if (!isRelUrl(main)) main = './' + main;
-		// trailing slashes trick reduceLeadingDots to see them as base ids
-		descriptor.main = reduceLeadingDots(main, descriptor.name + '/');
-		//if (isRelUrl(descriptor.main)) throw new Error('invalid main (' + main + ') in ' + descriptor.name);
+		if (isPkg) {
+			main = descriptor['main'] || './main';
+			if (!isRelUrl(main)) main = './' + main;
+			// trailing slashes trick reduceLeadingDots to see them as base ids
+			descriptor.main = reduceLeadingDots(main, descriptor.name + '/');
+		}
 		descriptor.config = descriptor['config'];
 
 		return descriptor;
@@ -587,13 +588,8 @@
 						// remove plugin-specific path from coll
 						delete coll[name];
 					}
-					if (isPkg) {
-						info = normalizePkgDescriptor(data);
-						if (info.config) info.config = beget(newCfg, info.config);
-					}
-					else {
-						info = { path: removeEndSlash(data.path) };
-					}
+					info = normalizePkgDescriptor(data, isPkg);
+					if (info.config) info.config = beget(newCfg, info.config);
 					info.specificity = id.split('/').length;
 					if (id) {
 						currCfg.pathMap[id] = info;
@@ -978,12 +974,12 @@
 		},
 
 		fetchDep: function (depName, parentDef) {
-			var toAbsId, isPreload, cfg, parts, absId, mainId, loaderId, pluginId,
+			var toAbsId, isPreload, parentCfg, parts, absId, mainId, loaderId, pluginId,
 				resId, pathInfo, def, tempDef, resCfg;
 
 			toAbsId = parentDef.toAbsId;
 			isPreload = parentDef.isPreload;
-			cfg = parentDef.config || userCfg; // is this fallback necessary?
+			parentCfg = parentDef.config || userCfg; // is this fallback necessary?
 
 			absId = toAbsId(depName);
 
@@ -997,24 +993,28 @@
 				resId = parts.resourceId;
 				// get id of first resource to load (which could be a plugin)
 				mainId = parts.pluginId || resId;
-				pathInfo = core.resolvePathInfo(mainId, cfg);
+				pathInfo = core.resolvePathInfo(mainId, parentCfg);
 			}
 
-			// get custom module loader from package config if not a plugin
-			if (parts) {
+			if (!(absId in cache)) {
+				// use plugin's config if specified
+				resCfg = parts && parts.pluginId && parentCfg.plugins[parts.pluginId]
+					|| core.resolvePathInfo(resId, parentCfg).config;
 				if (parts.pluginId) {
 					loaderId = mainId;
 				}
 				else {
-					// TODO: move config.moduleLoader to config.transform
-					loaderId = pathInfo.config['moduleLoader'] || pathInfo.config.moduleLoader;
+					// get custom module loader from package config if not a plugin
+					// TODO: move config.moduleLoader to config.loader
+					loaderId = resCfg['moduleLoader'] || resCfg.moduleLoader
+						|| resCfg['loader'] || resCfg.loader;
 					if (loaderId) {
 						// TODO: allow transforms to have relative module ids?
 						// (we could do this by returning package location from
 						// resolvePathInfo. why not return all package info?)
 						resId = mainId;
 						mainId = loaderId;
-						pathInfo = core.resolvePathInfo(loaderId, cfg);
+						pathInfo = core.resolvePathInfo(loaderId, parentCfg);
 					}
 				}
 			}
@@ -1026,7 +1026,7 @@
 				def = cache[mainId] = urlCache[pathInfo.url];
 			}
 			else {
-				def = core.createResourceDef(pathInfo.config, mainId, isPreload);
+				def = core.createResourceDef(resCfg, mainId, isPreload);
 				// TODO: can this go inside createResourceDef?
 				// TODO: can we pass pathInfo.url to createResourceDef instead?
 				def.url = core.checkToAddJsExt(pathInfo.url, pathInfo.config);
@@ -1045,10 +1045,6 @@
 				// resId doesn't change, the check if this is a new
 				// normalizedDef (below) will think it's already being loaded.
 				tempDef = new Promise();
-
-				// note: this means moduleLoaders can store config info in the
-				// plugins config, too.
-				resCfg = cfg.plugins[loaderId] || cfg;
 
 				// wait for plugin resource def
 				when(def, function(plugin) {
@@ -1470,7 +1466,7 @@ define('curl/shim/ssjs', ['curl/_privileged', './_fetchText'], function (priv, _
 	cache = priv.cache;
 	config = priv.config();
 
-    hasProtocolRx = /^\w+:/;
+    hasProtocolRx = /^\w+:\/\//;
 	extractProtocolRx = /(^\w+:)?.*$/;
 
 	// force-overwrite the xhr-based _fetchText
@@ -1597,9 +1593,31 @@ define('curl/shim/ssjs', ['curl/_privileged', './_fetchText'], function (priv, _
 /**
  * curl CommonJS Modules/1.1 loader
  *
- * Licensed under the MIT License at:
- * 		http://www.opensource.org/licenses/mit-license.php
+ * This loader loads modules that conform to the CommonJS Modules/1.1 spec.
+ * The loader also accommodates node.js, which  adds features beyond the
+ * spec, such as `module.exports` and `this === exports`.
+ *
+ * CommonJS modules can't run in browser environments without help. This
+ * loader wraps the modules in AMD and injects the CommonJS "free vars":
+ *
+ * define(function (require, exports, module) {
+ *     // CommonJS code goes here.
+ * });
+ *
+ * Config options:
+ *
+ * `injectSourceUrl` {boolean} If truthy (default), a //@sourceURL is injected
+ * into the script so that debuggers may display a meaningful name in the
+ * list of scripts. Setting this to false may save a few bytes.
+ *
+ * `injectScript` {boolean} If truthy, a <script> element will be inserted,
+ * rather than using a global `eval()` to execute the module.  You typically
+ * won't need to use this option.
+ *
+ * `dontAddFileExt` {RegExp|string} An expression that determines when *not*
+ * to add a '.js' extension onto a url when fetching a module from a server.
  */
+
 (function (global, document, globalEval) {
 
 define('curl/loader/cjsm11', ['../plugin/_fetchText', 'curl/_privileged'], function (fetchText, priv) {
