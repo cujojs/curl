@@ -18,6 +18,5 @@ Modules that should work with any loader/builder:
 
 async!
 domReady!
-js!
 link!
 

@@ -2,9 +2,7 @@
 
 /**
  * curl legacy loader
- */
-
-/**
+ *
  * Loads legacy javascript scripts as if they were modules.  Since legacy
  * scripts don't specify any dependencies and typically hoard many
  * things into one file, this isn't always straightforward.  This loader

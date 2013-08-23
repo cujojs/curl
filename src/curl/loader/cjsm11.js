@@ -3,8 +3,29 @@
 /**
  * curl CommonJS Modules/1.1 loader
  *
- * Licensed under the MIT License at:
- * 		http://www.opensource.org/licenses/mit-license.php
+ * This loader loads modules that conform to the CommonJS Modules/1.1 spec.
+ * The loader also accommodates node.js, which  adds features beyond the
+ * spec, such as `module.exports` and `this === exports`.
+ *
+ * CommonJS modules can't run in browser environments without help. This
+ * loader wraps the modules in AMD and injects the CommonJS "free vars":
+ *
+ * define(function (require, exports, module) {
+ *     // CommonJS code goes here.
+ * });
+ *
+ * Config options:
+ *
+ * `injectSourceUrl` {boolean} If truthy (default), a //@sourceURL is injected
+ * into the script so that debuggers may display a meaningful name in the
+ * list of scripts. Setting this to false may save a few bytes.
+ *
+ * `injectScript` {boolean} If truthy, a <script> element will be inserted,
+ * rather than using a global `eval()` to execute the module.  You typically
+ * won't need to use this option.
+ *
+ * `dontAddFileExt` {RegExp|string} An expression that determines when *not*
+ * to add a '.js' extension onto a url when fetching a module from a server.
  */
 
 (function (global, document, globalEval) {
