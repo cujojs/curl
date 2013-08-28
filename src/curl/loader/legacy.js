@@ -10,13 +10,15 @@
  *
  * Config options:
  *
- * `exports` {string} Typically, specifies the name of a
+ * exports {string}
+ * Typically, specifies the name of a
  * global variable exposed by the legacy script, but can be any code that
  * can be executed by `eval()` at the global scope.  The result of the
  * `eval()` is verified not to throw an exception and is used as the value
  * exported to other modules that depend on this script.
  *
- * `factory` {function} The factory is executed when the script
+ * factory {function}
+ * The factory is executed when the script
  * is loaded and should return something to export to other modules.  The
  * factory should thow an exception if it can't find the thing to export.
  * Even though the `exports` config option can evaluate arbitrary code, the
@@ -29,9 +31,15 @@
  * because, without them, there is no way for a loader to determine if a
  * script has loaded in IE6-10.
  *
- * `requires` {array} An array of module ids that are required for the script
+ * requires {array}
+ * An array of module ids that are required for the script
  * to execute correctly.  These module ids may refer to other legacy scripts
  * that have been configured via the legacy loader.
+ *
+ * dontWrapLegacy {boolean}
+ * A build-time only option to tell cram to
+ * add a define() at the end of the script rather than *around* the script.
+ * Typically, this would never be needed.
  *
  * @example Backbone
  *
