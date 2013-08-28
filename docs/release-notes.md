@@ -1,6 +1,8 @@
 Release notes for curl.js
 ---
 
+* 0.8.1
+	* Adds a build-time (cram) plugin for the new legacy module loader.
 * 0.8.0
 	* Adds new curl/loader/legacy module loader that provides similar
 	  functionality to RequireJS's "shim config".

@@ -7,6 +7,8 @@ curl.js with jQuery, dojo, or underscore.
 What's New?
 =======
 
+* 0.8.1
+	* Adds a build-time (cram) plugin for the new legacy loader.
 * 0.8.0
 	* Adds new curl/loader/legacy module loader that provides similar
 	  functionality to RequireJS's "shim config".
@@ -32,16 +34,6 @@ What's New?
 	* Restores text! plugin functionality to the "kitchen sink" build.
 * 0.7.5
 	* Can now resolve relative plugin ids in local require (bug fix).
-* 0.7.4
-	* curl.js is now available on CDN: http://cdnjs.com/#curl and
-	  http://jsdelivr.com/#!curl.js
-	* "main" modules specified in config are fetched after a delay for better
-	  compatibility with bundles.
-	* cram.js support
-	* data-curl-run attribute for loading run.js files.
-	* fix to stop IE6-8 complaining about sourceURL when @cc_on.
-	* new debug dist version of curl.js.
-	* bug fixes for running curl.js inside node.js.
 
 ----------------------------------------
 
