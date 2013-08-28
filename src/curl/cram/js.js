@@ -2,13 +2,12 @@
 
 /**
  * curl js! cram plugin
- *
- * TODO: figure out when to return window.<exported-thing> vs. global.<exported-thing> vs just <exported-thing>
  */
-define(function () {
-	var stripOrderOptionRx;
+define(function (require) {
 
-	stripOrderOptionRx = /!order/;
+	var _define = require('./_define');
+
+	var stripOrderOptionRx = /!order/;
 
 	return {
 
@@ -34,13 +33,7 @@ define(function () {
 				var moduleText;
 
 				moduleText = text + ';\n'
-					+ 'define("' + absId + '", function () {\n';
-
-				moduleText += exports
-					? '\treturn ' + exports
-					: '\treturn void 0';
-
-				moduleText += ';\n});\n';
+					+ _define(absId, '', '', '', exports);
 
 				io.write(moduleText);
 

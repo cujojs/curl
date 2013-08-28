@@ -3,7 +3,9 @@
 /**
  * curl json! cram plugin
  */
-define(function () {
+define(function (require) {
+
+	var _define = require('./define');
 
 	return {
 
@@ -15,16 +17,13 @@ define(function () {
 			io.read(
 				resId,
 				function (source) {
+					var moduleText;
 					if (config.strictJSONParse) {
 						try { JSON.parse(source); } catch (ex) { io.error(ex); }
 					}
 					// write-out define(id,function(){return{/* json here */}});
-					source = 'define("'
-						+ absId
-						+ '", function () { return '
-						+ source
-						+ '; });';
-					io.write(source);
+					moduleText = _define(absId, '', '', '', source);
+					io.write(moduleText);
 				},
 				io.error
 			);
