@@ -14,7 +14,7 @@
  * i18n! plugin.  Just sayin.
  *
  */
-define(/*=='curl/plugin/getLocale',==*/ function () {
+define(/*=='curl/plugin/locale',==*/ function () {
 
 	var appendLocaleRx;
 
