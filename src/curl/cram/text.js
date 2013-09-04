@@ -16,7 +16,8 @@ define(function (require) {
 			absId = pluginId + '!' + resId;
 
 			io.read(resId, function (text) {
-				io.write(_define(absId, '', '', '', jsEncode(text)));
+				var encodedText = '"' + jsEncode(text) + '"';
+				io.write(_define(absId, '', '', '', encodedText));
 			}, io.error);
 		}
 
