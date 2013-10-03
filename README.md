@@ -7,6 +7,10 @@ curl.js with jQuery, dojo, or underscore.
 What's New?
 =======
 
+* 0.8.2
+	* Run compile.sh from anywhere (thanks @webpro!)
+	* Restore quotes to cram text plugin output (thanks @gehan!)
+	* Correctly bake-in the locale module in the kitchen-sink dist build.
 * 0.8.1
 	* Adds a build-time (cram) plugin for the new legacy loader.
 * 0.8.0
