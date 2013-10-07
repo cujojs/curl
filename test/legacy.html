@@ -15,7 +15,9 @@
 					loader: 'curl/loader/legacy',
 					exports: 'testDomain.foo.bar'
 				}
-			}
+			},
+		    definedUpTop : 'stuff/dep-on-test1-in-define',
+		    usingRequire : 'stuff/dep-on-test1'
 		},
 		packages: [
 			{
@@ -44,15 +46,20 @@ curl(
 	[
 		'stuff/three',
 		'test2',
-		'test1'
+		'test1',
+		'definedUpTop',
+		'usingRequire'
 	]
 ).then(
-	function (three, saucer, foobar) {
+	function (three, saucer, foobar,definedUpTop, usingRequire) {
 		write('A module with dependencies loaded successfully if 3 == ' + three + '.');
 		write('If the following line says something then the plain js files loaded in the right order:');
+
 		//write(testDomain.foo.bar + ' ' + testDomain.awesome.sauce);
 		write('Did js file with no deps return a value? ' + (foobar == 'whizzah!' ? 'SUCCESS' : 'FAILED'));
-		write('Did js file with deps return a value? ' + (saucer.sauce == 'ketchup' ? 'SUCCESS' : 'FAILED'));
+		
+		write('Did module with non-amd deps load dep correctly? ' + (definedUpTop == 'whizzah!' ? 'SUCCESS' : 'FAILED'));
+		write('Did module with non-amd deps load dep correctly? ' + (usingRequire == 'whizzah!' ? 'SUCCESS' : 'FAILED'));
 	}
 );
 
