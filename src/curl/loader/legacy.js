@@ -173,6 +173,9 @@ define(/*=='curl/loader/legacy',==*/ ['curl/_privileged'], function (priv) {
 						reject(new Error ('Failed to find exports ' + exports + ' for legacy ' + resId));
 					}
 				}
+				// define the module as if it were a regular module.
+				define(resId, exported);
+				// also return the plugin-syntax module ("legacy!foo").
 				callback(exported);
 			}
 
