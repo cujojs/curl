@@ -7,6 +7,10 @@ curl.js with jQuery, dojo, or underscore.
 What's New?
 =======
 
+* 0.8.3
+	* Export legacy-loaded modules with normal AMD/CommonJS module ids
+	  (thanks @mmacaula!)
+	* Build curl/debug into curl/dist/debug/curl.js correctly.
 * 0.8.2
 	* Run compile.sh from anywhere (thanks @webpro!)
 	* Restore quotes to cram text plugin output (thanks @gehan!)

@@ -13,7 +13,7 @@
 (function (global) {
 //"use strict"; don't restore this until the config routine is refactored
 	var
-		version = '0.8.2',
+		version = '0.8.3',
 		curlName = 'curl',
 		defineName = 'define',
 		runModuleAttr = 'data-curl-run',
@@ -1307,15 +1307,19 @@
 	prevDefine = global[defineName];
 
 	// only run config if there is something to config (perf saver?)
-	if (prevCurl && isType(prevCurl, 'Object') || userCfg.main) {
+	if (prevCurl && isType(prevCurl, 'Object')) {
 		// remove global curl object
 		global[curlName] = undef; // can't use delete in IE 6-8
 		// configure curl
-		_config(prevCurl || userCfg);
+		_config(prevCurl);
 	}
 	else {
 		// set default api
 		core.setApi();
+	}
+	// only call config if data-curl-run set a main
+	if (userCfg.main) {
+		_config(userCfg);
 	}
 
 	// allow curl to be a dependency
