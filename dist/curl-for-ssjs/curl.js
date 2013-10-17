@@ -13,10 +13,11 @@
 (function (global) {
 //"use strict"; don't restore this until the config routine is refactored
 	var
-		version = '0.8.3',
+		version = '0.8.4',
 		curlName = 'curl',
 		defineName = 'define',
-		runModuleAttr = 'data-curl-run',
+		bootScriptAttr = 'data-curl-run',
+		bootScript,
 		userCfg,
 		prevCurl,
 		prevDefine,
@@ -52,7 +53,7 @@
 		findDotsRx = /(\.)(\.?)(?:$|\/([^\.\/]+.*)?)/g,
 		removeCommentsRx = /\/\*[\s\S]*?\*\/|\/\/.*?[\n\r]/g,
 		findRValueRequiresRx = /require\s*\(\s*(["'])(.*?[^\\])\1\s*\)|[^\\]?(["'])/g,
-		splitMainDirectives = /\s*,\s*/,
+		splitCommaSepRx = /\s*,\s*/,
 		cjsGetters,
 		core;
 
@@ -689,6 +690,7 @@
 
 		loadScript: function (def, success, failure) {
 			// script processing rules learned from RequireJS
+			// TODO: pass a validate function into loadScript to check if a success really is a success
 
 			// insert script
 			var el = doc.createElement('script');
@@ -1134,21 +1136,46 @@
 			}
 		},
 
-		extractDataAttrConfig: function (cfg) {
-			var script;
+		extractDataAttrConfig: function () {
+			var script, attr = '';
 			script = core.findScript(function (script) {
-				var main;
-				// find main module(s) in data-curl-run attr on script element
-				// TODO: extract baseUrl, too?
-				main = script.getAttribute(runModuleAttr);
-				if (main) cfg.main = main;
-				return main;
+				var run;
+				// find data-curl-run attr on script element
+				run = script.getAttribute(bootScriptAttr);
+				if (run) attr = run;
+				return run;
 			});
 			// removeAttribute is wonky (in IE6?) but this works
 			if (script) {
-				script.setAttribute(runModuleAttr, '');
+				script.setAttribute(bootScriptAttr, '');
 			}
-			return cfg;
+			return attr;
+		},
+
+		bootScript: function () {
+			var urls = bootScript.split(splitCommaSepRx);
+			if (urls.length) {
+				load();
+			}
+			function load () {
+				// Note: IE calls success handler if it gets a 400+.
+				core.loadScript({ url: urls.shift() }, check, check);
+			}
+			function check () {
+				// check if run.js called curl() or curl.config()
+				if (bootScript) {
+					if (urls.length) {
+						// show an error message
+						core.nextTurn(fail);
+						// try next
+						load();
+					}
+					else fail('run.js script did not run.');
+				}
+			}
+			function fail (msg) {
+				throw new Error(msg || 'Primary run.js failed. Trying fallback.');
+			}
 		},
 
 		nextTurn: function (task) {
@@ -1163,6 +1190,9 @@
 	function _curl (/* various */) {
 		var args, promise, cfg;
 
+		// indicate we're no longer waiting for a boot script
+		bootScript = '';
+
 		args = [].slice.call(arguments);
 
 		// extract config, if it's specified
@@ -1175,7 +1205,10 @@
 	}
 
 	function _config (cfg, callback, errback) {
-		var pPromise, mPromise, main, devmain, fallback;
+		var pPromise, main, fallback;
+
+		// indicate we're no longer waiting for a boot script
+		bootScript = '';
 
 		if (cfg) {
 			core.setApi(cfg);
@@ -1191,16 +1224,8 @@
 			}
 			// check for main module(s). all modules wait for preloads implicitly.
 			main = cfg['main'];
-			main = main && String(main).split(splitMainDirectives);
 			if (main) {
-				mPromise = new Promise();
-				mPromise.then(callback, errback);
-				// figure out if we are using a dev-time fallback
-				fallback = main[1]
-					? function () { new CurlApi([main[1]], mPromise.resolve, mPromise.reject); }
-					: mPromise.reject;
-				new CurlApi([main[0]], mPromise.resolve, fallback);
-				return mPromise;
+				return new CurlApi(main, callback, errback);
 			}
 		}
 	}
@@ -1299,9 +1324,6 @@
 		pathRx: /$^/
 	};
 
-	// look for "data-curl-run" directive, and override config
-	userCfg = core.extractDataAttrConfig(userCfg);
-
 	// handle pre-existing global
 	prevCurl = global[curlName];
 	prevDefine = global[defineName];
@@ -1317,10 +1339,11 @@
 		// set default api
 		core.setApi();
 	}
-	// only call config if data-curl-run set a main
-	if (userCfg.main) {
-		_config(userCfg);
-	}
+
+	// look for "data-curl-run" directive
+	bootScript = core.extractDataAttrConfig();
+	// wait a bit in case curl.js is bundled into the boot script
+	if (bootScript) core.nextTurn(core.bootScript);
 
 	// allow curl to be a dependency
 	cache[curlName] = _curl;
