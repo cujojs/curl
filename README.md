@@ -9,7 +9,8 @@ What's New?
 
 * 0.8.4
 	* data-curl-run now only supports scripts, not modules, and is
-	  documented.  There are now fewer conflicts with defining a
+	  documented in the bootstrapping section of the wiki.
+	  There are now fewer conflicts when defining a
 	  main module in the curl config, as a result.
 * 0.8.3
 	* Export legacy-loaded modules with normal AMD/CommonJS module ids
