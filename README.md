@@ -66,6 +66,8 @@ curl.js with jQuery, dojo, or underscore.
 What's New?
 =======
 
+* 0.8.6
+	* Cram plugins: hide legacy plugin's `define` from cram parser.
 * 0.8.5
 	* Cram plugins: plugins are now responsible for resolving url/filepath.
 	* Cram plugins: legacy loader no longer fails to add a .js extension
