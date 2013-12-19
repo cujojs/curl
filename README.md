@@ -67,9 +67,9 @@ What's New?
 =======
 
 * 0.8.5
-	* Bug fix: plugins are now responsible for resolving url/filepath.
-	* Bug fix: legacy loader no longer fails to add a .js extension when there
-	  are dots in the file name.
+	* Cram plugins: plugins are now responsible for resolving url/filepath.
+	* Cram plugins: legacy loader no longer fails to add a .js extension
+	  when there are dots in the file name.
 * 0.8.4
 	* data-curl-run now only supports scripts, not modules, and is
 	  documented in the bootstrapping section of the wiki.
