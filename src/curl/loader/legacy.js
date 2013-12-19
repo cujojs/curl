@@ -190,8 +190,9 @@ define(/*=='curl/loader/legacy',==*/ ['curl/_privileged'], function (priv) {
 	};
 
 	function nameWithExt (name, defaultExt) {
-		return name.lastIndexOf('.') <= name.lastIndexOf('/') ?
-			name + '.' + defaultExt : name;
+		return name.substr(name.length - 3) !== '.' + defaultExt
+			? name + '.' + defaultExt
+			: name;
 	}
 
 });
