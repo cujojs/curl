@@ -66,6 +66,8 @@ curl.js with jQuery, dojo, or underscore.
 What's New?
 =======
 
+* 0.8.7
+	* Fix botched release wherein some dummy forgot to `bin/make-all.sh`.
 * 0.8.6
 	* Cram plugins: hide legacy plugin's `define` from cram parser.
 * 0.8.5
