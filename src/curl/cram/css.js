@@ -56,7 +56,7 @@ define(['./jsEncode'], function (jsEncode) {
 
 				absId = pluginId + '!' + resId;
 				url = req.toUrl(resId);
-				if (url.substr(url.length - 3) !== ".css") {
+				if (url.substr(url.length - 4) !== ".css") {
 					url += ".css";
 				}
 				idPath = path(resId);
