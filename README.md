@@ -66,6 +66,9 @@ curl.js with jQuery, dojo, or underscore.
 What's New?
 =======
 
+* 0.8.8
+	* Stop double-appending .css extension in css! plugin.
+	(thanks @stanislawosinski!)
 * 0.8.7
 	* Fix botched release wherein some dummy forgot to `bin/make-all.sh`.
 * 0.8.6

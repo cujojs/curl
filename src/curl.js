@@ -13,7 +13,7 @@
 (function (global) {
 //"use strict"; don't restore this until the config routine is refactored
 	var
-		version = '0.8.7',
+		version = '0.8.8',
 		curlName = 'curl',
 		defineName = 'define',
 		bootScriptAttr = 'data-curl-run',
