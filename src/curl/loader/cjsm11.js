@@ -45,7 +45,7 @@ define(/*=='curl/loader/cjsm11',==*/ ['../plugin/_fetchText', 'curl/_privileged'
 	function wrapSource (source, resourceId, fullUrl) {
 		var sourceUrl = fullUrl ? '/*\n////@ sourceURL=' + fullUrl.replace(/\s/g, '%20') + '.js\n*/' : '';
 		return "define('" + resourceId + "'," +
-			"['require','exports','module'],function(require,exports,module){" +
+			"['require','exports','module'],function(require,exports,module){var define;" +
 			source + "\n});\n" + sourceUrl + "\n";
 	}
 
