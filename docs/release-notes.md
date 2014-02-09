@@ -1,6 +1,33 @@
 Release notes for curl.js
 ---
 
+* 0.8.9
+	* Protect more API functions in plugins and loaders from closure compiler's
+	aggressive obfuscation.
+* 0.8.8
+	* Stop double-appending .css extension in css! plugin.
+	(thanks @stanislawosinski!)
+* 0.8.7
+	* Fix botched release wherein some dummy forgot to `bin/make-all.sh`.
+* 0.8.6
+	* Cram plugins: hide legacy plugin's `define` from cram parser.
+* 0.8.5
+	* Cram plugins: plugins are now responsible for resolving url/filepath.
+	* Cram plugins: legacy loader no longer fails to add a .js extension
+	  when there are dots in the file name.
+* 0.8.4
+	* data-curl-run now only supports scripts, not modules, and is
+	  documented in the bootstrapping section of the wiki.
+	  There are now fewer conflicts when defining a
+	  main module in the curl config, as a result.
+* 0.8.3
+	* Export legacy-loaded modules with normal AMD/CommonJS module ids
+	  (thanks @mmacaula!)
+	* Build curl/debug into curl/dist/debug/curl.js correctly.
+* 0.8.2
+	* Run compile.sh from anywhere (thanks @webpro!)
+	* Restore quotes to cram text plugin output (thanks @gehan!)
+	* Correctly bake-in the locale module in the kitchen-sink dist build.
 * 0.8.1
 	* Adds a build-time (cram) plugin for the new legacy module loader.
 * 0.8.0
