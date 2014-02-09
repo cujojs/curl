@@ -68,7 +68,7 @@ define(/*=='curl/loader/cjsm11',==*/ ['../plugin/_fetchText', 'curl/_privileged'
 		var errback, url, sourceUrl;
 
 		errback = callback['error'] || function (ex) { throw ex; };
-		url = checkToAddJsExt(require.toUrl(resourceId), config);
+		url = checkToAddJsExt(require['toUrl'](resourceId), config);
 		sourceUrl = config['injectSourceUrl'] !== false && url;
 
 		fetchText(url, function (source) {

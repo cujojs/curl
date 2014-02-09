@@ -820,7 +820,9 @@
 			if (resource === undef && def.exports) {
 				// note: exports will equal module.exports unless
 				// module.exports was reassigned inside module.
-				resource = def.module ? (def.exports = def.module.exports) : def.exports;
+				resource = def.module
+					? (def.exports = def.module['exports'])
+					: def.exports;
 			}
 			return resource;
 		},

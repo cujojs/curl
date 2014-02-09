@@ -820,7 +820,9 @@
 			if (resource === undef && def.exports) {
 				// note: exports will equal module.exports unless
 				// module.exports was reassigned inside module.
-				resource = def.module ? (def.exports = def.module.exports) : def.exports;
+				resource = def.module
+					? (def.exports = def.module['exports'])
+					: def.exports;
 			}
 			return resource;
 		},
@@ -1664,7 +1666,7 @@ define('curl/loader/cjsm11', ['../plugin/_fetchText', 'curl/_privileged'], funct
 	function wrapSource (source, resourceId, fullUrl) {
 		var sourceUrl = fullUrl ? '/*\n////@ sourceURL=' + fullUrl.replace(/\s/g, '%20') + '.js\n*/' : '';
 		return "define('" + resourceId + "'," +
-			"['require','exports','module'],function(require,exports,module){" +
+			"['require','exports','module'],function(require,exports,module){var define;" +
 			source + "\n});\n" + sourceUrl + "\n";
 	}
 
@@ -1687,7 +1689,7 @@ define('curl/loader/cjsm11', ['../plugin/_fetchText', 'curl/_privileged'], funct
 		var errback, url, sourceUrl;
 
 		errback = callback['error'] || function (ex) { throw ex; };
-		url = checkToAddJsExt(require.toUrl(resourceId), config);
+		url = checkToAddJsExt(require['toUrl'](resourceId), config);
 		sourceUrl = config['injectSourceUrl'] !== false && url;
 
 		fetchText(url, function (source) {

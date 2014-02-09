@@ -7,7 +7,11 @@
 
 	curl = {
 		paths: {
-			curl: '../src/curl/'
+			curl: '../src/curl/',
+            cjs: {
+                location: 'support/commonjs',
+                config: { loader: 'curl/loader/cjsm11' }
+            }
 		}
 	};
 
@@ -20,12 +24,14 @@
 		[
 			'stuff/three',
 			'css!stuff/base',
-			'text!stuff/template.html'
+			'text!stuff/template.html',
+            'cjs/nakedDependentCjsm1.1'
 		]
 	).then(
-		function (three, link, template) {
-				(three == 3 ? success : failure)('A module with dependencies loaded.');
-				(typeof template == 'string' && template.length ? success : failure)('text resource loaded.');
+		function (three, link, template, cjs1) {
+            (three == 3 ? success : failure)('A module with dependencies loaded.');
+            (typeof template == 'string' && template.length ? success : failure)('text resource loaded.');
+            (cjs1.stuff === 'stuff' ? success : failure)('A module loaded via cjsm11 loader extension.');
 		}
 	);
 
