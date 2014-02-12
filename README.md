@@ -529,12 +529,15 @@ curl.config({
 	paths: {
 		plainOldJsFile1: {
 			location: 'js/plainOldJsFile1.js',
-			exports: 'aGlobal'
+			config: { loader: 'curl/loader/legacy', exports: 'aGlobal' }
 		},
 		anotherPlainOldJsFile: {
 			location: 'js/anotherPlainOldJsFile.js',
-			exports: 'anotherGlobal',
-			requires: ['plainOldJsFile1']
+			config: { 
+				loader: 'curl/loader/legacy', 
+				exports: 'anotherGlobal',
+				requires: [ 'plainOldJsFile1' ]
+			}
 		}
 	}
 });
