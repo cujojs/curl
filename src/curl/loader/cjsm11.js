@@ -43,7 +43,7 @@ define(/*=='curl/loader/cjsm11',==*/ ['../plugin/_fetchText', 'curl/_privileged'
 	checkToAddJsExt = priv['core'].checkToAddJsExt;
 
 	function wrapSource (source, resourceId, fullUrl) {
-		var sourceUrl = fullUrl ? '/*\n////@ sourceURL=' + fullUrl.replace(/\s/g, '%20') + '\n*/' : '';
+		var sourceUrl = fullUrl ? '////# sourceURL=' + fullUrl.replace(/\s/g, '%20') + '' : '';
 		return "define('" + resourceId + "'," +
 			"['require','exports','module'],function(require,exports,module,define){" +
 			source + "\n});\n" + sourceUrl + "\n";
