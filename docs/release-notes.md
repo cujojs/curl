@@ -4,6 +4,9 @@ Release notes for curl.js
 * 0.8.9
 	* Protect more API functions in plugins and loaders from closure compiler's
 	aggressive obfuscation.
+	* Switch to newer //# sourceURL syntax.
+	* Stop doubling the ".js" on the sourceURL.
+	* Ensure that `define` is undefined when wrapping cjs/node modules.
 * 0.8.8
 	* Stop double-appending .css extension in css! plugin.
 	(thanks @stanislawosinski!)
