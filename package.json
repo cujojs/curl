@@ -30,7 +30,7 @@
 			"web": "http://hovercraftstudios.com"
 		}
 	],
-	"main": "./src/curl",
+	"main": "./dist/curl-for-ssjs/curl.js",
 	"directories": {
 		"test": "test"
 	},
