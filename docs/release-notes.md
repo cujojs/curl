@@ -1,6 +1,8 @@
 Release notes for curl.js
 ---
 
+* 0.8.10
+	* Add moduleType and main properties to bower.json and package.json.
 * 0.8.9
 	* Protect more API functions in plugins and loaders from closure compiler's
 	aggressive obfuscation.
