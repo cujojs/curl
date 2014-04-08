@@ -25,15 +25,13 @@
 			'stuff/three',
 			'css!stuff/base',
 			'text!stuff/template.html',
-			'js!stuff/plain_old.js!exports=testDomain.foo',
-            'cjs/nakedDependentCjsm1.1'
+			'js!stuff/plain_old.js!exports=testDomain.foo'
 		]
 	).then(
 		function (three, link, template, script, cjs1) {
             (three == 3 ? success : failure)('A module with dependencies loaded.');
             (typeof template == 'string' && template.length ? success : failure)('text resource loaded.');
             (script ? success : failure)('A script loaded with the js! plugin.');
-            (cjs1.stuff === 'stuff' ? success : failure)('A module loaded via cjsm11 loader extension.');
 		}
 	);
 

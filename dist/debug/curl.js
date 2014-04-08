@@ -244,6 +244,13 @@
 		}
 	}
 
+	function Factory (factory, id) {
+		this.factory = factory;
+		this.id = id;
+	}
+
+	Factory.prototype.execute = function () { return this.factory(); }
+
 	core = {
 
 		/**
@@ -293,6 +300,21 @@
 			return absId;
 		},
 
+		ensureExec: function (res) {
+			// we can't use `res instanceof Factory` for some reason
+			return res && res.execute === Factory.prototype.execute
+				? cache[res.id] = res.execute()
+				: res;
+		},
+
+		ensureAllExec: function (deps) {
+			var result = [];
+			for (var i = 0; i < deps.length; i++) {
+				result[i] = core.ensureExec(deps[i]);
+			}
+			return result;
+		},
+
 		createContext: function (cfg, baseId, depNames, isPreload) {
 
 			var def;
@@ -314,7 +336,7 @@
 				parts = pluginParts(absId);
 				if (!parts.pluginId) return absId;
 
-				plugin = cache[parts.pluginId];
+				plugin = core.ensureExec(cache[parts.pluginId]);
 				// check if plugin supports the normalize method
 				if ('normalize' in plugin) {
 					// note: dojo/has may return falsey values (0, actually)
@@ -347,18 +369,21 @@
 					}
 					// return resource
 					rvid = toAbsId(ids, true);
-					childDef = cache[rvid];
 					if (!(rvid in cache)) {
 						// this should only happen when devs attempt their own
 						// manual wrapping of cjs modules or get confused with
 						// the callback syntax:
 						throw new Error('Module not resolved: '  + rvid);
 					}
+					childDef = core.ensureExec(cache[rvid]);
 					earlyExport = isPromise(childDef) && childDef.exports;
 					return earlyExport || childDef;
 				}
 				else {
-					when(core.getDeps(core.createContext(cfg, def.id, ids, isPreload)), cb, errback);
+					when(core.getDeps(core.createContext(cfg, def.id, ids, isPreload)),
+						function (deps) { cb(core.ensureAllExec(deps)); },
+						errback
+					);
 				}
 			}
 
@@ -377,7 +402,7 @@
 
 			// using countdown to only execute definition function once
 			execute = countdown(1, function (deps) {
-				def.deps = deps;
+				def.deps = core.ensureAllExec(deps);
 				try {
 					return core.executeDefFunc(def);
 				}
@@ -390,7 +415,9 @@
 			// before resolving
 			def.resolve = function resolve (deps) {
 				when(isPreload || preload, function () {
-					origResolve((cache[def.id] = urlCache[def.url] = execute(deps)));
+					origResolve(cache[def.id] = new Factory(function () {
+						return execute(deps);
+					}), def.id);
 				});
 			};
 
@@ -874,9 +901,7 @@
 					// is listed after `module` or `exports` in the deps list,
 					// but that is okay since all waiters will only record
 					// it once.
-					if (parentDef.exports) {
-						parentDef.progress(msgUsingExports);
-					}
+					parentDef.progress(msgUsingExports);
 				}
 				// check for blanks. fixes #32.
 				// this helps support yepnope.js, has.js, and the has! plugin
@@ -948,33 +973,28 @@
 			// ensure url is computed
 			core.getDefUrl(def);
 
-			core.loadScript(def,
-
-				function () {
-					var args = argsNet;
-					argsNet = undef; // reset it before we get deps
-
-					// if our resource was not explicitly defined with an id (anonymous)
-					// Note: if it did have an id, it will be resolved in the define()
-					if (def.useNet !== false) {
-
-						// if !args, nothing was added to the argsNet
-						if (!args || args.ex) {
-							def.reject(new Error(((args && args.ex) || 'define() missing or duplicated: ' + def.url)));
-						}
-						else {
-							core.defineResource(def, args);
-						}
-					}
-
-				},
-
-				def.reject
-
-			);
+			core.loadScript(def, loaded, def.reject);
 
 			return def;
 
+			function loaded () {
+				var args = argsNet;
+				argsNet = undef; // reset it before we get deps
+
+				// if our resource was not explicitly defined with an id (anonymous)
+				// Note: if it did have an id, it will be resolved in the define()
+				if (def.useNet !== false) {
+
+					// if !args, nothing was added to the argsNet
+					if (!args || args.ex) {
+						def.reject(new Error(((args && args.ex) || 'define() missing or duplicated: ' + def.url)));
+					}
+					else {
+						core.defineResource(def, args);
+					}
+				}
+
+			}
 		},
 
 		fetchDep: function (depName, parentDef) {
@@ -1025,7 +1045,12 @@
 				def = cache[mainId];
 			}
 			else if (pathInfo.url in urlCache) {
-				def = cache[mainId] = urlCache[pathInfo.url];
+				// this module is mapped via paths config to a common bundle.
+				// see issue #140.  Keep this legacy functionality.
+				tempDef = new Promise();
+				when(urlCache[pathInfo.url], function () {
+					tempDef.resolve(cache[mainId]);
+				}, tempDef.reject)
 			}
 			else {
 				def = core.createResourceDef(resCfg, mainId, isPreload);
@@ -1055,6 +1080,8 @@
 				// wait for plugin resource def
 				when(def, function(plugin) {
 					var normalizedDef, fullId, dynamic;
+
+					plugin = core.ensureExec(plugin);
 
 					dynamic = plugin['dynamic'];
 					// check if plugin supports the normalize method
@@ -1180,9 +1207,21 @@
 			}
 		},
 
-		nextTurn: function (task) {
-			setTimeout(task, 0);
-		}
+		nextTurn: (function (tasks1, tasks2) {
+			return function (task, priority) {
+				var firstTask = tasks1.length === 0 && tasks2.length === 0;
+				if (firstTask) {
+					setTimeout(runTasks, 0);
+				}
+				(priority ? tasks1 : tasks2).push(task);
+			};
+			function runTasks () {
+				// first run priority tasks
+				while (tasks1.length) tasks1.shift()();
+				// then run other tasks
+				while (tasks2.length) tasks2.shift()();
+			}
+		}([], []))
 
 	};
 
@@ -1242,7 +1281,7 @@
 			when(ctx,
 				// return the dependencies as arguments, not an array
 				function (deps) {
-					if (resolved) resolved.apply(undef, deps);
+					if (resolved) resolved.apply(undef, core.ensureAllExec(deps));
 				},
 				// just throw if the dev didn't specify an error handler
 				function (ex) {
@@ -1300,7 +1339,9 @@
 			if (!isPromise(def)) throw new Error('duplicate define: ' + id);
 			// check if this resource has already been resolved
 			def.useNet = false;
-			core.defineResource(def, args);
+			core.nextTurn(function () {
+				core.defineResource(def, args);
+			}, true);
 		}
 
 	}
@@ -1358,6 +1399,7 @@
 	cache['curl/_privileged'] = {
 		'core': core,
 		'cache': cache,
+		'urlCache': urlCache,
 		'config': function () { return userCfg; },
 		'_define': _define,
 		'_curl': _curl,
