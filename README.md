@@ -784,7 +784,7 @@ More about Bryan: <http://www.reigndropsfall.net/>
 
 Kudos also to James Burke ([@jrburke](http://www.twitter.com/jrburke)) who
 instigated the AMD standard and paved the way to create AMD-style loaders.
-More about James: <http://tagneto.blogspot.com/>
+More about James: <http://jrburke.com/about/>
 
 Shout out to Kris Zyp ([@kriszyp](http://www.twitter.com/kriszyp)) for
 excellent ideas and feedback and to Kyle Simpson
