@@ -175,7 +175,7 @@ define(/*=='curl/loader/legacy',==*/ ['curl/_privileged'], function (priv) {
 				}
 				// define the module as if it were a regular module.
 				// Note: the parens hide the "define signature" from cram.js
-				(define)(resId, exported);
+				(define)(resId, function () { return exported; });
 				// also return the plugin-syntax module ("legacy!foo").
 				callback(exported);
 			}
