@@ -5,6 +5,8 @@
 
 <script>
 
+	var curl, factoryId, factoryDeps;
+
 	curl = {
 		debug: true,
 		paths: {
@@ -26,7 +28,11 @@
 				main: 'plain_old_2',
 				config: {
 					loader: 'curl/loader/legacy',
-					factory: function () { return testDomain.awesome; },
+					factory: function (id, deps) {
+						factoryId = id;
+						factoryDeps = deps;
+						return testDomain.awesome;
+					},
 					requires: ['test1']
 				}
 			}
@@ -51,15 +57,19 @@ curl(
 		'usingRequire'
 	]
 ).then(
-	function (three, saucer, foobar,definedUpTop, usingRequire) {
+	function (three, saucer, foobar, definedUpTop, usingRequire) {
 		write('A module with dependencies loaded successfully if 3 == ' + three + '.');
 		write('If the following line says something then the plain js files loaded in the right order:');
 
 		//write(testDomain.foo.bar + ' ' + testDomain.awesome.sauce);
 		write('Did js file with no deps return a value? ' + (foobar == 'whizzah!' ? 'SUCCESS' : 'FAILED'));
-		
-		write('Did module with non-amd deps load dep correctly? ' + (definedUpTop == 'whizzah!' ? 'SUCCESS' : 'FAILED'));
-		write('Did module with non-amd deps load dep correctly? ' + (usingRequire == 'whizzah!' ? 'SUCCESS' : 'FAILED'));
+
+		write('Did module with non-amd deps load deps correctly? ' + (definedUpTop == 'whizzah!' ? 'SUCCESS' : 'FAILED'));
+		write('Did module with non-amd deps load deps correctly? ' + (usingRequire == 'whizzah!' ? 'SUCCESS' : 'FAILED'));
+console.log(definedUpTop, usingRequire);
+		// test factory
+		write('Did legacy script with factory pass id? ' + (factoryId === 'test2/plain_old_2' ? 'SUCCESS' : 'FAILED'));
+		write('Did legacy script with factory pass dependencies? ' + (factoryDeps[0] === testDomain.foo.bar ? 'SUCCESS' : 'FAILED'));
 	}
 );
 

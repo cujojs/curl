@@ -95,7 +95,8 @@ define(/*=='curl/loader/legacy',==*/ ['curl/_privileged'], function (priv) {
 	return {
 
 		'load': function (resId, require, callback, cfg) {
-			var exports, factory, deps, dontAddFileExt, url, options, countdown;
+			var exports, factory, depIds, dontAddFileExt, url, options,
+				countdown, deps;
 
 			exports = cfg['exports'] || cfg.exports;
 			factory = cfg['factory'] || cfg.factory;
@@ -103,7 +104,8 @@ define(/*=='curl/loader/legacy',==*/ ['curl/_privileged'], function (priv) {
 				throw new Error('`exports` or `factory` required for legacy: ' + resId);
 			}
 
-			deps = [].concat(cfg['requires'] || cfg.requires || []);
+			depIds = [].concat(cfg['requires'] || cfg.requires || []);
+			deps = [];
 			dontAddFileExt = cfg['dontAddFileExt'] || cfg.dontAddFileExt;
 			dontAddFileExt = dontAddFileExt
 				? new RegExp(dontAddFileExt)
@@ -119,7 +121,7 @@ define(/*=='curl/loader/legacy',==*/ ['curl/_privileged'], function (priv) {
 				order: true,
 				// set a fake mimetype if we need to wait and don't support
 				// script.async=false.
-				mimetype:  hasAsyncFalse || !deps.length ? '' : 'text/cache'
+				mimetype:  hasAsyncFalse || !depIds.length ? '' : 'text/cache'
 			};
 
 			// hasAsyncFalse, nodeps: load | _export
@@ -127,7 +129,7 @@ define(/*=='curl/loader/legacy',==*/ ['curl/_privileged'], function (priv) {
 			// !hasAsyncFalse, nodeps: load | _export
 			// !hasAsyncFalse, deps: getDeps+load | reload | _export
 
-			if (deps.length) {
+			if (depIds.length) {
 				countdown = 2;
 				getDeps();
 				load();
@@ -138,8 +140,7 @@ define(/*=='curl/loader/legacy',==*/ ['curl/_privileged'], function (priv) {
 			}
 
 			function getDeps () {
-				// start process of getting deps, then either export or reload
-				require(deps, hasAsyncFalse ? _export : reload, reject);
+				require(depIds, _continue, reject);
 			}
 
 			function load () {
@@ -147,11 +148,18 @@ define(/*=='curl/loader/legacy',==*/ ['curl/_privileged'], function (priv) {
 				loadScript(options, _export, reject);
 			}
 
-			function reload () {
-				// if we faked the mimetype, we need to refetch.
-				// (hopefully, from cache, if cache headers allow.)
-				options.mimetype = '';
-				loadScript(options, _export, reject);
+			function _continue () {
+				// save dependencies
+				deps = arguments;
+				if (!hasAsyncFalse) {
+					// if we faked the mimetype, we need to refetch.
+					// (hopefully, from cache, if cache headers allow.)
+					options.mimetype = '';
+					load();
+				}
+				else {
+					_export();
+				}
 			}
 
 			function _export () {
@@ -159,7 +167,7 @@ define(/*=='curl/loader/legacy',==*/ ['curl/_privileged'], function (priv) {
 				if (--countdown > 0) return;
 				if (factory) {
 					try {
-						exported = factory.call(global, resId);
+						exported = factory.call(global, resId, deps);
 					}
 					catch (ex) {
 						reject(new Error('Factory for legacy ' + resId + ' failed: ' + ex.message));
