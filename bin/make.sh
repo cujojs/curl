@@ -27,19 +27,20 @@ cat $@ | sed -e "s:\/\*==::g" -e "s:==\*\/::g" > "$tmpfile"
 # get version number
 CURLJS_VERSION=$(sed -n "s|.*version\s*=\s*['\"]\([^'\"]*\)['\"].*|\1|p" < ../src/curl.js)
 
-if [ "$opt" = "NONE" ]; then
-	# cat files to the output file
-	cat "$tmpfile" > "$out"
+# prepend valid version number
+if [ -z "${CURLJS_VERSION//[0-9.]/}" ] && ! [ -z "$CURLJS_VERSION" ]; then
+	echo "/* version: ${CURLJS_VERSION} */" > "$out"
 else
-	# compile files to the output file
-	"$DIR"/compile.sh "$tmpfile" "$opt" > "$out"
+	echo "incorrect/missing version number (${CURLJS_VERSION})" >&2
+	echo -n > "$out"
 fi
 
-# add valid version number at the end
-if [ -z "${CURLJS_VERSION//[0-9.]/}" ] && ! [ -z "$CURLJS_VERSION" ] then
-	echo -n "//${CURLJS_VERSION}" >> "$out"
+if [ "$opt" = "NONE" ]; then
+	# cat files to the output file
+	cat "$tmpfile" >> "$out"
 else
-	echo "cannot find the version number" >&2
+	# compile files to the output file
+	"$DIR"/compile.sh "$tmpfile" "$opt" >> "$out"
 fi
 
 # remove the temporary concatenated file
