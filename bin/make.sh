@@ -25,7 +25,7 @@ echo "optimization level is $opt"
 cat $@ | sed -e "s:\/\*==::g" -e "s:==\*\/::g" > "$tmpfile"
 
 # get version number
-CURLJS_VERSION=$(sed -n "s|.*version\s*=\s*['\"]\([^'\"]*\)['\"].*|\1|p" < "$tmpfile")
+CURLJS_VERSION=$(sed -n "s|.*version\s*=\s*['\"]\([^'\"]*\)['\"].*|\1|p" < ../src/curl.js)
 
 if [ "$opt" = "NONE" ]; then
 	# cat files to the output file
