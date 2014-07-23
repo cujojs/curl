@@ -35,8 +35,10 @@ else
 	"$DIR"/compile.sh "$tmpfile" "$opt" > "$out"
 fi
 
-# add version number at the end
-echo -n "//${CURLJS_VERSION}" >> "$out"
+# add valid version number at the end
+if [ -z "${CURLJS_VERSION//[0-9.]/}" }; then
+	echo -n "//${CURLJS_VERSION}" >> "$out"
+fi
 
 # remove the temporary concatenated file
 rm "$tmpfile"
