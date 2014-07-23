@@ -36,8 +36,10 @@ else
 fi
 
 # add valid version number at the end
-if [ -z "${CURLJS_VERSION//[0-9.]/}" }; then
+if [ -z "${CURLJS_VERSION//[0-9.]/}" ] && ! [ -z "CURLJS_VERSION" ] then
 	echo -n "//${CURLJS_VERSION}" >> "$out"
+else
+	echo "cannot find the version number" >&2
 fi
 
 # remove the temporary concatenated file
