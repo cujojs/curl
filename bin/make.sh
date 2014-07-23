@@ -24,6 +24,9 @@ echo "optimization level is $opt"
 # concatenate all of the files to a temp file
 cat $@ | sed -e "s:\/\*==::g" -e "s:==\*\/::g" > "$tmpfile"
 
+# get version number
+CURLJS_VERSION=$(sed -n "s|.*version\s*=\s*['\"]\([^'\"]*\)['\"].*|\1|p" < "$tmpfile")
+
 if [ "$opt" = "NONE" ]; then
 	# cat files to the output file
 	cat "$tmpfile" > "$out"
@@ -31,6 +34,9 @@ else
 	# compile files to the output file
 	"$DIR"/compile.sh "$tmpfile" "$opt" > "$out"
 fi
+
+# add version number at the end
+echo -n "//${CURLJS_VERSION}" >> "$out"
 
 # remove the temporary concatenated file
 rm "$tmpfile"
