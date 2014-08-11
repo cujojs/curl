@@ -49,7 +49,7 @@
 		argsNet,
 		// RegExp's used later, pre-compiled here
 		dontAddExtRx = /\?|\.js\b/,
-		absUrlRx = /^\/|^[^:]+:\/\//,
+		absUrlRx = /^\/|^[^:]+:\/\/|^[A-Za-z]:[\\/]/,
 		findDotsRx = /(\.)(\.?)(?:$|\/([^\.\/]+.*)?)/g,
 		removeCommentsRx = /\/\*[\s\S]*?\*\/|\/\/.*?[\n\r]/g,
 		findRValueRequiresRx = /require\s*\(\s*(["'])(.*?[^\\])\1\s*\)|[^\\]?(["'])/g,
