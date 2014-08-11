@@ -1,0 +1,63 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>curl loading test for img! plugin</title>
+
+<script>
+
+	curl = {
+		debug: true,
+		paths: {
+			curl: '../src/curl'
+		},
+		pluginPath: 'curl/plugin'
+	};
+
+</script>
+<script src="../src/curl.js" type="text/javascript"></script>
+
+
+<script type="text/javascript">
+
+	curl(
+		[
+			'img!img/circle.png',
+			'img!img/rect.png',
+			'domReady!'
+		]
+	).then(
+		function (img1, img2) {
+			write('SUCCESS: images loaded, img1: ' + (img1.originalWidth + 'x' + img1.originalHeight) + ', img2: ' + (img2.originalWidth + 'x' + img2.originalHeight));
+			document.body.appendChild(img1);
+			document.body.appendChild(img2);
+		},
+		function (ex) {
+			write('FAILED: ' + ex.message)
+		}
+	);
+
+	curl([ 'img!img/does_not_exist.png', 'domReady!' ])
+	.then(
+		function (img3) {
+			write("FAILED: img3 does not exist, and returned success anyway, which is BAD.");
+		},
+		function (ex) {
+			write("SUCCESS: img3 does not exist, and failed to load, as desired.");
+		}
+	);
+	
+	function write (msg) {
+		curl(['domReady!'], function () {
+			document.body.appendChild(document.createElement('div')).innerHTML = msg;
+		});
+	}
+
+</script>
+
+</head>
+<body>
+
+<p>We should know the dimensions of both images, and they should be hidden in the root of the body until loaded.</p>
+
+</body>
+</html>
