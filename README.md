@@ -765,6 +765,8 @@ and will be fetched from the following path:
 
 	path/to/js/path/to/my-package/other-module.js
 
+Note that a package may also contain it's own embedded set of `config` options.  Most, but not all, config options may be specified here.  Specifically, you cannot specify any options that change the path or id of modules, such as `paths`, `packages`, `plugins`, or `'pluginPrefix`.
+
 ----------------------------------------
 
 What is cujoJS?
