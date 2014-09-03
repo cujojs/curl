@@ -25,7 +25,7 @@ echo "optimization level is $opt"
 cat $@ | sed -e "s:\/\*==::g" -e "s:==\*\/::g" > "$tmpfile"
 
 # get version number
-CURLJS_VERSION=$(sed -n "s|.*version\s*=\s*['\"]\([^'\"]*\)['\"].*|\1|p" < ../src/curl.js)
+CURLJS_VERSION=$(sed -n "s|.*version.*\(['\"]\)\([^'\"]*\)\1.*|\2|p" < ../src/curl.js)
 
 # prepend valid version number
 if [ -z "${CURLJS_VERSION//[0-9.]/}" ] && ! [ -z "$CURLJS_VERSION" ]; then
