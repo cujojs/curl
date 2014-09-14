@@ -214,5 +214,13 @@ define(/*=='curl/plugin/js',==*/ ['curl/_privileged'], function (priv) {
 }(
 	this,
 	this.document,
-	function () { try { return eval(arguments[0]); } catch (ex) { return; } }
+	function () { try {
+		var _module = module, _exports = exports, _define = define;
+		module = exports = define = undefined;
+		var ret = eval(arguments[0]);
+		module = _module;
+		exports = _exports;
+		define = _define;
+		return ret;
+	} catch (ex) { return; } }
 ));
