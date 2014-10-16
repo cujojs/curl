@@ -1,6 +1,6 @@
 {
 	"name": "curl-amd",
-	"version": "0.8.10",
+	"version": "0.8.11",
 	"description": "curl.js is small, fast, extensible module loader that handles AMD, CommonJS Modules/1.1, CSS, HTML/text, and legacy scripts.",
 	"keywords": ["curl", "cujo", "amd", "loader", "module", "commonjs", "css", "html", "json"],
 	"licenses": [
