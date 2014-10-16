@@ -1,0 +1,65 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>json! tests</title>
+
+<script>
+
+	curl = {
+		baseUrl: '.',
+		paths: {
+			curl: '../src/curl'
+		},
+		preloads: [
+			'curl/tdd/undefine'
+		]
+	};
+
+</script>
+<script src="../src/curl.js" type="text/javascript"></script>
+
+
+<script type="text/javascript">
+
+test1();
+
+function test1 () {
+	curl(['json!json/data.json', 'curl/tdd/undefine']).then(
+		function (json, undefine) {
+			var val1 = !!json, val2 = 'lager' in json.beer;
+			write((val1 ? 'SUCCESS' : 'FAILED') + ': json should be loaded.');
+			write((val2 ? 'SUCCESS' : 'FAILED') + ': json should have correct value.');
+			undefine(['curl/plugin/json!json/data.json', 'json/data.json']);
+		},
+		function (ex) {
+			write('FAILED: to load json!json/data.json ' + ex.message);
+		}
+	).then(test2);
+}
+
+function test2 () {
+	// curl({ locale: 'en-gb' }, ['i18n!i18n/strings']).then(
+	// 	function (strings) {
+	// 		var val1 = !!strings, val2 = strings.labels.beer == 'pint';
+	// 		write((val1 ? 'SUCCESS' : 'FAILED') + ': i18n string bundle (en-gb) should be loaded.');
+	// 		write((val2 ? 'SUCCESS' : 'FAILED') + ': i18n string should have correct value (en-gb).');
+	// 	},
+	// 	function (ex) {
+	// 		write('FAILED: to load i18n!i18n/strings (en-gb) ' + ex.message);
+	// 	}
+	// );
+}
+
+	function write (msg) {
+		curl('domReady!', function () {
+			document.body.appendChild(document.createElement('div')).innerHTML = msg;
+		});
+	}
+
+</script>
+
+</head>
+<body>
+
+</body>
+</html>

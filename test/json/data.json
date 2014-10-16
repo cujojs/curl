@@ -1,0 +1,14 @@
+{
+	"beer": {
+		"lager": {
+			"Samuel Adams": [ "Boston Lager" ]
+		},
+		"stout": {
+			"North Coast": [ "Old Rasputin" ]
+		},
+		"IPA": {
+			"Stoneface": [ "Stoneface IPA" ],
+			"Trillium": [ "Double Dry" ]
+		}
+	}
+}
