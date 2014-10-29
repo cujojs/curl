@@ -1,6 +1,24 @@
 curl (cujoJS resource loader)
 =====================
 
+## Note: curl.js --> RaveJS
+
+We are very excited about [RaveJS](https://github.com/RaveJS), the successor to curl.js.  At its core, rave uses an ES6 Loader, rather than an AMD loader.  However, rave can load many types of modules, *including AMD*.  Therefore, rave will work with your application's AMD modules.  
+
+Rave's most exciting feature, however, is it's ability to eliminate the drudgery of bootstrapping and maintaining modern, modular web applications.  If you've built a non-trivial AMD-based web app, you should be excited about rave, too.  
+
+Rave is definitely the future, so we're putting all of our effort into ensuring that RaveJS is as awesome as it can possibly be.  Watch these RaveJS github projects to stay up to date:
+
+* [RaveJS/rave](https://github.com/RaveJS/rave) - Zero-configuration application bootstrap and development
+* [RaveJS/rave-start](https://github.com/RaveJS/rave-start) - Begin here for the simplest possible startup experience
+* [RaveJS/rave-start-angular](https://github.com/RaveJS/rave-start-angular) - Begin here to create an AngularJS-based application
+
+This means that all development for curl.js and cram.js has stopped. For the foreseeable future, we will continue to respond to issues on github, as well as in the #cujojs room on freenode.  However, keep in mind that there will be no further development, so some issues might not be resolved fully.
+
+If you're as excited as we are about the future, consider helping us improve a curl-to-rave migration guide.  There are many ways to architect curl-based applications, so your experience migrating your app from curl to rave is extremely valuable to other curl users.
+
+Also, if you are interested in becoming the lead maintainer of curl.js and/or cram.js, please let us know on #cujojs!
+
 What is curl.js?
 ================
 
