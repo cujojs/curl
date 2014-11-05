@@ -86,6 +86,18 @@ curl.js with jQuery, dojo, or underscore.
 What's New?
 =======
 
+* 0.8.12
+    * Add deprecation notice.
+    * Add links to Rave Starters.
+    * Add a link to the migration guide.
+* 0.8.11
+    * Improve instructions for custom build thanks to @azazel75.
+    * Stop catching (and indirectly squelching) errors in callback functions. Fixes #281.
+    * Add version number at the beginning. Thanks @szepeviktor!
+    * Add note about config options that are not supported in embedded config.
+    * Added img! plugin and test cases.  Thanks @asilvas!
+    * Recognize Windows absolute urls. C:\, e:/, etc. Thanks @doom777!
+    * Update to README.md to correct link to James Burke's site.  Thanks @kryger!
 * 0.8.10
 	* Add moduleType and main properties to bower.json and package.json.
 * 0.8.9
