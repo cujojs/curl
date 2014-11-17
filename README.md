@@ -223,7 +223,7 @@ For a complete description, check out the [wiki](https://github.com/cujojs/curl/
 curl(['main', 'other', 'another' /* etc */], callback, errorback);
 ```
 
-Loads a module named "main" along with two other modules and the executes
+Loads a module named "main" along with two other modules and then executes
 callback, handing it the exported values of the modules as parameters.
 
 * ['main', 'other', 'another']: Module names or plugin-prefixed resource files.
