@@ -201,7 +201,7 @@ curl.config({
 	packages: [
 		{
 			name: 'backbone',
-			location: 'bower_components/backbone'
+			location: 'bower_components/backbone',
 			main: 'backbone.min.js',
 			config: { moduleLoader: 'curl/loader/cjsm11' } /* <-- hey! */
 		}
