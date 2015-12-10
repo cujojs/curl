@@ -228,8 +228,8 @@ Promises-based API for executing callbacks.
 * ['main', 'other', 'another']: Module names or plugin-prefixed resource files.
 * callback: Function to receive modules or resources. Optional.
 * errorback: Function to call if an exception occurred while loading. Optional.
-* For full CommonJS Promises/A+ compliance, use [when.js](https://github.com/cujojs/when)
-    * `when(curl(['dep1'])).then(callback);`
+* Note: curl.js's Promises are *not* compliant with ES6 or Promises/A+ so they may not behave as you'd expect. For full compliance, use [when.js](https://github.com/cujojs/when) or any another ES6 Promise shim.
+    * `when(curl(['dep1'])).then(callback);` or `Promise.resolve(curl(['dep1'])).then(callback);`
 
 ---------
 
