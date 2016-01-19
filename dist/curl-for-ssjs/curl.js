@@ -1,3 +1,4 @@
+/* version: 0.8.13 */
 /** @license MIT License (c) copyright 2010-2013 B Cavalier & J Hann */
 
 /**
@@ -13,7 +14,7 @@
 (function (global) {
 //"use strict"; don't restore this until the config routine is refactored
 	var
-		version = '0.8.10',
+		version = '0.8.13',
 		curlName = 'curl',
 		defineName = 'define',
 		bootScriptAttr = 'data-curl-run',
@@ -49,7 +50,7 @@
 		argsNet,
 		// RegExp's used later, pre-compiled here
 		dontAddExtRx = /\?|\.js\b/,
-		absUrlRx = /^\/|^[^:]+:\/\//,
+		absUrlRx = /^\/|^[^:]+:\/\/|^[A-Za-z]:[\\/]/,
 		findDotsRx = /(\.)(\.?)(?:$|\/([^\.\/]+.*)?)/g,
 		removeCommentsRx = /\/\*[\s\S]*?\*\/|\/\/.*?[\n\r]/g,
 		findRValueRequiresRx = /require\s*\(\s*(["'])(.*?[^\\])\1\s*\)|[^\\]?(["'])/g,
