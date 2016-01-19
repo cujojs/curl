@@ -416,7 +416,7 @@
 			// only executes once (link.onload is acting as a flag)
 			if (isFinalized(link)) return;
 			finalize(link);
-			waitForDocumentComplete(function () { cb(link.sheet); });
+			cb(link.sheet);
 		}
 		// always try standard handler
 		loadHandler(link, load);
@@ -466,30 +466,6 @@
 		linkErrored(link, period, eb);
 		link.href = url;
 		head.appendChild(link);
-	}
-
-	/**
-	 * Keep checking for the document readyState to be "complete" since
-	 * Chrome doesn't apply the styles to the document until that time.
-	 * If we return before readyState == 'complete', Chrome may not have
-	 * applied the styles, yet.
-	 * Chrome only.
-	 * @private
-	 * @param cb
-	 */
-	function waitForDocumentComplete (cb) {
-		// this isn't exactly the same as domReady (when dom can be
-		// manipulated). it's later (when styles are applied).
-		// chrome needs this (and opera?)
-		function complete () {
-			if (isDocumentComplete()) {
-				cb();
-			}
-			else {
-				setTimeout(complete, 10);
-			}
-		}
-		complete();
 	}
 
 	/**
