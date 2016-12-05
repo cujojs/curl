@@ -1310,6 +1310,10 @@
 
 	_curl['version'] = version;
 	_curl['config'] = _config;
+	// for development convenience
+	_curl.expose = function(module_id, name){
+		_curl(module_id, function(m){ global[name] = m });
+	};
 
 	function _define (args) {
 
