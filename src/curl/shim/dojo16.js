@@ -34,6 +34,13 @@ define(/*=='curl/shim/dojo16',==*/ ['curl/_privileged', 'curl/domReady'], functi
 				domReady(cb);
 			};
 		}
+		
+		// create a fake 'on' method on 'require' (used in dojo/ready.js)
+		// until this is fixed in dojo
+		if (!req['on']){
+			req['on'] = function(){};
+		}
+		
 		// map non-standard nameToUrl to toUrl
 		if (!req['nameToUrl']) {
 			req['nameToUrl'] = function (name, ext) {
