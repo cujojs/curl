@@ -1,0 +1,54 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>crossorigin script</title>
+
+<script src="../src/curl.js" type="text/javascript"></script>
+<!--<script src="../dist/curl-kitchen-sink/curl.js" type="text/javascript"></script>-->
+
+<script type="text/javascript">
+
+	curl({
+			crossorigin: 'anonymous',
+			paths: {
+				curl: '../src/curl/',
+				aView: 'stuff/aView'
+			}
+		},
+		[
+			'aView/controller'
+		]
+	).then(
+		function (aView) {
+			var isScriptWithAttr = false,
+				scripts = document.getElementsByTagName('script');
+			for (var i = scripts.length; i--;) {
+				if (scripts[i].src.indexOf('stuff/aView/controller.js') > -1 && scripts[i].crossOrigin === 'anonymous') {
+				  isScriptWithAttr = true;
+				}
+			}
+			if (isScriptWithAttr) {
+				write('SUCCESS: script loaded with cross origin attribute');
+			} else {
+				write('FAILED: script has not the correct attribute');
+			}
+		},
+		function (ex) {
+			write('FAILED: should load correctly the file - ' + ex.message);
+		}
+	);
+
+function write (msg) {
+  document.body.appendChild(document.createElement('div')).innerHTML = msg;
+}
+
+
+</script>
+
+</head>
+<body>
+
+<p id="test"></p>
+
+</body>
+</html>

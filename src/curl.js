@@ -544,6 +544,7 @@
 			if ('dontAddFileExt' in cfg || cfg.dontAddFileExt) {
 				cfg.dontAddFileExt = new RegExp(cfg['dontAddFileExt'] || cfg.dontAddFileExt);
 			}
+			if ('crossorigin' in cfg) cfg.crossorigin = cfg['crossorigin'];
 
 			prevCfg = userCfg;
 			newCfg = beget(prevCfg, cfg);
@@ -729,6 +730,7 @@
 			el.charset = 'utf-8';
 			el.async = !def.order;
 			el.src = def.url;
+			if (def.config.crossorigin) el.crossOrigin = def.config.crossorigin;
 
 			// loading will start when the script is inserted into the dom.
 			// IE will load the script sync if it's in the cache, so
